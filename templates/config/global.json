@@ -1,0 +1,22 @@
+{
+  "max_iterations": 3,
+  "tmux_session_prefix": "orchestral",
+  "web_port": 3000,
+  "log_level": "info",
+  "timeouts": {
+    "refiner": 300000,
+    "builder": 600000,
+    "verifier": 300000,
+    "gatekeeper": 300000
+  },
+  "timeout_action": "warn",
+  "notifications": {
+    "terminal_bell": true,
+    "system_notify": false
+  },
+  "auto_retry": {
+    "enabled": true,
+    "max_attempts": 2,
+    "recoverable_errors": ["crash", "timeout", "validation"]
+  }
+}

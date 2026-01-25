@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - Run Details</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history">History</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section>
+      <div class="run-header">
+        <span class="run-id" id="run-id"></span>
+        <span class="run-phase" id="run-phase"></span>
+        <span class="run-iteration" id="run-iteration"></span>
+      </div>
+
+      <div class="pipeline">
+        <div class="pipeline-step" id="step-refine">
+          <div class="step-icon">📝</div>
+          <div class="step-name">Refine</div>
+          <div class="step-status" id="status-refiner"></div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step-build">
+          <div class="step-icon">🔨</div>
+          <div class="step-name">Build</div>
+          <div class="step-status" id="status-builder"></div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step-verify">
+          <div class="step-icon">🔍</div>
+          <div class="step-name">Verify</div>
+          <div class="step-status" id="status-verifier"></div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step-gate">
+          <div class="step-icon">🚪</div>
+          <div class="step-name">Gate</div>
+          <div class="step-status" id="status-gatekeeper"></div>
+        </div>
+      </div>
+
+      <div id="action-required" class="action-required" style="display: none;">
+        <h3>⚠️ Action Required</h3>
+        <p id="action-message"></p>
+        <a id="action-link" href="#" class="btn btn-warning">Respond</a>
+      </div>
+    </section>
+
+    <section>
+      <h2>Agent Output <span class="realtime-indicator"><span class="dot"></span> Live</span></h2>
+      <div class="terminal-tabs">
+        <button class="terminal-tab active" data-agent="refiner">
+          <span class="tab-status" id="tab-status-refiner"></span>
+          Refiner
+        </button>
+        <button class="terminal-tab" data-agent="builder">
+          <span class="tab-status" id="tab-status-builder"></span>
+          Builder
+        </button>
+        <button class="terminal-tab" data-agent="verifier">
+          <span class="tab-status" id="tab-status-verifier"></span>
+          Verifier
+        </button>
+        <button class="terminal-tab" data-agent="gatekeeper">
+          <span class="tab-status" id="tab-status-gatekeeper"></span>
+          Gatekeeper
+        </button>
+      </div>
+      <div class="terminal-single" id="terminal-output">
+        <span class="terminal-empty">Waiting for agent output...</span>
+      </div>
+      <div id="stale-warning" class="stale-warning" style="display: none;">
+        <span>Warning: Agent appears inactive</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Briefing</h2>
+      <div id="briefing-content" class="mrp-summary">
+        <pre>Loading...</pre>
+      </div>
+    </section>
+
+    <section id="test-results-section" style="display: none;">
+      <h2>Test Results</h2>
+      <div class="evidence-grid">
+        <div class="evidence-card">
+          <h4>Total Tests</h4>
+          <div class="value" id="tests-total">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Passed</h4>
+          <div class="value success" id="tests-passed">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Failed</h4>
+          <div class="value error" id="tests-failed">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Coverage</h4>
+          <div class="value" id="tests-coverage">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>History</h2>
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Result</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr>
+            <td colspan="3" class="empty">No history yet</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const socket = io();
+    const runId = window.location.pathname.split('/')[2];
+
+    // Agent output storage
+    const agentOutputs = {
+      refiner: '',
+      builder: '',
+      verifier: '',
+      gatekeeper: ''
+    };
+    let activeTab = 'refiner';
+    let agentStatuses = {};
+
+    async function loadRunDetails() {
+      const res = await fetch(`/api/runs/${runId}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        alert('Run not found');
+        window.location.href = '/';
+        return;
+      }
+
+      const state = data.data;
+      agentStatuses = {
+        refiner: state.agents.refiner.status,
+        builder: state.agents.builder.status,
+        verifier: state.agents.verifier.status,
+        gatekeeper: state.agents.gatekeeper.status
+      };
+
+      document.getElementById('run-id').textContent = state.run_id;
+      document.getElementById('run-phase').textContent = formatPhase(state.phase);
+      document.getElementById('run-phase').className = 'run-phase phase-' + state.phase;
+      document.getElementById('run-iteration').textContent = `Iteration ${state.iteration}/${state.max_iterations}`;
+
+      // Update agent statuses
+      updateAgentStatus('refiner', state.agents.refiner.status);
+      updateAgentStatus('builder', state.agents.builder.status);
+      updateAgentStatus('verifier', state.agents.verifier.status);
+      updateAgentStatus('gatekeeper', state.agents.gatekeeper.status);
+
+      // Update tab statuses
+      updateTabStatus('refiner', state.agents.refiner.status);
+      updateTabStatus('builder', state.agents.builder.status);
+      updateTabStatus('verifier', state.agents.verifier.status);
+      updateTabStatus('gatekeeper', state.agents.gatekeeper.status);
+
+      // Show action required if needed
+      if (state.phase === 'waiting_human' && state.pending_crp) {
+        document.getElementById('action-required').style.display = 'block';
+        document.getElementById('action-message').textContent = `CRP ${state.pending_crp} requires your response.`;
+        document.getElementById('action-link').href = `/run/${state.run_id}/crp/${state.pending_crp}`;
+      } else if (state.phase === 'ready_for_merge') {
+        document.getElementById('action-required').style.display = 'block';
+        document.getElementById('action-message').textContent = 'MRP is ready for review.';
+        document.getElementById('action-link').href = `/run/${state.run_id}/mrp`;
+        document.getElementById('action-link').textContent = 'Review MRP';
+      } else {
+        document.getElementById('action-required').style.display = 'none';
+      }
+
+      // Load history
+      const historyBody = document.getElementById('history-body');
+      if (state.history.length > 0) {
+        historyBody.innerHTML = state.history.map(h => `
+          <tr>
+            <td><span class="phase-badge phase-${h.phase}">${formatPhase(h.phase)}</span></td>
+            <td>${h.result}</td>
+            <td>${new Date(h.timestamp).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Load briefing
+      await loadBriefing();
+
+      // Load test results if available
+      await loadTestResults();
+    }
+
+    async function loadBriefing() {
+      const res = await fetch(`/api/runs/${runId}/briefing`);
+      const data = await res.json();
+
+      if (data.success) {
+        const content = data.data.refined || data.data.raw || 'No briefing content';
+        document.getElementById('briefing-content').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+      }
+    }
+
+    async function loadTestResults() {
+      const res = await fetch(`/api/runs/${runId}/verifier/results`);
+      const data = await res.json();
+
+      if (data.success && data.data) {
+        document.getElementById('test-results-section').style.display = 'block';
+        document.getElementById('tests-total').textContent = data.data.total;
+        document.getElementById('tests-passed').textContent = data.data.passed;
+        document.getElementById('tests-failed').textContent = data.data.failed;
+        document.getElementById('tests-coverage').textContent = data.data.coverage ? `${data.data.coverage}%` : '-';
+      }
+    }
+
+    function updateAgentStatus(agent, status) {
+      const el = document.getElementById('status-' + agent);
+      el.textContent = formatStatus(status);
+      el.className = 'step-status status-' + status;
+    }
+
+    function updateTabStatus(agent, status) {
+      const el = document.getElementById('tab-status-' + agent);
+      if (el) {
+        el.className = 'tab-status ' + status;
+      }
+    }
+
+    function formatPhase(phase) {
+      const labels = {
+        refine: 'Refine',
+        build: 'Build',
+        verify: 'Verify',
+        gate: 'Gate',
+        waiting_human: 'Waiting',
+        ready_for_merge: 'Ready',
+        completed: 'Completed',
+        failed: 'Failed'
+      };
+      return labels[phase] || phase;
+    }
+
+    function formatStatus(status) {
+      const labels = {
+        pending: '○',
+        running: '●',
+        completed: '✓',
+        failed: '✗'
+      };
+      return labels[status] || status;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function updateTerminalOutput() {
+      const terminal = document.getElementById('terminal-output');
+      const content = agentOutputs[activeTab];
+      if (content && content.trim()) {
+        terminal.textContent = content;
+        // Auto-scroll to bottom
+        terminal.scrollTop = terminal.scrollHeight;
+      } else {
+        terminal.innerHTML = '<span class="terminal-empty">Waiting for agent output...</span>';
+      }
+    }
+
+    function switchTab(agent) {
+      activeTab = agent;
+      // Update tab styles
+      document.querySelectorAll('.terminal-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.agent === agent);
+      });
+      updateTerminalOutput();
+      // Request latest output for this agent
+      socket.emit('request_agent_output', agent);
+    }
+
+    // Set up tab click handlers
+    document.querySelectorAll('.terminal-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        switchTab(tab.dataset.agent);
+      });
+    });
+
+    // Socket.io event handling
+    socket.on('orchestrator_event', (event) => {
+      if (event.runId === runId) {
+        loadRunDetails();
+      }
+    });
+
+    socket.on('agent_outputs_initial', (outputs) => {
+      Object.assign(agentOutputs, outputs);
+      updateTerminalOutput();
+    });
+
+    socket.on('agent_output', (event) => {
+      if (event.runId === runId) {
+        agentOutputs[event.agent] = event.content;
+        if (event.agent === activeTab) {
+          updateTerminalOutput();
+        }
+      }
+    });
+
+    socket.on('agent_output_response', (data) => {
+      agentOutputs[data.agent] = data.content;
+      if (data.agent === activeTab) {
+        updateTerminalOutput();
+      }
+    });
+
+    socket.on('agent_health', (event) => {
+      if (event.runId === runId) {
+        if (event.type === 'agent_stale' && event.agent === activeTab) {
+          document.getElementById('stale-warning').style.display = 'flex';
+        } else {
+          document.getElementById('stale-warning').style.display = 'none';
+        }
+      }
+    });
+
+    // Initial load
+    loadRunDetails();
+    // Request initial output for active tab
+    socket.emit('request_agent_output', activeTab);
+  </script>
+</body>
+</html>

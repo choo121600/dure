@@ -1,0 +1,12 @@
+{
+  "model": "opus",
+  "test_coverage": {
+    "min_percentage": 80,
+    "require_edge_cases": true,
+    "require_error_cases": true
+  },
+  "adversarial": {
+    "enabled": true,
+    "max_attack_vectors": 5
+  }
+}

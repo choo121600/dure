@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - Merge-Readiness Pack</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history">History</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Merge-Readiness Pack</h2>
+        <span id="run-id" class="mono" style="color: var(--text-muted);"></span>
+      </div>
+    </section>
+
+    <section id="evidence-section">
+      <h2>Evidence</h2>
+      <div class="evidence-grid">
+        <div class="evidence-card">
+          <h4>Total Tests</h4>
+          <div class="value" id="tests-total">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Passed</h4>
+          <div class="value success" id="tests-passed">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Failed</h4>
+          <div class="value" id="tests-failed">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Coverage</h4>
+          <div class="value" id="tests-coverage">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Iterations</h4>
+          <div class="value" id="iterations">-</div>
+        </div>
+        <div class="evidence-card">
+          <h4>Files Changed</h4>
+          <div class="value" id="files-changed">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Summary</h2>
+      <div class="mrp-summary" id="summary-content">
+        <pre>Loading...</pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Review Decision</h2>
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <button id="approve-btn" class="btn btn-primary" style="flex: 1; min-width: 200px; padding: 1rem;">
+          ✓ Approve & Merge
+        </button>
+        <button id="reject-btn" class="btn btn-danger" style="flex: 1; min-width: 200px; padding: 1rem;">
+          ✗ Request Changes
+        </button>
+      </div>
+
+      <div id="feedback-section" style="display: none; margin-top: 1.5rem;">
+        <div class="form-group">
+          <label for="feedback">Feedback</label>
+          <textarea
+            id="feedback"
+            rows="4"
+            placeholder="Describe what changes are needed..."
+          ></textarea>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="submit-feedback-btn" class="btn btn-primary">Submit Feedback</button>
+          <button id="cancel-feedback-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const runId = window.location.pathname.split('/')[2];
+
+    async function loadMRP() {
+      document.getElementById('run-id').textContent = runId;
+
+      const res = await fetch(`/api/mrp/${runId}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        alert('MRP not found');
+        window.location.href = `/run/${runId}`;
+        return;
+      }
+
+      const { summary, evidence } = data.data;
+
+      // Display summary
+      if (summary) {
+        document.getElementById('summary-content').innerHTML = `<pre>${escapeHtml(summary)}</pre>`;
+      }
+
+      // Display evidence
+      if (evidence) {
+        if (evidence.tests) {
+          document.getElementById('tests-total').textContent = evidence.tests.total;
+          document.getElementById('tests-passed').textContent = evidence.tests.passed;
+
+          const failedEl = document.getElementById('tests-failed');
+          failedEl.textContent = evidence.tests.failed;
+          failedEl.className = 'value ' + (evidence.tests.failed > 0 ? 'error' : 'success');
+
+          document.getElementById('tests-coverage').textContent =
+            evidence.tests.coverage ? `${evidence.tests.coverage}%` : '-';
+        }
+
+        document.getElementById('iterations').textContent = evidence.iterations || '-';
+        document.getElementById('files-changed').textContent =
+          evidence.files_changed ? evidence.files_changed.length : '-';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Approve handler
+    document.getElementById('approve-btn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to approve this MRP?')) return;
+
+      const res = await fetch(`/api/mrp/${runId}/approve`, { method: 'POST' });
+      const data = await res.json();
+
+      if (data.success) {
+        alert('MRP approved! The changes are ready to be merged.');
+        window.location.href = '/';
+      } else {
+        alert('Failed to approve: ' + data.error);
+      }
+    });
+
+    // Request changes handler
+    document.getElementById('reject-btn').addEventListener('click', () => {
+      document.getElementById('feedback-section').style.display = 'block';
+    });
+
+    document.getElementById('cancel-feedback-btn').addEventListener('click', () => {
+      document.getElementById('feedback-section').style.display = 'none';
+    });
+
+    document.getElementById('submit-feedback-btn').addEventListener('click', async () => {
+      const feedback = document.getElementById('feedback').value.trim();
+
+      if (!feedback) {
+        alert('Please provide feedback');
+        return;
+      }
+
+      const res = await fetch(`/api/mrp/${runId}/request-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert('Feedback submitted. The run will restart with your feedback.');
+        window.location.href = `/run/${runId}`;
+      } else {
+        alert('Failed to submit feedback: ' + data.error);
+      }
+    });
+
+    loadMRP();
+  </script>
+</body>
+</html>

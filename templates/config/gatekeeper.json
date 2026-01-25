@@ -1,0 +1,14 @@
+{
+  "model": "sonnet",
+  "pass_criteria": {
+    "tests_passing": true,
+    "no_critical_issues": true,
+    "min_test_coverage": 80
+  },
+  "max_iterations": 3,
+  "auto_crp_triggers": [
+    "security_concern",
+    "breaking_change",
+    "external_dependency_addition"
+  ]
+}

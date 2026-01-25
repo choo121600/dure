@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - History</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history" class="active">History</a>
+    </div>
+    <a href="/run/new" class="btn btn-primary">New Run</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>Run History</h2>
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Phase</th>
+            <th>Iteration</th>
+            <th>Started</th>
+            <th>Last Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr>
+            <td colspan="6" class="empty">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    async function loadHistory() {
+      const res = await fetch('/api/runs');
+      const data = await res.json();
+
+      const tbody = document.getElementById('history-body');
+
+      if (data.success && data.data.length > 0) {
+        tbody.innerHTML = data.data.map(run => `
+          <tr>
+            <td class="mono">${run.run_id}</td>
+            <td><span class="phase-badge phase-${run.phase}">${formatPhase(run.phase)}</span></td>
+            <td>${run.iteration}</td>
+            <td>${new Date(run.started_at).toLocaleString()}</td>
+            <td>${new Date(run.updated_at).toLocaleString()}</td>
+            <td><a href="/run/${run.run_id}" class="btn btn-small">View</a></td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No runs yet. Start your first run!</td></tr>';
+      }
+    }
+
+    function formatPhase(phase) {
+      const labels = {
+        refine: 'Refine',
+        build: 'Build',
+        verify: 'Verify',
+        gate: 'Gate',
+        waiting_human: 'Waiting',
+        ready_for_merge: 'Ready',
+        completed: 'Completed',
+        failed: 'Failed'
+      };
+      return labels[phase] || phase;
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

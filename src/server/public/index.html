@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/" class="active">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history">History</a>
+    </div>
+    <a href="/run/new" class="btn btn-primary">New Run</a>
+  </nav>
+
+  <main class="container">
+    <section class="project-info">
+      <h2>Project</h2>
+      <p id="project-root" class="mono">Loading...</p>
+    </section>
+
+    <section class="current-run" id="current-run-section">
+      <h2>Current Run</h2>
+      <div id="no-run" class="empty-state">
+        <p>No active run.</p>
+        <a href="/run/new" class="btn btn-primary">Start New Run</a>
+      </div>
+      <div id="run-info" style="display: none;">
+        <div class="run-header">
+          <span class="run-id" id="run-id"></span>
+          <span class="run-phase" id="run-phase"></span>
+          <span class="run-iteration" id="run-iteration"></span>
+        </div>
+
+        <div class="pipeline">
+          <div class="pipeline-step" id="step-refine">
+            <div class="step-icon">📝</div>
+            <div class="step-name">Refine</div>
+            <div class="step-status" id="status-refiner"></div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-build">
+            <div class="step-icon">🔨</div>
+            <div class="step-name">Build</div>
+            <div class="step-status" id="status-builder"></div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-verify">
+            <div class="step-icon">🔍</div>
+            <div class="step-name">Verify</div>
+            <div class="step-status" id="status-verifier"></div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-gate">
+            <div class="step-icon">🚪</div>
+            <div class="step-name">Gate</div>
+            <div class="step-status" id="status-gatekeeper"></div>
+          </div>
+        </div>
+
+        <div id="action-required" class="action-required" style="display: none;">
+          <h3>⚠️ Action Required</h3>
+          <p id="action-message"></p>
+          <a id="action-link" href="#" class="btn btn-warning">Respond</a>
+        </div>
+
+        <div class="run-actions">
+          <a id="view-details-link" href="#" class="btn btn-secondary">View Details</a>
+          <button id="stop-run-btn" class="btn btn-danger">Stop Run</button>
+        </div>
+
+        <div id="live-output-section" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 0.875rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            Live Output
+            <span class="realtime-indicator"><span class="dot"></span></span>
+          </h3>
+          <div class="terminals-compact">
+            <div class="terminal-compact">
+              <div class="terminal-header">
+                <span class="agent-name">
+                  <span class="status-indicator" id="live-status-refiner"></span>
+                  Refiner
+                </span>
+              </div>
+              <pre class="terminal-content" id="live-output-refiner"><span class="terminal-empty">...</span></pre>
+            </div>
+            <div class="terminal-compact">
+              <div class="terminal-header">
+                <span class="agent-name">
+                  <span class="status-indicator" id="live-status-builder"></span>
+                  Builder
+                </span>
+              </div>
+              <pre class="terminal-content" id="live-output-builder"><span class="terminal-empty">...</span></pre>
+            </div>
+            <div class="terminal-compact">
+              <div class="terminal-header">
+                <span class="agent-name">
+                  <span class="status-indicator" id="live-status-verifier"></span>
+                  Verifier
+                </span>
+              </div>
+              <pre class="terminal-content" id="live-output-verifier"><span class="terminal-empty">...</span></pre>
+            </div>
+            <div class="terminal-compact">
+              <div class="terminal-header">
+                <span class="agent-name">
+                  <span class="status-indicator" id="live-status-gatekeeper"></span>
+                  Gatekeeper
+                </span>
+              </div>
+              <pre class="terminal-content" id="live-output-gatekeeper"><span class="terminal-empty">...</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="recent-runs">
+      <h2>Recent Runs</h2>
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Phase</th>
+            <th>Iteration</th>
+            <th>Started</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="recent-runs-body">
+          <tr>
+            <td colspan="5" class="empty">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    const socket = io();
+
+    async function loadDashboard() {
+      // Load project info
+      const projectRes = await fetch('/api/project');
+      const projectData = await projectRes.json();
+      if (projectData.success) {
+        document.getElementById('project-root').textContent = projectData.data.projectRoot;
+      }
+
+      // Load active run
+      await loadActiveRun();
+
+      // Load recent runs
+      await loadRecentRuns();
+    }
+
+    async function loadActiveRun() {
+      const res = await fetch('/api/runs/active');
+      const data = await res.json();
+
+      if (data.success && data.data) {
+        const state = data.data;
+        document.getElementById('no-run').style.display = 'none';
+        document.getElementById('run-info').style.display = 'block';
+
+        document.getElementById('run-id').textContent = state.run_id;
+        document.getElementById('run-phase').textContent = formatPhase(state.phase);
+        document.getElementById('run-phase').className = 'run-phase phase-' + state.phase;
+        document.getElementById('run-iteration').textContent = `Iteration ${state.iteration}/${state.max_iterations}`;
+
+        // Update agent statuses
+        updateAgentStatus('refiner', state.agents.refiner.status);
+        updateAgentStatus('builder', state.agents.builder.status);
+        updateAgentStatus('verifier', state.agents.verifier.status);
+        updateAgentStatus('gatekeeper', state.agents.gatekeeper.status);
+
+        // Update view details link
+        document.getElementById('view-details-link').href = `/run/${state.run_id}`;
+
+        // Show action required if waiting for human
+        if (state.phase === 'waiting_human' && state.pending_crp) {
+          document.getElementById('action-required').style.display = 'block';
+          document.getElementById('action-message').textContent = `CRP ${state.pending_crp} requires your response.`;
+          document.getElementById('action-link').href = `/run/${state.run_id}/crp/${state.pending_crp}`;
+        } else if (state.phase === 'ready_for_merge') {
+          document.getElementById('action-required').style.display = 'block';
+          document.getElementById('action-message').textContent = 'MRP is ready for review.';
+          document.getElementById('action-link').href = `/run/${state.run_id}/mrp`;
+          document.getElementById('action-link').textContent = 'Review MRP';
+        } else {
+          document.getElementById('action-required').style.display = 'none';
+        }
+      } else {
+        document.getElementById('no-run').style.display = 'block';
+        document.getElementById('run-info').style.display = 'none';
+      }
+    }
+
+    async function loadRecentRuns() {
+      const res = await fetch('/api/runs');
+      const data = await res.json();
+
+      const tbody = document.getElementById('recent-runs-body');
+
+      if (data.success && data.data.length > 0) {
+        tbody.innerHTML = data.data.slice(0, 5).map(run => `
+          <tr>
+            <td class="mono">${run.run_id}</td>
+            <td><span class="phase-badge phase-${run.phase}">${formatPhase(run.phase)}</span></td>
+            <td>${run.iteration}</td>
+            <td>${new Date(run.started_at).toLocaleString()}</td>
+            <td><a href="/run/${run.run_id}" class="btn btn-small">View</a></td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No runs yet</td></tr>';
+      }
+    }
+
+    function updateAgentStatus(agent, status) {
+      const el = document.getElementById('status-' + agent);
+      el.textContent = formatStatus(status);
+      el.className = 'step-status status-' + status;
+    }
+
+    function formatPhase(phase) {
+      const labels = {
+        refine: 'Refine',
+        build: 'Build',
+        verify: 'Verify',
+        gate: 'Gate',
+        waiting_human: 'Waiting',
+        ready_for_merge: 'Ready',
+        completed: 'Completed',
+        failed: 'Failed'
+      };
+      return labels[phase] || phase;
+    }
+
+    function formatStatus(status) {
+      const labels = {
+        pending: '○',
+        running: '●',
+        completed: '✓',
+        failed: '✗'
+      };
+      return labels[status] || status;
+    }
+
+    // Stop run handler
+    document.getElementById('stop-run-btn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to stop the current run?')) return;
+
+      const runId = document.getElementById('run-id').textContent;
+      const res = await fetch(`/api/runs/${runId}/stop`, { method: 'POST' });
+      const data = await res.json();
+
+      if (data.success) {
+        await loadActiveRun();
+        await loadRecentRuns();
+      } else {
+        alert('Failed to stop run: ' + data.error);
+      }
+    });
+
+    // Live output storage
+    const liveOutputs = {
+      refiner: '',
+      builder: '',
+      verifier: '',
+      gatekeeper: ''
+    };
+
+    function updateLiveOutput(agent, content) {
+      const el = document.getElementById('live-output-' + agent);
+      if (el && content && content.trim()) {
+        // Show only last few lines in compact view
+        const lines = content.trim().split('\n');
+        const lastLines = lines.slice(-8).join('\n');
+        el.textContent = lastLines;
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+
+    function updateLiveStatus(agent, status) {
+      const el = document.getElementById('live-status-' + agent);
+      if (el) {
+        el.className = 'status-indicator ' + status;
+      }
+    }
+
+    // Socket.io event handling
+    socket.on('orchestrator_event', (event) => {
+      console.log('Event:', event);
+      loadActiveRun();
+      loadRecentRuns();
+    });
+
+    socket.on('state_update', (state) => {
+      console.log('State update:', state);
+      loadActiveRun();
+      // Update live statuses
+      if (state && state.agents) {
+        updateLiveStatus('refiner', state.agents.refiner.status);
+        updateLiveStatus('builder', state.agents.builder.status);
+        updateLiveStatus('verifier', state.agents.verifier.status);
+        updateLiveStatus('gatekeeper', state.agents.gatekeeper.status);
+      }
+    });
+
+    socket.on('agent_outputs_initial', (outputs) => {
+      Object.assign(liveOutputs, outputs);
+      updateLiveOutput('refiner', outputs.refiner);
+      updateLiveOutput('builder', outputs.builder);
+      updateLiveOutput('verifier', outputs.verifier);
+      updateLiveOutput('gatekeeper', outputs.gatekeeper);
+    });
+
+    socket.on('agent_output', (event) => {
+      liveOutputs[event.agent] = event.content;
+      updateLiveOutput(event.agent, event.content);
+    });
+
+    socket.on('agent_health', (event) => {
+      if (event.type === 'agent_stale') {
+        const el = document.getElementById('live-status-' + event.agent);
+        if (el) {
+          el.className = 'status-indicator stale';
+        }
+      }
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

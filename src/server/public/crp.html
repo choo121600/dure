@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - Consultation Request</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history">History</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Consultation Request</h2>
+        <span id="crp-id" class="mono" style="color: var(--text-muted);"></span>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <span style="color: var(--text-muted);">From:</span>
+        <span id="crp-from" style="color: var(--accent-blue);"></span>
+      </div>
+
+      <div class="mrp-summary" style="margin-bottom: 1.5rem;">
+        <h3 style="margin-bottom: 0.5rem;">Question</h3>
+        <p id="crp-question" style="font-size: 1.1rem; margin-bottom: 1rem;"></p>
+        <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Context</h4>
+        <p id="crp-context" style="color: var(--text-secondary);"></p>
+      </div>
+
+      <form id="crp-form">
+        <div class="form-group">
+          <label>Options</label>
+          <div class="options-list" id="options-list">
+            <!-- Options will be populated here -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="rationale">Rationale (optional)</label>
+          <textarea
+            id="rationale"
+            name="rationale"
+            rows="3"
+            placeholder="Explain your reasoning..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="additional-notes">Additional Notes (optional)</label>
+          <textarea
+            id="additional-notes"
+            name="additional-notes"
+            rows="2"
+            placeholder="Any additional context or constraints..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="applies-to-future" name="applies-to-future">
+            <label for="applies-to-future">Apply this decision to similar future cases</label>
+          </div>
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary">Submit Decision</button>
+          <a id="back-link" href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const pathParts = window.location.pathname.split('/');
+    const runId = pathParts[2];
+    const crpId = pathParts[4];
+
+    let selectedOption = null;
+
+    async function loadCRP() {
+      const res = await fetch(`/api/crp/${runId}/${crpId}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        alert('CRP not found');
+        window.location.href = `/run/${runId}`;
+        return;
+      }
+
+      const crp = data.data;
+
+      document.getElementById('crp-id').textContent = crp.crp_id;
+      document.getElementById('crp-from').textContent = crp.created_by.charAt(0).toUpperCase() + crp.created_by.slice(1);
+      document.getElementById('crp-question').textContent = crp.question;
+      document.getElementById('crp-context').textContent = crp.context;
+      document.getElementById('back-link').href = `/run/${runId}`;
+
+      // Render options
+      const optionsList = document.getElementById('options-list');
+      optionsList.innerHTML = crp.options.map(opt => `
+        <label class="option-card" data-option="${opt.id}">
+          <input type="radio" name="decision" value="${opt.id}">
+          <div class="option-header">
+            <span class="option-id">${opt.id}</span>
+            <span class="option-label">${opt.label}</span>
+            ${crp.recommendation === opt.id ? '<span class="option-recommended">Recommended</span>' : ''}
+          </div>
+          <div class="option-description">${opt.description}</div>
+          <div class="option-risk">Risk: ${opt.risk}</div>
+        </label>
+      `).join('');
+
+      // Add click handlers for options
+      document.querySelectorAll('.option-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          card.querySelector('input').checked = true;
+          selectedOption = card.dataset.option;
+        });
+      });
+    }
+
+    document.getElementById('crp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!selectedOption) {
+        alert('Please select an option');
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch(`/api/crp/${runId}/${crpId}/respond`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision: selectedOption,
+            rationale: document.getElementById('rationale').value,
+            additionalNotes: document.getElementById('additional-notes').value,
+            appliesToFuture: document.getElementById('applies-to-future').checked
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = `/run/${runId}`;
+        } else {
+          alert('Failed to submit: ' + data.error);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Decision';
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Decision';
+      }
+    });
+
+    loadCRP();
+  </script>
+</body>
+</html>

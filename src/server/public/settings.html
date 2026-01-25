@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - Settings</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings" class="active">Settings</a>
+      <a href="/history">History</a>
+    </div>
+    <a href="/run/new" class="btn btn-primary">New Run</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>Global Settings</h2>
+      <form id="global-form">
+        <div class="form-group">
+          <label for="max-iterations">Max Iterations</label>
+          <input type="number" id="max-iterations" name="max-iterations" min="1" max="10" value="3">
+          <small>Maximum number of retry attempts before failing</small>
+        </div>
+
+        <div class="form-group">
+          <label for="web-port">Web Port</label>
+          <input type="number" id="web-port" name="web-port" min="1024" max="65535" value="3000">
+          <small>Port for the web server (requires restart)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="log-level">Log Level</label>
+          <select id="log-level" name="log-level">
+            <option value="debug">Debug</option>
+            <option value="info" selected>Info</option>
+            <option value="warn">Warn</option>
+            <option value="error">Error</option>
+          </select>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Refiner Agent</h2>
+      <form id="refiner-form">
+        <div class="form-group">
+          <label for="refiner-model">Model</label>
+          <select id="refiner-model" name="model">
+            <option value="haiku" selected>Haiku (Fast)</option>
+            <option value="sonnet">Sonnet (Balanced)</option>
+            <option value="opus">Opus (Best)</option>
+          </select>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Builder Agent</h2>
+      <form id="builder-form">
+        <div class="form-group">
+          <label for="builder-model">Model</label>
+          <select id="builder-model" name="model">
+            <option value="haiku">Haiku (Fast)</option>
+            <option value="sonnet" selected>Sonnet (Balanced)</option>
+            <option value="opus">Opus (Best)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="max-file-size">Max File Size (lines)</label>
+          <input type="number" id="max-file-size" name="max-file-size" min="100" max="2000" value="500">
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Verifier Agent</h2>
+      <form id="verifier-form">
+        <div class="form-group">
+          <label for="verifier-model">Model</label>
+          <select id="verifier-model" name="model">
+            <option value="haiku" selected>Haiku (Fast)</option>
+            <option value="sonnet">Sonnet (Balanced)</option>
+            <option value="opus">Opus (Best)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="min-coverage">Minimum Test Coverage (%)</label>
+          <input type="number" id="min-coverage" name="min-coverage" min="0" max="100" value="80">
+        </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="adversarial-enabled" name="adversarial-enabled" checked>
+            <label for="adversarial-enabled">Enable Adversarial Testing</label>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Gatekeeper Agent</h2>
+      <form id="gatekeeper-form">
+        <div class="form-group">
+          <label for="gatekeeper-model">Model</label>
+          <select id="gatekeeper-model" name="model">
+            <option value="haiku">Haiku (Fast)</option>
+            <option value="sonnet" selected>Sonnet (Balanced)</option>
+            <option value="opus">Opus (Best)</option>
+          </select>
+        </div>
+      </form>
+    </section>
+
+    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+      <button id="save-btn" class="btn btn-primary">Save Settings</button>
+      <button id="reset-btn" class="btn btn-secondary">Reset to Defaults</button>
+    </div>
+  </main>
+
+  <script>
+    let currentConfig = null;
+
+    async function loadConfig() {
+      const res = await fetch('/api/config');
+      const data = await res.json();
+
+      if (data.success) {
+        currentConfig = data.data;
+        populateForm(currentConfig);
+      }
+    }
+
+    function populateForm(config) {
+      // Global
+      document.getElementById('max-iterations').value = config.global.max_iterations;
+      document.getElementById('web-port').value = config.global.web_port;
+      document.getElementById('log-level').value = config.global.log_level;
+
+      // Refiner
+      document.getElementById('refiner-model').value = config.refiner.model;
+
+      // Builder
+      document.getElementById('builder-model').value = config.builder.model;
+      document.getElementById('max-file-size').value = config.builder.constraints.max_file_size_lines;
+
+      // Verifier
+      document.getElementById('verifier-model').value = config.verifier.model;
+      document.getElementById('min-coverage').value = config.verifier.test_coverage.min_percentage;
+      document.getElementById('adversarial-enabled').checked = config.verifier.adversarial.enabled;
+
+      // Gatekeeper
+      document.getElementById('gatekeeper-model').value = config.gatekeeper.model;
+    }
+
+    function gatherFormData() {
+      return {
+        global: {
+          max_iterations: parseInt(document.getElementById('max-iterations').value),
+          tmux_session_prefix: currentConfig.global.tmux_session_prefix,
+          web_port: parseInt(document.getElementById('web-port').value),
+          log_level: document.getElementById('log-level').value
+        },
+        refiner: {
+          ...currentConfig.refiner,
+          model: document.getElementById('refiner-model').value
+        },
+        builder: {
+          ...currentConfig.builder,
+          model: document.getElementById('builder-model').value,
+          constraints: {
+            ...currentConfig.builder.constraints,
+            max_file_size_lines: parseInt(document.getElementById('max-file-size').value)
+          }
+        },
+        verifier: {
+          ...currentConfig.verifier,
+          model: document.getElementById('verifier-model').value,
+          test_coverage: {
+            ...currentConfig.verifier.test_coverage,
+            min_percentage: parseInt(document.getElementById('min-coverage').value)
+          },
+          adversarial: {
+            ...currentConfig.verifier.adversarial,
+            enabled: document.getElementById('adversarial-enabled').checked
+          }
+        },
+        gatekeeper: {
+          ...currentConfig.gatekeeper,
+          model: document.getElementById('gatekeeper-model').value
+        }
+      };
+    }
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      const config = gatherFormData();
+
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert('Settings saved!');
+        currentConfig = data.data;
+      } else {
+        alert('Failed to save: ' + data.error);
+      }
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', async () => {
+      if (!confirm('Reset all settings to defaults?')) return;
+
+      // Fetch fresh defaults
+      const res = await fetch('/api/config');
+      const data = await res.json();
+
+      if (data.success) {
+        populateForm(data.data);
+        alert('Settings reset to defaults. Click Save to apply.');
+      }
+    });
+
+    loadConfig();
+  </script>
+</body>
+</html>

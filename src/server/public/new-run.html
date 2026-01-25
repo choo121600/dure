@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orchestral - New Run</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🎼 Orchestral</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/history">History</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>New Run</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+        Describe what you want to build. Be specific about requirements, constraints, and expected behavior.
+      </p>
+
+      <form id="new-run-form">
+        <div class="form-group">
+          <label for="briefing">Briefing</label>
+          <textarea
+            id="briefing"
+            name="briefing"
+            placeholder="# Task
+
+## Requirements
+- Feature 1
+- Feature 2
+
+## Constraints
+- Must use TypeScript
+- No external dependencies
+
+## Expected Behavior
+When the user does X, the system should do Y.
+"
+          ></textarea>
+          <small>Use Markdown for formatting. Be clear about what the system should do.</small>
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary">Start Run</button>
+          <a href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Tips for Good Briefings</h2>
+      <ul style="color: var(--text-secondary); padding-left: 1.5rem;">
+        <li>Be specific about <strong>what</strong> you want, not <strong>how</strong> to implement it</li>
+        <li>Include acceptance criteria that can be tested</li>
+        <li>Mention any constraints (libraries, patterns, performance)</li>
+        <li>Avoid ambiguous terms like "적당히", "알아서", "합리적으로" - these will trigger clarification requests</li>
+        <li>Include example inputs and expected outputs when possible</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('new-run-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const briefing = document.getElementById('briefing').value.trim();
+
+      if (!briefing) {
+        alert('Please enter a briefing');
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Starting...';
+
+      try {
+        const res = await fetch('/api/runs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ briefing })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = `/run/${data.data.runId}`;
+        } else {
+          alert('Failed to start run: ' + data.error);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Start Run';
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Start Run';
+      }
+    });
+  </script>
+</body>
+</html>

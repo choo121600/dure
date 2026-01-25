@@ -1,0 +1,12 @@
+{
+  "model": "sonnet",
+  "style": {
+    "prefer_libraries": [],
+    "avoid_libraries": [],
+    "code_style": "default"
+  },
+  "constraints": {
+    "max_file_size_lines": 500,
+    "require_types": false
+  }
+}
