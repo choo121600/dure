@@ -3,64 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Orchestral - Run History">
+  <meta name="theme-color" content="#0d1117">
   <title>Orchestral - History</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">🎼 Orchestral</div>
-    <div class="nav-links">
-      <a href="/">Dashboard</a>
-      <a href="/settings">Settings</a>
-      <a href="/history" class="active">History</a>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-brand" aria-label="Orchestral">🎼 Orchestral</div>
+    <div class="nav-links" role="menubar">
+      <a href="/" role="menuitem">Dashboard</a>
+      <a href="/settings" role="menuitem">Settings</a>
+      <a href="/history" class="active" role="menuitem" aria-current="page">History</a>
     </div>
-    <a href="/run/new" class="btn btn-primary">New Run</a>
+    <a href="/run/new" class="btn btn-primary" aria-label="Start a new run">New Run</a>
   </nav>
 
-  <main class="container">
-    <section>
-      <h2>Run History</h2>
-      <table class="runs-table">
+  <main class="container" id="main-content" role="main">
+    <section aria-labelledby="history-heading">
+      <div class="section-header">
+        <h2 id="history-heading">Run History</h2>
+        <button id="clean-runs-btn" class="btn btn-secondary btn-small" aria-label="Clean up old completed and failed runs">Clean Old Runs</button>
+      </div>
+      <table class="runs-table" aria-describedby="history-heading">
         <thead>
           <tr>
-            <th>Run ID</th>
-            <th>Phase</th>
-            <th>Iteration</th>
-            <th>Started</th>
-            <th>Last Updated</th>
-            <th></th>
+            <th scope="col">Run ID</th>
+            <th scope="col">Phase</th>
+            <th scope="col">Iteration</th>
+            <th scope="col">Started</th>
+            <th scope="col">Last Updated</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
-        <tbody id="history-body">
+        <tbody id="history-body" aria-live="polite">
           <tr>
-            <td colspan="6" class="empty">Loading...</td>
+            <td colspan="6" class="loading-cell"><span class="loading-spinner"></span> Loading...</td>
           </tr>
         </tbody>
       </table>
     </section>
   </main>
 
+  <script src="/app.js"></script>
   <script>
     async function loadHistory() {
-      const res = await fetch('/api/runs');
-      const data = await res.json();
-
       const tbody = document.getElementById('history-body');
+      tbody.innerHTML = '<tr><td colspan="6" class="loading-cell"><span class="loading-spinner"></span> Loading...</td></tr>';
 
-      if (data.success && data.data.length > 0) {
-        tbody.innerHTML = data.data.map(run => `
-          <tr>
-            <td class="mono">${run.run_id}</td>
-            <td><span class="phase-badge phase-${run.phase}">${formatPhase(run.phase)}</span></td>
-            <td>${run.iteration}</td>
-            <td>${new Date(run.started_at).toLocaleString()}</td>
-            <td>${new Date(run.updated_at).toLocaleString()}</td>
-            <td><a href="/run/${run.run_id}" class="btn btn-small">View</a></td>
-          </tr>
-        `).join('');
-      } else {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty">No runs yet. Start your first run!</td></tr>';
+      try {
+        const res = await fetch('/api/runs');
+        const data = await res.json();
+
+        if (data.success && data.data.length > 0) {
+          tbody.innerHTML = data.data.map(run => `
+            <tr data-run-id="${run.run_id}">
+              <td class="mono">${escapeHtml(run.run_id)}</td>
+              <td><span class="phase-badge phase-${run.phase}">${formatPhase(run.phase)}</span></td>
+              <td>${run.iteration}</td>
+              <td>${new Date(run.started_at).toLocaleString()}</td>
+              <td>${new Date(run.updated_at).toLocaleString()}</td>
+              <td class="actions-cell">
+                <a href="/run/${run.run_id}" class="btn btn-small" aria-label="View run ${run.run_id}">View</a>
+                ${canDelete(run.phase) ? `<button class="btn btn-small btn-danger delete-run-btn" data-run-id="${run.run_id}" aria-label="Delete run ${run.run_id}">Delete</button>` : ''}
+              </td>
+            </tr>
+          `).join('');
+
+          // Add click handlers for delete buttons
+          document.querySelectorAll('.delete-run-btn').forEach(btn => {
+            btn.addEventListener('click', handleDeleteRun);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">No runs yet. Start your first run!</td></tr>';
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">Failed to load run history</td></tr>';
+        showToast('Failed to load run history', 'error');
       }
+    }
+
+    function canDelete(phase) {
+      return phase === 'completed' || phase === 'failed';
     }
 
     function formatPhase(phase) {
@@ -76,6 +103,75 @@
       };
       return labels[phase] || phase;
     }
+
+    async function handleDeleteRun(event) {
+      const runId = event.target.dataset.runId;
+      const btn = event.target;
+
+      if (!confirm(`Are you sure you want to delete ${runId}? This cannot be undone.`)) {
+        return;
+      }
+
+      // Show loading state
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      try {
+        const res = await fetch(`/api/runs/${runId}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(`Run ${runId} deleted successfully`, 'success');
+          await loadHistory();
+        } else {
+          showToast('Failed to delete run: ' + data.error, 'error');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      } catch (error) {
+        showToast('Failed to delete run: ' + error.message, 'error');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function handleCleanRuns() {
+      const duration = prompt('Delete completed/failed runs older than (e.g., 7d, 30d, 24h):', '7d');
+      if (!duration) return;
+
+      if (!confirm(`This will delete all completed/failed runs older than ${duration}. Continue?`)) {
+        return;
+      }
+
+      const btn = document.getElementById('clean-runs-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Cleaning...';
+
+      try {
+        const res = await fetch(`/api/runs?olderThan=${encodeURIComponent(duration)}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          if (data.data.count > 0) {
+            showToast(`Deleted ${data.data.count} run(s)`, 'success');
+          } else {
+            showToast('No runs matched the criteria', 'info');
+          }
+          await loadHistory();
+        } else {
+          showToast('Failed to clean runs: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showToast('Failed to clean runs: ' + error.message, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('clean-runs-btn').addEventListener('click', handleCleanRuns);
 
     loadHistory();
   </script>

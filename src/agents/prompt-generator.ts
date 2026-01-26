@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdir, writeFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { PromptContext, OrchestraConfig } from '../types/index.js';
@@ -16,45 +16,47 @@ export class PromptGenerator {
   /**
    * Generate all prompt files for a run
    */
-  generateAllPrompts(outputDir: string, context: PromptContext): void {
-    mkdirSync(outputDir, { recursive: true });
+  async generateAllPrompts(outputDir: string, context: PromptContext): Promise<void> {
+    await mkdir(outputDir, { recursive: true });
 
-    this.generateRefinerPrompt(outputDir, context);
-    this.generateBuilderPrompt(outputDir, context);
-    this.generateVerifierPrompt(outputDir, context);
-    this.generateGatekeeperPrompt(outputDir, context);
+    await Promise.all([
+      this.generateRefinerPrompt(outputDir, context),
+      this.generateBuilderPrompt(outputDir, context),
+      this.generateVerifierPrompt(outputDir, context),
+      this.generateGatekeeperPrompt(outputDir, context),
+    ]);
   }
 
   /**
    * Generate Refiner prompt
    */
-  generateRefinerPrompt(outputDir: string, context: PromptContext): void {
+  async generateRefinerPrompt(outputDir: string, context: PromptContext): Promise<void> {
     const prompt = this.getRefinerPrompt(context);
-    writeFileSync(join(outputDir, 'refiner.md'), prompt, 'utf-8');
+    await writeFile(join(outputDir, 'refiner.md'), prompt, 'utf-8');
   }
 
   /**
    * Generate Builder prompt
    */
-  generateBuilderPrompt(outputDir: string, context: PromptContext): void {
+  async generateBuilderPrompt(outputDir: string, context: PromptContext): Promise<void> {
     const prompt = this.getBuilderPrompt(context);
-    writeFileSync(join(outputDir, 'builder.md'), prompt, 'utf-8');
+    await writeFile(join(outputDir, 'builder.md'), prompt, 'utf-8');
   }
 
   /**
    * Generate Verifier prompt
    */
-  generateVerifierPrompt(outputDir: string, context: PromptContext): void {
+  async generateVerifierPrompt(outputDir: string, context: PromptContext): Promise<void> {
     const prompt = this.getVerifierPrompt(context);
-    writeFileSync(join(outputDir, 'verifier.md'), prompt, 'utf-8');
+    await writeFile(join(outputDir, 'verifier.md'), prompt, 'utf-8');
   }
 
   /**
    * Generate Gatekeeper prompt
    */
-  generateGatekeeperPrompt(outputDir: string, context: PromptContext): void {
+  async generateGatekeeperPrompt(outputDir: string, context: PromptContext): Promise<void> {
     const prompt = this.getGatekeeperPrompt(context);
-    writeFileSync(join(outputDir, 'gatekeeper.md'), prompt, 'utf-8');
+    await writeFile(join(outputDir, 'gatekeeper.md'), prompt, 'utf-8');
   }
 
   /**
@@ -76,10 +78,20 @@ export class PromptGenerator {
 ## 입력
 - 원본 briefing: .orchestral/runs/${run_id}/briefing/raw.md
 
-## 출력 (반드시 생성해야 함)
+## 출력
+
+### 충분/개선 가능한 경우 (CRP 없이 진행):
+다음 파일들을 **모두** 생성해야 합니다:
 1. .orchestral/runs/${run_id}/briefing/refined.md
 2. .orchestral/runs/${run_id}/briefing/clarifications.json
 3. .orchestral/runs/${run_id}/briefing/log.md
+
+### CRP 생성이 필요한 경우:
+다음 파일**만** 생성하세요 (refined.md는 생성하지 마세요!):
+1. .orchestral/runs/${run_id}/crp/crp-{timestamp}.json
+2. .orchestral/runs/${run_id}/briefing/log.md (CRP 생성 이유 기록)
+
+**중요: CRP를 생성할 때는 반드시 refined.md를 생성하지 마세요. 인간의 응답을 받은 후에 refined.md를 생성합니다.**
 
 ## 설정
 \`\`\`json
@@ -101,9 +113,14 @@ ${JSON.stringify(config.refiner, null, 2)}
 - 자동 개선 금지: ${config.refiner.auto_fill.forbidden.join(', ')}
 
 ### 3. Briefing이 모호한 경우 (인간 판단 필요)
-- .orchestral/runs/${run_id}/crp/ 디렉토리에 CRP 파일 생성
-- CRP 파일명: crp-{timestamp}.json
-- CRP 형식:
+**⚠️ 중요: CRP를 생성할 때는 refined.md를 생성하지 마세요!**
+
+1. .orchestral/runs/${run_id}/crp/ 디렉토리에 CRP 파일 생성
+2. .orchestral/runs/${run_id}/briefing/log.md 에 CRP 생성 이유 기록
+3. **refined.md, clarifications.json은 생성하지 않음** (인간 응답 후 생성)
+
+CRP 파일명: crp-{timestamp}.json
+CRP 형식:
 \`\`\`json
 {
   "crp_id": "crp-001",
@@ -125,8 +142,9 @@ ${JSON.stringify(config.refiner, null, 2)}
 ${config.refiner.delegation_keywords.map(k => `- "${k}"`).join('\n')}
 
 ## 완료 조건
-- 모든 출력 파일 생성 완료
-- 또는 CRP 생성 완료
+
+**경우 1: 충분/개선 가능** → refined.md + clarifications.json + log.md 생성
+**경우 2: CRP 필요** → CRP 파일 + log.md 생성 (refined.md 생성 금지!)
 
 ## 시작
 raw.md 파일을 읽고 작업을 시작하세요.

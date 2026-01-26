@@ -3,51 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Orchestral - Run Details">
+  <meta name="theme-color" content="#0d1117">
   <title>Orchestral - Run Details</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">🎼 Orchestral</div>
-    <div class="nav-links">
-      <a href="/">Dashboard</a>
-      <a href="/settings">Settings</a>
-      <a href="/history">History</a>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-brand" aria-label="Orchestral">🎼 Orchestral</div>
+    <div class="nav-links" role="menubar">
+      <a href="/" role="menuitem">Dashboard</a>
+      <a href="/settings" role="menuitem">Settings</a>
+      <a href="/history" role="menuitem">History</a>
     </div>
   </nav>
 
-  <main class="container">
-    <section>
+  <main class="container" id="main-content" role="main">
+    <section aria-labelledby="run-heading">
+      <h1 class="sr-only" id="run-heading">Run Details</h1>
       <div class="run-header">
-        <span class="run-id" id="run-id"></span>
-        <span class="run-phase" id="run-phase"></span>
-        <span class="run-iteration" id="run-iteration"></span>
+        <span class="run-id" id="run-id" aria-label="Run ID"></span>
+        <span class="run-phase" id="run-phase" aria-label="Current phase"></span>
+        <span class="run-iteration" id="run-iteration" aria-label="Iteration count"></span>
       </div>
 
-      <div class="pipeline">
-        <div class="pipeline-step" id="step-refine">
-          <div class="step-icon">📝</div>
+      <div class="pipeline" role="list" aria-label="Pipeline stages">
+        <div class="pipeline-step" id="step-refine" role="listitem">
+          <div class="step-icon" aria-hidden="true">📝</div>
           <div class="step-name">Refine</div>
-          <div class="step-status" id="status-refiner"></div>
+          <div class="step-status" id="status-refiner" aria-label="Refiner status"></div>
         </div>
-        <div class="pipeline-arrow">→</div>
-        <div class="pipeline-step" id="step-build">
-          <div class="step-icon">🔨</div>
+        <div class="pipeline-arrow" aria-hidden="true">→</div>
+        <div class="pipeline-step" id="step-build" role="listitem">
+          <div class="step-icon" aria-hidden="true">🔨</div>
           <div class="step-name">Build</div>
-          <div class="step-status" id="status-builder"></div>
+          <div class="step-status" id="status-builder" aria-label="Builder status"></div>
         </div>
-        <div class="pipeline-arrow">→</div>
-        <div class="pipeline-step" id="step-verify">
-          <div class="step-icon">🔍</div>
+        <div class="pipeline-arrow" aria-hidden="true">→</div>
+        <div class="pipeline-step" id="step-verify" role="listitem">
+          <div class="step-icon" aria-hidden="true">🔍</div>
           <div class="step-name">Verify</div>
-          <div class="step-status" id="status-verifier"></div>
+          <div class="step-status" id="status-verifier" aria-label="Verifier status"></div>
         </div>
-        <div class="pipeline-arrow">→</div>
-        <div class="pipeline-step" id="step-gate">
-          <div class="step-icon">🚪</div>
+        <div class="pipeline-arrow" aria-hidden="true">→</div>
+        <div class="pipeline-step" id="step-gate" role="listitem">
+          <div class="step-icon" aria-hidden="true">🚪</div>
           <div class="step-name">Gate</div>
-          <div class="step-status" id="status-gatekeeper"></div>
+          <div class="step-status" id="status-gatekeeper" aria-label="Gatekeeper status"></div>
         </div>
       </div>
 
@@ -56,76 +61,109 @@
         <p id="action-message"></p>
         <a id="action-link" href="#" class="btn btn-warning">Respond</a>
       </div>
+
+      <div id="error-panel" class="error-panel" style="display: none;" role="alert" aria-live="assertive">
+        <h3 id="error-title">Agent Error</h3>
+        <div class="error-details">
+          <div class="error-info">
+            <span class="error-label" id="error-agent-label">Agent:</span>
+            <span id="error-agent" aria-labelledby="error-agent-label"></span>
+          </div>
+          <div class="error-info">
+            <span class="error-label" id="error-type-label">Type:</span>
+            <span id="error-type" aria-labelledby="error-type-label"></span>
+          </div>
+          <div class="error-info">
+            <span class="error-label" id="error-message-label">Message:</span>
+            <span id="error-message" aria-labelledby="error-message-label"></span>
+          </div>
+          <div class="error-info" id="error-retry-info" style="display: none;">
+            <span class="error-label" id="error-retry-label">Retry Status:</span>
+            <span id="error-retry-status" aria-labelledby="error-retry-label"></span>
+          </div>
+        </div>
+        <div class="error-actions" role="group" aria-label="Error actions">
+          <button id="btn-retry" class="btn btn-primary" aria-label="Retry the failed agent">Retry Agent</button>
+          <button id="btn-extend-timeout" class="btn btn-secondary" aria-label="Extend agent timeout">Extend Timeout</button>
+          <button id="btn-stop-run" class="btn btn-danger" aria-label="Stop the current run">Stop Run</button>
+        </div>
+      </div>
+
+      <div id="retry-progress" class="retry-progress" style="display: none;">
+        <div class="retry-spinner"></div>
+        <span id="retry-message">Retrying agent...</span>
+      </div>
     </section>
 
-    <section>
-      <h2>Agent Output <span class="realtime-indicator"><span class="dot"></span> Live</span></h2>
-      <div class="terminal-tabs">
-        <button class="terminal-tab active" data-agent="refiner">
-          <span class="tab-status" id="tab-status-refiner"></span>
+    <section aria-labelledby="output-heading">
+      <h2 id="output-heading">Agent Output <span class="realtime-indicator" aria-hidden="true"><span class="dot"></span></span> <span class="sr-only">Live updates</span></h2>
+      <div class="terminal-tabs" role="tablist" aria-label="Agent output tabs">
+        <button class="terminal-tab active" data-agent="refiner" role="tab" aria-selected="true" aria-controls="terminal-output" id="tab-refiner">
+          <span class="tab-status" id="tab-status-refiner" aria-hidden="true"></span>
           Refiner
         </button>
-        <button class="terminal-tab" data-agent="builder">
-          <span class="tab-status" id="tab-status-builder"></span>
+        <button class="terminal-tab" data-agent="builder" role="tab" aria-selected="false" aria-controls="terminal-output" id="tab-builder">
+          <span class="tab-status" id="tab-status-builder" aria-hidden="true"></span>
           Builder
         </button>
-        <button class="terminal-tab" data-agent="verifier">
-          <span class="tab-status" id="tab-status-verifier"></span>
+        <button class="terminal-tab" data-agent="verifier" role="tab" aria-selected="false" aria-controls="terminal-output" id="tab-verifier">
+          <span class="tab-status" id="tab-status-verifier" aria-hidden="true"></span>
           Verifier
         </button>
-        <button class="terminal-tab" data-agent="gatekeeper">
-          <span class="tab-status" id="tab-status-gatekeeper"></span>
+        <button class="terminal-tab" data-agent="gatekeeper" role="tab" aria-selected="false" aria-controls="terminal-output" id="tab-gatekeeper">
+          <span class="tab-status" id="tab-status-gatekeeper" aria-hidden="true"></span>
           Gatekeeper
         </button>
       </div>
-      <div class="terminal-single" id="terminal-output">
+      <div class="terminal-single" id="terminal-output" role="tabpanel" aria-labelledby="tab-refiner" aria-live="polite">
         <span class="terminal-empty">Waiting for agent output...</span>
       </div>
-      <div id="stale-warning" class="stale-warning" style="display: none;">
+      <div id="stale-warning" class="stale-warning" role="alert" style="display: none;">
+        <span aria-hidden="true">&#x26A0;</span>
         <span>Warning: Agent appears inactive</span>
       </div>
     </section>
 
-    <section>
-      <h2>Briefing</h2>
-      <div id="briefing-content" class="mrp-summary">
+    <section aria-labelledby="briefing-heading">
+      <h2 id="briefing-heading">Briefing</h2>
+      <div id="briefing-content" class="mrp-summary" aria-live="polite">
         <pre>Loading...</pre>
       </div>
     </section>
 
-    <section id="test-results-section" style="display: none;">
-      <h2>Test Results</h2>
-      <div class="evidence-grid">
-        <div class="evidence-card">
-          <h4>Total Tests</h4>
-          <div class="value" id="tests-total">-</div>
+    <section id="test-results-section" style="display: none;" aria-labelledby="test-results-heading">
+      <h2 id="test-results-heading">Test Results</h2>
+      <div class="evidence-grid" role="list">
+        <div class="evidence-card" role="listitem">
+          <h4 id="total-tests-label">Total Tests</h4>
+          <div class="value" id="tests-total" aria-labelledby="total-tests-label">-</div>
         </div>
-        <div class="evidence-card">
-          <h4>Passed</h4>
-          <div class="value success" id="tests-passed">-</div>
+        <div class="evidence-card" role="listitem">
+          <h4 id="passed-tests-label">Passed</h4>
+          <div class="value success" id="tests-passed" aria-labelledby="passed-tests-label">-</div>
         </div>
-        <div class="evidence-card">
-          <h4>Failed</h4>
-          <div class="value error" id="tests-failed">-</div>
+        <div class="evidence-card" role="listitem">
+          <h4 id="failed-tests-label">Failed</h4>
+          <div class="value error" id="tests-failed" aria-labelledby="failed-tests-label">-</div>
         </div>
-        <div class="evidence-card">
-          <h4>Coverage</h4>
-          <div class="value" id="tests-coverage">-</div>
+        <div class="evidence-card" role="listitem">
+          <h4 id="coverage-label">Coverage</h4>
+          <div class="value" id="tests-coverage" aria-labelledby="coverage-label">-</div>
         </div>
       </div>
     </section>
 
-    <section>
-      <h2>History</h2>
-      <table class="runs-table">
+    <section aria-labelledby="history-heading">
+      <h2 id="history-heading">History</h2>
+      <table class="runs-table" aria-describedby="history-heading">
         <thead>
           <tr>
-            <th>Phase</th>
-            <th>Result</th>
-            <th>Timestamp</th>
+            <th scope="col">Phase</th>
+            <th scope="col">Result</th>
+            <th scope="col">Timestamp</th>
           </tr>
         </thead>
-        <tbody id="history-body">
+        <tbody id="history-body" aria-live="polite">
           <tr>
             <td colspan="3" class="empty">No history yet</td>
           </tr>
@@ -134,6 +172,7 @@
     </section>
   </main>
 
+  <script src="/app.js"></script>
   <script>
     const socket = io();
     const runId = window.location.pathname.split('/')[2];
@@ -147,16 +186,19 @@
     };
     let activeTab = 'refiner';
     let agentStatuses = {};
+    let currentError = null;
+    let retryAttempts = {};
 
     async function loadRunDetails() {
-      const res = await fetch(`/api/runs/${runId}`);
-      const data = await res.json();
+      try {
+        const res = await fetch(`/api/runs/${runId}`);
+        const data = await res.json();
 
-      if (!data.success) {
-        alert('Run not found');
-        window.location.href = '/';
-        return;
-      }
+        if (!data.success) {
+          showToast('Run not found', 'error');
+          window.location.href = '/';
+          return;
+        }
 
       const state = data.data;
       agentStatuses = {
@@ -214,28 +256,46 @@
 
       // Load test results if available
       await loadTestResults();
+      } catch (error) {
+        console.error('Failed to load run details:', error);
+        showToast('Failed to load run details', 'error');
+      }
     }
 
     async function loadBriefing() {
-      const res = await fetch(`/api/runs/${runId}/briefing`);
-      const data = await res.json();
+      const briefingContent = document.getElementById('briefing-content');
+      briefingContent.innerHTML = '<div class="loading-placeholder"><span class="loading-spinner"></span> Loading briefing...</div>';
 
-      if (data.success) {
-        const content = data.data.refined || data.data.raw || 'No briefing content';
-        document.getElementById('briefing-content').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+      try {
+        const res = await fetch(`/api/runs/${runId}/briefing`);
+        const data = await res.json();
+
+        if (data.success) {
+          const content = data.data.refined || data.data.raw || 'No briefing content';
+          briefingContent.innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+        } else {
+          briefingContent.innerHTML = '<pre>Failed to load briefing</pre>';
+        }
+      } catch (error) {
+        console.error('Failed to load briefing:', error);
+        briefingContent.innerHTML = '<pre>Failed to load briefing</pre>';
       }
     }
 
     async function loadTestResults() {
-      const res = await fetch(`/api/runs/${runId}/verifier/results`);
-      const data = await res.json();
+      try {
+        const res = await fetch(`/api/runs/${runId}/verifier/results`);
+        const data = await res.json();
 
-      if (data.success && data.data) {
-        document.getElementById('test-results-section').style.display = 'block';
-        document.getElementById('tests-total').textContent = data.data.total;
-        document.getElementById('tests-passed').textContent = data.data.passed;
-        document.getElementById('tests-failed').textContent = data.data.failed;
-        document.getElementById('tests-coverage').textContent = data.data.coverage ? `${data.data.coverage}%` : '-';
+        if (data.success && data.data) {
+          document.getElementById('test-results-section').style.display = 'block';
+          document.getElementById('tests-total').textContent = data.data.total;
+          document.getElementById('tests-passed').textContent = data.data.passed;
+          document.getElementById('tests-failed').textContent = data.data.failed;
+          document.getElementById('tests-coverage').textContent = data.data.coverage ? `${data.data.coverage}%` : '-';
+        }
+      } catch (error) {
+        console.error('Failed to load test results:', error);
       }
     }
 
@@ -296,10 +356,14 @@
 
     function switchTab(agent) {
       activeTab = agent;
-      // Update tab styles
+      // Update tab styles and aria attributes
       document.querySelectorAll('.terminal-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.agent === agent);
+        const isActive = tab.dataset.agent === agent;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
+      // Update tabpanel aria-labelledby
+      document.getElementById('terminal-output').setAttribute('aria-labelledby', 'tab-' + agent);
       updateTerminalOutput();
       // Request latest output for this agent
       socket.emit('request_agent_output', agent);
@@ -347,6 +411,154 @@
         } else {
           document.getElementById('stale-warning').style.display = 'none';
         }
+      }
+    });
+
+    // Handle agent error events
+    socket.on('agent_failed', (event) => {
+      if (event.runId === runId) {
+        showErrorPanel(event.agent, event.errorFlag);
+      }
+    });
+
+    // Handle retry events
+    socket.on('agent_retry', (event) => {
+      if (event.runId === runId) {
+        retryAttempts[event.agent] = { attempt: event.attempt, maxAttempts: event.maxAttempts };
+        showRetryProgress(event.agent, event.attempt, event.maxAttempts);
+      }
+    });
+
+    socket.on('agent_retry_success', (event) => {
+      if (event.runId === runId) {
+        hideErrorPanel();
+        hideRetryProgress();
+        showToast(`Agent ${event.agent} recovered successfully`, 'success');
+        loadRunDetails();
+      }
+    });
+
+    socket.on('agent_retry_exhausted', (event) => {
+      if (event.runId === runId) {
+        hideRetryProgress();
+        updateRetryStatus(`Retry exhausted after ${event.totalAttempts} attempts`);
+        showToast(`Auto-retry exhausted for ${event.agent}. Manual intervention required.`, 'error');
+      }
+    });
+
+    function showErrorPanel(agent, errorFlag) {
+      currentError = { agent, errorFlag };
+      const panel = document.getElementById('error-panel');
+      document.getElementById('error-title').textContent = `Agent Error: ${agent}`;
+      document.getElementById('error-agent').textContent = agent;
+      document.getElementById('error-type').textContent = errorFlag.error_type;
+      document.getElementById('error-message').textContent = errorFlag.message;
+
+      // Show recoverable indicator
+      if (errorFlag.recoverable) {
+        document.getElementById('error-type').classList.add('recoverable');
+      } else {
+        document.getElementById('error-type').classList.remove('recoverable');
+      }
+
+      panel.style.display = 'block';
+    }
+
+    function hideErrorPanel() {
+      currentError = null;
+      document.getElementById('error-panel').style.display = 'none';
+    }
+
+    function showRetryProgress(agent, attempt, maxAttempts) {
+      const panel = document.getElementById('retry-progress');
+      document.getElementById('retry-message').textContent =
+        `Retrying ${agent}... (Attempt ${attempt}/${maxAttempts})`;
+      panel.style.display = 'flex';
+    }
+
+    function hideRetryProgress() {
+      document.getElementById('retry-progress').style.display = 'none';
+    }
+
+    function updateRetryStatus(message) {
+      const retryInfo = document.getElementById('error-retry-info');
+      retryInfo.style.display = 'block';
+      document.getElementById('error-retry-status').textContent = message;
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+    }
+
+    // Button handlers
+    document.getElementById('btn-retry').addEventListener('click', async () => {
+      if (!currentError) return;
+
+      try {
+        const res = await fetch(`/api/runs/${runId}/retry/${currentError.agent}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(`Retry initiated for ${currentError.agent}`, 'info');
+          showRetryProgress(currentError.agent, 1, 2);
+        } else {
+          showToast(`Failed to retry: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-extend-timeout').addEventListener('click', async () => {
+      if (!currentError) return;
+
+      try {
+        const res = await fetch(`/api/runs/${runId}/extend-timeout/${currentError.agent}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ additionalMs: 300000 }) // 5 minutes
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(`Timeout extended for ${currentError.agent}`, 'success');
+          hideErrorPanel();
+        } else {
+          showToast(`Failed to extend timeout: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-stop-run').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to stop this run?')) return;
+
+      try {
+        const res = await fetch(`/api/runs/${runId}/stop`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Run stopped', 'info');
+          window.location.href = '/';
+        } else {
+          showToast(`Failed to stop run: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
       }
     });
 

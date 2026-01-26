@@ -1,5 +1,7 @@
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn, spawnSync } from 'child_process';
 import type { AgentName, AgentModel } from '../types/index.js';
+import { sanitizePath, sanitizeSessionName, isValidModel, isValidAgentName } from '../utils/sanitize.js';
+import { existsSync } from 'fs';
 
 export interface TmuxPane {
   index: number;
@@ -21,8 +23,23 @@ export class TmuxManager {
   };
 
   constructor(sessionPrefix: string, projectRoot: string, runId?: string) {
-    this.sessionName = runId ? `${sessionPrefix}-${runId}` : sessionPrefix;
-    this.projectRoot = projectRoot;
+    // Sanitize session prefix (validates characters)
+    const sanitizedPrefix = sanitizeSessionName(sessionPrefix);
+
+    // Sanitize project root (validates path)
+    this.projectRoot = sanitizePath(projectRoot);
+
+    // Build session name with optional run ID
+    if (runId) {
+      // Validate run ID format or sanitize it
+      const sanitizedRunId = runId.replace(/[^a-zA-Z0-9_-]/g, '');
+      this.sessionName = `${sanitizedPrefix}-${sanitizedRunId}`;
+    } else {
+      this.sessionName = sanitizedPrefix;
+    }
+
+    // Validate final session name
+    this.sessionName = sanitizeSessionName(this.sessionName);
   }
 
   /**
@@ -30,8 +47,8 @@ export class TmuxManager {
    */
   static isTmuxAvailable(): boolean {
     try {
-      execSync('which tmux', { stdio: 'ignore' });
-      return true;
+      const result = spawnSync('which', ['tmux'], { stdio: 'pipe' });
+      return result.status === 0;
     } catch {
       return false;
     }
@@ -42,8 +59,10 @@ export class TmuxManager {
    */
   sessionExists(): boolean {
     try {
-      execSync(`tmux has-session -t ${this.sessionName} 2>/dev/null`, { stdio: 'ignore' });
-      return true;
+      const result = spawnSync('tmux', ['has-session', '-t', this.sessionName], {
+        stdio: 'pipe',
+      });
+      return result.status === 0;
     } catch {
       return false;
     }
@@ -67,45 +86,59 @@ export class TmuxManager {
       return;
     }
 
+    const target = (pane: number) => `${this.sessionName}:main.${pane}`;
+
     // Create new session with first pane
-    execSync(`tmux new-session -d -s ${this.sessionName} -n main -c "${this.projectRoot}"`, {
-      stdio: 'inherit',
-    });
+    spawnSync('tmux', [
+      'new-session', '-d',
+      '-s', this.sessionName,
+      '-n', 'main',
+      '-c', this.projectRoot,
+    ], { stdio: 'inherit' });
 
     // Create panes for 4 agents (horizontal splits for first row)
     // Split pane 0 horizontally to create pane 1
-    execSync(`tmux split-window -h -t ${this.sessionName}:main.0 -c "${this.projectRoot}"`);
+    spawnSync('tmux', ['split-window', '-h', '-t', target(0), '-c', this.projectRoot]);
     // Split pane 0 horizontally again to create a pane between 0 and 1
-    execSync(`tmux split-window -h -t ${this.sessionName}:main.0 -c "${this.projectRoot}"`);
+    spawnSync('tmux', ['split-window', '-h', '-t', target(0), '-c', this.projectRoot]);
     // Split pane 2 horizontally to create pane 3
-    execSync(`tmux split-window -h -t ${this.sessionName}:main.2 -c "${this.projectRoot}"`);
+    spawnSync('tmux', ['split-window', '-h', '-t', target(2), '-c', this.projectRoot]);
 
     // Create debug shell pane (vertical split below all 4)
-    execSync(`tmux split-window -v -t ${this.sessionName}:main.0 -c "${this.projectRoot}"`);
+    spawnSync('tmux', ['split-window', '-v', '-t', target(0), '-c', this.projectRoot]);
 
     // Create server pane (vertical split below debug)
-    execSync(`tmux split-window -v -t ${this.sessionName}:main.4 -c "${this.projectRoot}"`);
+    spawnSync('tmux', ['split-window', '-v', '-t', target(4), '-c', this.projectRoot]);
 
     // Apply tiled layout and then adjust
-    execSync(`tmux select-layout -t ${this.sessionName}:main tiled`);
+    spawnSync('tmux', ['select-layout', '-t', `${this.sessionName}:main`, 'tiled']);
 
     // Enable mouse mode for easier pane navigation
-    execSync(`tmux set-option -t ${this.sessionName} -g mouse on`);
+    spawnSync('tmux', ['set-option', '-t', this.sessionName, '-g', 'mouse', 'on']);
 
     // Enable pane border status to show pane names
-    execSync(`tmux set-option -t ${this.sessionName} pane-border-status top`);
-    execSync(`tmux set-option -t ${this.sessionName} pane-border-format " #{pane_index}: #{pane_title} "`);
+    spawnSync('tmux', ['set-option', '-t', this.sessionName, 'pane-border-status', 'top']);
+    spawnSync('tmux', [
+      'set-option', '-t', this.sessionName,
+      'pane-border-format', ' #{pane_index}: #{pane_title} ',
+    ]);
 
     // Set pane titles
-    execSync(`tmux select-pane -t ${this.sessionName}:main.0 -T "Refiner"`);
-    execSync(`tmux select-pane -t ${this.sessionName}:main.1 -T "Builder"`);
-    execSync(`tmux select-pane -t ${this.sessionName}:main.2 -T "Verifier"`);
-    execSync(`tmux select-pane -t ${this.sessionName}:main.3 -T "Gatekeeper"`);
-    execSync(`tmux select-pane -t ${this.sessionName}:main.4 -T "Debug Shell"`);
-    execSync(`tmux select-pane -t ${this.sessionName}:main.5 -T "ACE Server"`);
+    const paneTitles: Record<number, string> = {
+      0: 'Refiner',
+      1: 'Builder',
+      2: 'Verifier',
+      3: 'Gatekeeper',
+      4: 'Debug Shell',
+      5: 'ACE Server',
+    };
+
+    for (const [pane, title] of Object.entries(paneTitles)) {
+      spawnSync('tmux', ['select-pane', '-t', target(parseInt(pane)), '-T', title]);
+    }
 
     // Set up debug shell with helper commands and instructions
-    const debugSetup = [
+    const debugCommands = [
       'clear',
       'echo "Commands:"',
       'echo "  stop      - Stop Orchestral and exit tmux"',
@@ -114,22 +147,72 @@ export class TmuxManager {
       'echo ""',
       'echo "Pane Navigation: Click with mouse or Ctrl+B, Arrow keys"',
       'echo ""',
-      // Define helper functions
       `stop() { tmux kill-session -t ${this.sessionName}; }`,
       'detach() { tmux detach; }',
       'logs() { ls -la .orchestral/runs/ 2>/dev/null || echo "No runs yet"; }',
-    ].join(' && ');
-    this.sendKeys('debug', debugSetup);
+    ];
+    this.sendKeys('debug', debugCommands.join(' && '));
   }
 
   /**
    * Send keys to a specific pane
+   * Uses spawn with array arguments to prevent command injection
    */
   sendKeys(pane: AgentName | 'debug' | 'server', command: string): void {
     const paneIndex = TmuxManager.PANES[pane];
-    // Escape special characters for tmux
-    const escapedCommand = command.replace(/"/g, '\\"');
-    execSync(`tmux send-keys -t ${this.sessionName}:main.${paneIndex} "${escapedCommand}" Enter`);
+    const target = `${this.sessionName}:main.${paneIndex}`;
+
+    // Use -l flag for literal input to avoid shell interpretation
+    // Send command and Enter key separately for reliability
+    spawnSync('tmux', ['send-keys', '-t', target, '-l', command]);
+    spawnSync('tmux', ['send-keys', '-t', target, 'Enter']);
+  }
+
+  /**
+   * Wait for Claude Code to be ready in a pane
+   * Polls the pane output to detect Claude Code's ready state
+   * @param agent - The agent pane to check
+   * @param timeoutMs - Maximum time to wait (default: 30000ms)
+   * @param pollIntervalMs - Polling interval (default: 500ms)
+   * @returns Promise<boolean> - true if Claude is ready, false if timeout
+   */
+  async waitForClaudeReady(
+    agent: AgentName,
+    timeoutMs: number = 30000,
+    pollIntervalMs: number = 500
+  ): Promise<boolean> {
+    const startTime = Date.now();
+    const paneIndex = TmuxManager.PANES[agent];
+
+    while (Date.now() - startTime < timeoutMs) {
+      // Check 1: Is the pane running something other than shell?
+      if (this.isPaneActive(agent)) {
+        // Check 2: Look for Claude Code ready indicators in pane output
+        const output = this.capturePane(agent, 50);
+
+        // Claude Code shows these patterns when ready:
+        // - ">" prompt at the start of a line
+        // - "╭" box drawing character (UI element)
+        // - "Tips:" section appears after startup
+        const readyPatterns = [
+          /^>/m,           // Input prompt
+          /╭/,             // Box drawing (UI ready)
+          /Tips:/,         // Tips section shown after ready
+          /Type .* or/,    // "Type /help or ..." message
+        ];
+
+        for (const pattern of readyPatterns) {
+          if (pattern.test(output)) {
+            return true;
+          }
+        }
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+
+    return false;
   }
 
   /**
@@ -137,28 +220,91 @@ export class TmuxManager {
    * Uses tmux load-buffer to avoid shell interpretation of special characters in prompt
    */
   startAgent(agent: AgentName, model: AgentModel, promptFile: string): void {
+    // Validate agent name
+    if (!isValidAgentName(agent)) {
+      throw new Error(`Invalid agent name: ${agent}`);
+    }
+
+    // Validate model
+    if (!isValidModel(model)) {
+      throw new Error(`Invalid model: ${model}`);
+    }
+
+    // Validate prompt file exists and is within project root
+    const sanitizedPromptFile = sanitizePath(promptFile, this.projectRoot);
+    if (!existsSync(sanitizedPromptFile)) {
+      throw new Error(`Prompt file does not exist: ${sanitizedPromptFile}`);
+    }
+
     const paneIndex = TmuxManager.PANES[agent];
+    const target = `${this.sessionName}:main.${paneIndex}`;
     const bufferName = `prompt-${agent}`;
 
     // Start Claude in interactive mode
+    // Using spawn to build the command safely
     const startCmd = `cd "${this.projectRoot}" && claude --dangerously-skip-permissions --model ${model}`;
     this.sendKeys(agent, startCmd);
 
-    // Load prompt file into tmux buffer and paste it (in background after delay for Claude to start)
-    // Added sleep 0.5 between paste and Enter to ensure paste completes
-    spawn('sh', ['-c',
-      `sleep 2 && ` +
-      `tmux load-buffer -b ${bufferName} "${promptFile}" && ` +
-      `tmux paste-buffer -b ${bufferName} -t ${this.sessionName}:main.${paneIndex} && ` +
-      `sleep 0.5 && ` +
-      `tmux send-keys -t ${this.sessionName}:main.${paneIndex} C-m`
-    ], { detached: true, stdio: 'ignore' }).unref();
+    // Store prompt info for async sending
+    this._pendingPrompts.set(agent, { promptFile: sanitizedPromptFile, target, bufferName });
   }
+
+  /**
+   * Send pending prompt to agent after Claude is ready
+   * Should be called after waitForClaudeReady returns true
+   */
+  async sendPendingPrompt(agent: AgentName): Promise<void> {
+    const pending = this._pendingPrompts.get(agent);
+    if (!pending) {
+      return;
+    }
+
+    const { promptFile, target, bufferName } = pending;
+
+    // Load prompt file into tmux buffer and paste it
+    spawnSync('tmux', ['load-buffer', '-b', bufferName, promptFile]);
+    spawnSync('tmux', ['paste-buffer', '-b', bufferName, '-t', target]);
+
+    // Wait for paste to complete, then send Escape + Enter to submit
+    // Escape exits multiline edit mode, Enter submits
+    await new Promise(resolve => setTimeout(resolve, 300));
+    spawnSync('tmux', ['send-keys', '-t', target, 'Escape']);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    spawnSync('tmux', ['send-keys', '-t', target, 'Enter']);
+
+    this._pendingPrompts.delete(agent);
+  }
+
+  /**
+   * Start agent and wait for ready state, then send prompt
+   * Uses simple fixed delay instead of polling for faster startup
+   */
+  async startAgentAndWaitReady(
+    agent: AgentName,
+    model: AgentModel,
+    promptFile: string,
+    delayMs: number = 3000
+  ): Promise<boolean> {
+    this.startAgent(agent, model, promptFile);
+
+    // Simple fixed delay for Claude Code to initialize
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    await this.sendPendingPrompt(agent);
+    return true;
+  }
+
+  // Storage for pending prompts
+  private _pendingPrompts: Map<AgentName, { promptFile: string; target: string; bufferName: string }> = new Map();
 
   /**
    * Start the web server in its pane
    */
   startServer(port: number): void {
+    // Validate port
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(`Invalid port: ${port}`);
+    }
+
     const command = `cd "${this.projectRoot}" && node dist/server/index.js --port ${port}`;
     this.sendKeys('server', command);
   }
@@ -168,7 +314,7 @@ export class TmuxManager {
    */
   killSession(): void {
     if (this.sessionExists()) {
-      execSync(`tmux kill-session -t ${this.sessionName}`, { stdio: 'ignore' });
+      spawnSync('tmux', ['kill-session', '-t', this.sessionName], { stdio: 'ignore' });
     }
   }
 
@@ -193,11 +339,22 @@ export class TmuxManager {
    */
   static listSessions(sessionPrefix: string): string[] {
     try {
-      const output = execSync('tmux list-sessions -F "#{session_name}"', { encoding: 'utf-8' });
-      return output
+      // Sanitize session prefix
+      const sanitizedPrefix = sanitizeSessionName(sessionPrefix);
+
+      const result = spawnSync('tmux', ['list-sessions', '-F', '#{session_name}'], {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      if (result.status !== 0 || !result.stdout) {
+        return [];
+      }
+
+      return result.stdout
         .trim()
         .split('\n')
-        .filter(s => s.startsWith(sessionPrefix));
+        .filter(s => s.startsWith(sanitizedPrefix));
     } catch {
       return [];
     }
@@ -214,14 +371,24 @@ export class TmuxManager {
       return '';
     }
 
+    // Validate history lines
+    const safeHistoryLines = Math.min(Math.max(1, Math.floor(historyLines)), 10000);
+
     const paneIndex = TmuxManager.PANES[pane];
+    const target = `${this.sessionName}:main.${paneIndex}`;
+
     try {
-      // -p: print to stdout, -S: start line (negative for history), -E: end line
-      const output = execSync(
-        `tmux capture-pane -t ${this.sessionName}:main.${paneIndex} -p -S -${historyLines}`,
-        { encoding: 'utf-8', maxBuffer: 1024 * 1024 }
-      );
-      return output;
+      const result = spawnSync('tmux', [
+        'capture-pane', '-t', target,
+        '-p',
+        '-S', `-${safeHistoryLines}`,
+      ], {
+        encoding: 'utf-8',
+        maxBuffer: 1024 * 1024,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      return result.stdout || '';
     } catch {
       return '';
     }
@@ -238,13 +405,21 @@ export class TmuxManager {
     }
 
     const paneIndex = TmuxManager.PANES[pane];
+
     try {
-      // Get the pane's current command
-      const output = execSync(
-        `tmux list-panes -t ${this.sessionName}:main -F "#{pane_index}:#{pane_current_command}"`,
-        { encoding: 'utf-8' }
-      );
-      const lines = output.trim().split('\n');
+      const result = spawnSync('tmux', [
+        'list-panes', '-t', `${this.sessionName}:main`,
+        '-F', '#{pane_index}:#{pane_current_command}',
+      ], {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      if (!result.stdout) {
+        return false;
+      }
+
+      const lines = result.stdout.trim().split('\n');
       for (const line of lines) {
         const [idx, cmd] = line.split(':');
         if (parseInt(idx) === paneIndex) {
@@ -264,5 +439,130 @@ export class TmuxManager {
    */
   static getPaneIndex(pane: AgentName | 'debug' | 'server'): number {
     return TmuxManager.PANES[pane];
+  }
+
+  /**
+   * Resume an agent after VCR response
+   * Sends VCR response directly WITHOUT /clear to preserve agent context
+   * @param agent - The agent to resume
+   * @param runId - The run ID
+   * @param promptFile - Path to the prompt file (for reference in message)
+   * @param vcrInfo - VCR and CRP information to include in the message
+   */
+  restartAgentWithVCR(
+    agent: AgentName,
+    runId: string,
+    promptFile: string,
+    vcrInfo?: {
+      crpQuestion: string;
+      crpContext?: string;
+      decision: string;
+      decisionLabel?: string;
+      rationale?: string;
+      additionalNotes?: string;
+    }
+  ): void {
+    // Validate agent name
+    if (!isValidAgentName(agent)) {
+      throw new Error(`Invalid agent name: ${agent}`);
+    }
+
+    const paneIndex = TmuxManager.PANES[agent];
+    const target = `${this.sessionName}:main.${paneIndex}`;
+
+    // Build message with VCR details
+    let message: string;
+    if (vcrInfo) {
+      const parts = [
+        `인간의 결정이 도착했습니다.`,
+        ``,
+        `## 인간의 결정`,
+        `선택: ${vcrInfo.decisionLabel || vcrInfo.decision}`,
+      ];
+
+      if (vcrInfo.rationale) {
+        parts.push(`이유: ${vcrInfo.rationale}`);
+      }
+
+      if (vcrInfo.additionalNotes) {
+        parts.push(`추가 노트: ${vcrInfo.additionalNotes}`);
+      }
+
+      parts.push(
+        ``,
+        `위 결정을 반영하여 작업을 계속 진행하세요.`
+      );
+
+      message = parts.join('\n');
+    } else {
+      message = `VCR 응답이 도착했습니다. 작업을 계속 진행하세요.`;
+    }
+
+    // Use spawn with array arguments and -l flag for literal text
+    // Note: Claude Code multiline input requires Enter twice to submit
+    const child = spawn('sh', [
+      '-c',
+      `tmux send-keys -t "${target}" -l '${message.replace(/'/g, "'\\''")}' && ` +
+      `tmux send-keys -t "${target}" C-j`,
+    ], { detached: true, stdio: 'ignore' });
+    child.unref();
+  }
+
+  /**
+   * Send /clear command to an agent pane to reset its context
+   * Called when transitioning to the next phase
+   * Uses spawn with array arguments for safety
+   * @param agent - The agent pane to clear
+   */
+  clearAgent(agent: AgentName): void {
+    // Validate agent name
+    if (!isValidAgentName(agent)) {
+      throw new Error(`Invalid agent name: ${agent}`);
+    }
+
+    const paneIndex = TmuxManager.PANES[agent];
+    const target = `${this.sessionName}:main.${paneIndex}`;
+
+    // Use -l flag to send literal text, then send C-j to submit (Claude Code uses Ctrl+J)
+    spawnSync('tmux', ['send-keys', '-t', target, '-l', '/clear']);
+    spawnSync('tmux', ['send-keys', '-t', target, 'C-j']);
+  }
+
+  /**
+   * Update pane borders to show model information
+   * @param modelSelection - Model selection result with models and strategy
+   */
+  updatePaneBordersWithModels(modelSelection: {
+    models: Record<AgentName, AgentModel>;
+    analysis: { level: string };
+    selection_method: string;
+  }): void {
+    if (!this.sessionExists()) {
+      return;
+    }
+
+    const { models, analysis, selection_method } = modelSelection;
+
+    // Build the header format string
+    const parts: string[] = [];
+    const agents: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
+
+    for (const agent of agents) {
+      const model = models[agent];
+      const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
+      parts.push(`${agentName}: ${model}`);
+    }
+
+    const headerText = `${parts.join(' | ')} [${analysis.level}/${selection_method}]`;
+
+    // Update pane border format to show the model header
+    try {
+      spawnSync('tmux', [
+        'set-option', '-t', this.sessionName,
+        'pane-border-format', ` #{pane_index}: #{pane_title} | ${headerText} `,
+      ], { stdio: 'ignore' });
+    } catch {
+      // Ignore errors if tmux command fails
+    }
   }
 }

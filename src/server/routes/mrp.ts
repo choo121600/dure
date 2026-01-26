@@ -7,10 +7,10 @@ export function createMrpRouter(projectRoot: string): Router {
   const runManager = new RunManager(projectRoot);
 
   // Get MRP for a run
-  router.get('/:runId', (req: Request, res: Response) => {
+  router.get('/:runId', async (req: Request, res: Response) => {
     const { runId } = req.params;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -18,8 +18,8 @@ export function createMrpRouter(projectRoot: string): Router {
       return res.status(404).json(response);
     }
 
-    const summary = runManager.readMRPSummary(runId);
-    const evidence = runManager.readMRPEvidence(runId);
+    const summary = await runManager.readMRPSummary(runId);
+    const evidence = await runManager.readMRPEvidence(runId);
 
     if (!summary && !evidence) {
       const response: ApiResponse<null> = {
@@ -37,10 +37,10 @@ export function createMrpRouter(projectRoot: string): Router {
   });
 
   // Approve MRP (mark run as complete)
-  router.post('/:runId/approve', (req: Request, res: Response) => {
+  router.post('/:runId/approve', async (req: Request, res: Response) => {
     const { runId } = req.params;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -58,11 +58,11 @@ export function createMrpRouter(projectRoot: string): Router {
   });
 
   // Request changes (send back to builder)
-  router.post('/:runId/request-changes', (req: Request, res: Response) => {
+  router.post('/:runId/request-changes', async (req: Request, res: Response) => {
     const { runId } = req.params;
     const { feedback } = req.body;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',

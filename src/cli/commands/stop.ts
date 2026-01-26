@@ -22,13 +22,13 @@ export async function stopCommand(): Promise<void> {
   }
 
   // Update active run state if exists
-  const activeRun = runManager.getActiveRun();
+  const activeRun = await runManager.getActiveRun();
   if (activeRun) {
     console.log(chalk.gray(`Stopping run: ${activeRun.run_id}...`));
 
     const runDir = runManager.getRunDir(activeRun.run_id);
     const stateManager = new StateManager(runDir);
-    const state = stateManager.loadState();
+    const state = await stateManager.loadState();
 
     if (state) {
       state.phase = 'failed';
@@ -37,7 +37,7 @@ export async function stopCommand(): Promise<void> {
         result: 'stopped_by_user',
         timestamp: new Date().toISOString(),
       });
-      stateManager.saveState(state);
+      await stateManager.saveState(state);
     }
   }
 

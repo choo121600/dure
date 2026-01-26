@@ -1,0 +1,62 @@
+{
+  "run_id": "run-20260126120000",
+  "phase": "build",
+  "iteration": 1,
+  "max_iterations": 3,
+  "started_at": "2026-01-26T12:00:00.000Z",
+  "updated_at": "2026-01-26T12:05:00.000Z",
+  "agents": {
+    "refiner": {
+      "status": "completed",
+      "started_at": "2026-01-26T12:00:05.000Z",
+      "completed_at": "2026-01-26T12:02:00.000Z",
+      "usage": {
+        "input_tokens": 2100,
+        "output_tokens": 800,
+        "cache_creation_tokens": 500,
+        "cache_read_tokens": 1200,
+        "cost_usd": 0.002
+      }
+    },
+    "builder": {
+      "status": "running",
+      "started_at": "2026-01-26T12:02:05.000Z",
+      "usage": {
+        "input_tokens": 15300,
+        "output_tokens": 4200,
+        "cache_creation_tokens": 1200,
+        "cache_read_tokens": 8500,
+        "cost_usd": 0.058
+      }
+    },
+    "verifier": {
+      "status": "pending",
+      "usage": null
+    },
+    "gatekeeper": {
+      "status": "pending",
+      "usage": null
+    }
+  },
+  "pending_crp": null,
+  "last_event": {
+    "type": "agent.started",
+    "agent": "builder",
+    "timestamp": "2026-01-26T12:02:05.000Z"
+  },
+  "errors": [],
+  "history": [
+    {
+      "phase": "refine",
+      "result": "completed",
+      "timestamp": "2026-01-26T12:02:00.000Z"
+    }
+  ],
+  "usage": {
+    "total_input_tokens": 17400,
+    "total_output_tokens": 5000,
+    "total_cache_creation_tokens": 1700,
+    "total_cache_read_tokens": 9700,
+    "total_cost_usd": 0.06
+  }
+}

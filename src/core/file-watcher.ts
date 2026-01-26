@@ -28,10 +28,39 @@ export class FileWatcher extends EventEmitter {
   private runDir: string;
   private watcher: FSWatcher | null = null;
   private isWatching = false;
+  // Track recently emitted events to prevent duplicates
+  private recentEvents: Map<string, number> = new Map();
+  private readonly DEBOUNCE_MS = 2000;
 
   constructor(runDir: string) {
     super();
     this.runDir = runDir;
+  }
+
+  /**
+   * Check if an event was recently emitted (within debounce window)
+   * Returns true if event should be skipped (duplicate)
+   */
+  private isDuplicateEvent(eventKey: string): boolean {
+    const now = Date.now();
+    const lastEmitted = this.recentEvents.get(eventKey);
+
+    if (lastEmitted && (now - lastEmitted) < this.DEBOUNCE_MS) {
+      return true;
+    }
+
+    this.recentEvents.set(eventKey, now);
+
+    // Clean up old entries periodically
+    if (this.recentEvents.size > 100) {
+      for (const [key, time] of this.recentEvents.entries()) {
+        if (now - time > this.DEBOUNCE_MS * 2) {
+          this.recentEvents.delete(key);
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -80,9 +109,13 @@ export class FileWatcher extends EventEmitter {
     // Check for done.flag files
     if (filename === 'done.flag') {
       if (parentDir === 'builder') {
-        this.emit('event', { type: 'builder_done' } as WatchEvent);
+        if (!this.isDuplicateEvent('builder_done')) {
+          this.emit('event', { type: 'builder_done' } as WatchEvent);
+        }
       } else if (parentDir === 'verifier') {
-        this.emit('event', { type: 'verifier_done' } as WatchEvent);
+        if (!this.isDuplicateEvent('verifier_done')) {
+          this.emit('event', { type: 'verifier_done' } as WatchEvent);
+        }
       }
     }
 
@@ -93,12 +126,16 @@ export class FileWatcher extends EventEmitter {
 
     // Check for refined.md (Refiner completion)
     if (filename === 'refined.md' && parentDir === 'briefing') {
-      this.emit('event', { type: 'refiner_done' } as WatchEvent);
+      if (!this.isDuplicateEvent('refiner_done')) {
+        this.emit('event', { type: 'refiner_done' } as WatchEvent);
+      }
     }
 
     // Check for verdict.json (Gatekeeper completion)
     if (filename === 'verdict.json' && parentDir === 'gatekeeper') {
-      this.handleVerdictCreated(filePath);
+      if (!this.isDuplicateEvent('gatekeeper_done')) {
+        this.handleVerdictCreated(filePath);
+      }
     }
 
     // Check for CRP creation
@@ -121,8 +158,23 @@ export class FileWatcher extends EventEmitter {
    * Handle file changes
    */
   private handleFileChange(filePath: string): void {
-    // Currently we mainly care about new files
-    // But we could watch for state.json changes here if needed
+    const filename = basename(filePath);
+    const parentDir = basename(dirname(filePath));
+
+    // Check for refined.md changes (Refiner completion after VCR)
+    // This handles the case where refined.md already exists and is updated
+    if (filename === 'refined.md' && parentDir === 'briefing') {
+      if (!this.isDuplicateEvent('refiner_done')) {
+        this.emit('event', { type: 'refiner_done' } as WatchEvent);
+      }
+    }
+
+    // Check for verdict.json changes
+    if (filename === 'verdict.json' && parentDir === 'gatekeeper') {
+      if (!this.isDuplicateEvent('gatekeeper_done')) {
+        this.handleVerdictCreated(filePath);
+      }
+    }
   }
 
   /**

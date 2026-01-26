@@ -8,10 +8,10 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
   const runManager = new RunManager(projectRoot);
 
   // List CRPs for a run
-  router.get('/:runId', (req: Request, res: Response) => {
+  router.get('/:runId', async (req: Request, res: Response) => {
     const { runId } = req.params;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -19,7 +19,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       return res.status(404).json(response);
     }
 
-    const crps = runManager.listCRPs(runId);
+    const crps = await runManager.listCRPs(runId);
     const response: ApiResponse<CRP[]> = {
       success: true,
       data: crps,
@@ -28,10 +28,10 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
   });
 
   // Get specific CRP
-  router.get('/:runId/:crpId', (req: Request, res: Response) => {
+  router.get('/:runId/:crpId', async (req: Request, res: Response) => {
     const { runId, crpId } = req.params;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -39,7 +39,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       return res.status(404).json(response);
     }
 
-    const crp = runManager.getCRP(runId, crpId);
+    const crp = await runManager.getCRP(runId, crpId);
     if (!crp) {
       const response: ApiResponse<null> = {
         success: false,
@@ -60,7 +60,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
     const { runId, crpId } = req.params;
     const { decision, rationale, additionalNotes, appliesToFuture } = req.body;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -68,7 +68,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       return res.status(404).json(response);
     }
 
-    const crp = runManager.getCRP(runId, crpId);
+    const crp = await runManager.getCRP(runId, crpId);
     if (!crp) {
       const response: ApiResponse<null> = {
         success: false,
@@ -100,7 +100,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
     };
 
     // Save VCR
-    runManager.saveVCR(runId, vcr);
+    await runManager.saveVCR(runId, vcr);
 
     // Resume the orchestrator
     try {
@@ -121,10 +121,10 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
   });
 
   // List VCRs for a run
-  router.get('/:runId/vcr', (req: Request, res: Response) => {
+  router.get('/:runId/vcr', async (req: Request, res: Response) => {
     const { runId } = req.params;
 
-    if (!runManager.runExists(runId)) {
+    if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Run not found',
@@ -132,7 +132,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       return res.status(404).json(response);
     }
 
-    const vcrs = runManager.listVCRs(runId);
+    const vcrs = await runManager.listVCRs(runId);
     const response: ApiResponse<VCR[]> = {
       success: true,
       data: vcrs,

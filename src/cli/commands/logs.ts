@@ -8,7 +8,7 @@ export async function logsCommand(): Promise<void> {
   const runManager = new RunManager(projectRoot);
 
   // Get active run
-  const activeRun = runManager.getActiveRun();
+  const activeRun = await runManager.getActiveRun();
 
   if (!activeRun) {
     console.log(chalk.yellow('No active run found.'));

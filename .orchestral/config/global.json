@@ -1,6 +1,11 @@
 {
-  "max_iterations": 3,
+  "max_iterations": 1,
   "tmux_session_prefix": "orchestral",
   "web_port": 3000,
-  "log_level": "info"
+  "log_level": "info",
+  "model_selection": {
+    "enabled": true,
+    "strategy": "quality_first",
+    "planner_model": "haiku"
+  }
 }

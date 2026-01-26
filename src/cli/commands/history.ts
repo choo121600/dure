@@ -6,7 +6,7 @@ export async function historyCommand(): Promise<void> {
   const projectRoot = process.cwd();
   const runManager = new RunManager(projectRoot);
 
-  const runs = runManager.listRuns();
+  const runs = await runManager.listRuns();
 
   if (runs.length === 0) {
     console.log(chalk.yellow('No runs found.'));

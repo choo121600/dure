@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync } from 'fs';
 import { join, relative } from 'path';
-import type { RunState, MRPEvidence, VerifierResults, BuilderOutputManifest, VCR } from '../types/index.js';
+import type { RunState, MRPEvidence, VerifierResults, BuilderOutputManifest, VCR, MRPUsage, AgentName } from '../types/index.js';
 
 /**
  * MRPGenerator - Generates Merge-Readiness Pack when Gatekeeper passes
@@ -103,6 +103,9 @@ export class MRPGenerator {
     // Get VCR decisions
     const decisions = this.getVCRDecisions();
 
+    // Get usage information
+    const usage = this.getUsageInfo(state);
+
     const evidence: MRPEvidence = {
       tests: {
         total: verifierResults?.total || 0,
@@ -119,6 +122,7 @@ export class MRPGenerator {
         verifier: 'verifier/log.md',
         gatekeeper: 'gatekeeper/log.md',
       },
+      usage: usage,
     };
 
     writeFileSync(
@@ -126,6 +130,40 @@ export class MRPGenerator {
       JSON.stringify(evidence, null, 2),
       'utf-8'
     );
+  }
+
+  /**
+   * Helper: Get usage information from state
+   */
+  private getUsageInfo(state: RunState | null): MRPUsage | undefined {
+    if (!state) return undefined;
+
+    const agents: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
+    const byAgent: MRPUsage['by_agent'] = {};
+
+    for (const agent of agents) {
+      const agentUsage = state.agents[agent].usage;
+      if (agentUsage) {
+        byAgent[agent] = agentUsage;
+      }
+    }
+
+    // If no usage data, return undefined
+    if (Object.keys(byAgent).length === 0 && !state.usage) {
+      return undefined;
+    }
+
+    return {
+      by_agent: byAgent,
+      total: state.usage || {
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_cache_creation_tokens: 0,
+        total_cache_read_tokens: 0,
+        total_cost_usd: 0,
+      },
+      iterations: state.iteration,
+    };
   }
 
   /**
@@ -168,6 +206,25 @@ export class MRPGenerator {
       summary += `- **Coverage:** ${verifierResults.coverage}%\n`;
     }
 
+    // Add usage information
+    if (state?.usage) {
+      summary += `
+## Usage
+| Agent | Input Tokens | Output Tokens | Cost |
+|-------|-------------|---------------|------|
+`;
+      const agents: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
+      for (const agent of agents) {
+        const agentUsage = state.agents[agent].usage;
+        if (agentUsage) {
+          summary += `| ${agent.charAt(0).toUpperCase() + agent.slice(1)} | ${this.formatTokens(agentUsage.input_tokens)} | ${this.formatTokens(agentUsage.output_tokens)} | $${agentUsage.cost_usd.toFixed(3)} |\n`;
+        } else {
+          summary += `| ${agent.charAt(0).toUpperCase() + agent.slice(1)} | -- | -- | -- |\n`;
+        }
+      }
+      summary += `| **Total** | **${this.formatTokens(state.usage.total_input_tokens)}** | **${this.formatTokens(state.usage.total_output_tokens)}** | **$${state.usage.total_cost_usd.toFixed(3)}** |\n`;
+    }
+
     if (decisions.length > 0) {
       summary += `
 ## Design Decisions
@@ -188,6 +245,18 @@ ${review}
     }
 
     writeFileSync(join(mrpDir, 'summary.md'), summary, 'utf-8');
+  }
+
+  /**
+   * Helper: Format tokens for display
+   */
+  private formatTokens(tokens: number): string {
+    if (tokens >= 1_000_000) {
+      return (tokens / 1_000_000).toFixed(1) + 'M';
+    } else if (tokens >= 1_000) {
+      return (tokens / 1_000).toFixed(1) + 'K';
+    }
+    return tokens.toString();
   }
 
   /**

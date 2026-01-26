@@ -1,15 +1,24 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { access, mkdir, readdir, readFile, writeFile, rm, constants } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import type { RunState, CRP, VCR, RunListItem, MRPEvidence, VerifierResults, GatekeeperVerdict } from '../types/index.js';
+import type { RunState, CRP, VCR, RunListItem, MRPEvidence, VerifierResults, GatekeeperVerdict, ModelSelectionResult } from '../types/index.js';
 import { StateManager } from './state-manager.js';
+import {
+  sanitizePath,
+  isValidRunId,
+  validateBriefing,
+  isValidCrpId,
+} from '../utils/sanitize.js';
+import { LIMITS, DURATION_MULTIPLIERS } from '../config/constants.js';
 
 export class RunManager {
   private projectRoot: string;
   private runsDir: string;
 
   constructor(projectRoot: string) {
-    this.projectRoot = projectRoot;
-    this.runsDir = join(projectRoot, '.orchestral', 'runs');
+    // Sanitize project root path
+    this.projectRoot = sanitizePath(projectRoot);
+    this.runsDir = join(this.projectRoot, '.orchestral', 'runs');
   }
 
   /**
@@ -24,7 +33,23 @@ export class RunManager {
   /**
    * Create a new run directory structure
    */
-  createRun(runId: string, rawBriefing: string, maxIterations: number): string {
+  async createRun(runId: string, rawBriefing: string, maxIterations: number): Promise<string> {
+    // Validate run ID format
+    if (!isValidRunId(runId)) {
+      throw new Error(`Invalid run ID format: ${runId}. Expected format: run-YYYYMMDDHHMMSS`);
+    }
+
+    // Validate briefing
+    const briefingValidation = validateBriefing(rawBriefing);
+    if (!briefingValidation.isValid) {
+      throw new Error(briefingValidation.error);
+    }
+
+    // Validate maxIterations
+    if (!Number.isInteger(maxIterations) || maxIterations < LIMITS.MIN_ITERATIONS || maxIterations > LIMITS.MAX_ITERATIONS) {
+      throw new Error(`maxIterations must be an integer between ${LIMITS.MIN_ITERATIONS} and ${LIMITS.MAX_ITERATIONS}`);
+    }
+
     const runDir = join(this.runsDir, runId);
 
     // Create directory structure
@@ -45,15 +70,15 @@ export class RunManager {
     ];
 
     for (const dir of dirs) {
-      mkdirSync(dir, { recursive: true });
+      await mkdir(dir, { recursive: true });
     }
 
     // Write raw briefing
-    writeFileSync(join(runDir, 'briefing', 'raw.md'), rawBriefing, 'utf-8');
+    await writeFile(join(runDir, 'briefing', 'raw.md'), rawBriefing, 'utf-8');
 
     // Initialize state
     const stateManager = new StateManager(runDir);
-    stateManager.createInitialState(runId, maxIterations);
+    await stateManager.createInitialState(runId, maxIterations);
 
     return runDir;
   }
@@ -62,32 +87,59 @@ export class RunManager {
    * Get run directory path
    */
   getRunDir(runId: string): string {
+    // Validate run ID format to prevent path traversal
+    if (!isValidRunId(runId)) {
+      throw new Error(`Invalid run ID format: ${runId}`);
+    }
     return join(this.runsDir, runId);
   }
 
   /**
-   * Check if run exists
+   * Check if run exists (async)
    */
-  runExists(runId: string): boolean {
+  async runExists(runId: string): Promise<boolean> {
+    // Validate run ID format to prevent path traversal
+    if (!isValidRunId(runId)) {
+      return false;
+    }
+    try {
+      await access(this.getRunDir(runId), constants.F_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if run exists (sync, for backward compatibility)
+   * @deprecated Use runExists() instead
+   */
+  runExistsSync(runId: string): boolean {
+    // Validate run ID format to prevent path traversal
+    if (!isValidRunId(runId)) {
+      return false;
+    }
     return existsSync(this.getRunDir(runId));
   }
 
   /**
    * List all runs
    */
-  listRuns(): RunListItem[] {
-    if (!existsSync(this.runsDir)) {
+  async listRuns(): Promise<RunListItem[]> {
+    try {
+      await access(this.runsDir, constants.F_OK);
+    } catch {
       return [];
     }
 
     const runs: RunListItem[] = [];
-    const dirs = readdirSync(this.runsDir, { withFileTypes: true });
+    const entries = await readdir(this.runsDir, { withFileTypes: true });
 
-    for (const dir of dirs) {
-      if (dir.isDirectory() && dir.name.startsWith('run-')) {
-        const runDir = join(this.runsDir, dir.name);
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name.startsWith('run-')) {
+        const runDir = join(this.runsDir, entry.name);
         const stateManager = new StateManager(runDir);
-        const state = stateManager.loadState();
+        const state = await stateManager.loadState();
 
         if (state) {
           runs.push({
@@ -109,50 +161,61 @@ export class RunManager {
   /**
    * Get the current (most recent) run
    */
-  getCurrentRun(): RunListItem | null {
-    const runs = this.listRuns();
+  async getCurrentRun(): Promise<RunListItem | null> {
+    const runs = await this.listRuns();
     return runs.length > 0 ? runs[0] : null;
   }
 
   /**
    * Get active run (not completed or failed)
    */
-  getActiveRun(): RunListItem | null {
-    const runs = this.listRuns();
+  async getActiveRun(): Promise<RunListItem | null> {
+    const runs = await this.listRuns();
     return runs.find(r => r.phase !== 'completed' && r.phase !== 'failed') || null;
   }
 
   /**
    * Read raw briefing
    */
-  readRawBriefing(runId: string): string | null {
-    const filePath = join(this.getRunDir(runId), 'briefing', 'raw.md');
-    if (!existsSync(filePath)) return null;
-    return readFileSync(filePath, 'utf-8');
+  async readRawBriefing(runId: string): Promise<string | null> {
+    try {
+      const filePath = join(this.getRunDir(runId), 'briefing', 'raw.md');
+      return await readFile(filePath, 'utf-8');
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Read refined briefing
    */
-  readRefinedBriefing(runId: string): string | null {
-    const filePath = join(this.getRunDir(runId), 'briefing', 'refined.md');
-    if (!existsSync(filePath)) return null;
-    return readFileSync(filePath, 'utf-8');
+  async readRefinedBriefing(runId: string): Promise<string | null> {
+    try {
+      const filePath = join(this.getRunDir(runId), 'briefing', 'refined.md');
+      return await readFile(filePath, 'utf-8');
+    } catch {
+      return null;
+    }
   }
 
   /**
    * List CRPs for a run
    */
-  listCRPs(runId: string): CRP[] {
+  async listCRPs(runId: string): Promise<CRP[]> {
     const crpDir = join(this.getRunDir(runId), 'crp');
-    if (!existsSync(crpDir)) return [];
 
-    const files = readdirSync(crpDir).filter(f => f.endsWith('.json'));
+    try {
+      await access(crpDir, constants.F_OK);
+    } catch {
+      return [];
+    }
+
+    const files = (await readdir(crpDir)).filter(f => f.endsWith('.json'));
     const crps: CRP[] = [];
 
     for (const file of files) {
       try {
-        const content = readFileSync(join(crpDir, file), 'utf-8');
+        const content = await readFile(join(crpDir, file), 'utf-8');
         crps.push(JSON.parse(content));
       } catch {
         // Skip invalid files
@@ -167,37 +230,49 @@ export class RunManager {
    * CRP files may be named with timestamps (crp-{timestamp}.json) or by ID (crp-001.json)
    * This function searches all CRP files to find the one with matching crp_id
    */
-  getCRP(runId: string, crpId: string): CRP | null {
-    // First try direct file lookup (for files named exactly as crpId.json)
-    const directPath = join(this.getRunDir(runId), 'crp', `${crpId}.json`);
-    if (existsSync(directPath)) {
+  async getCRP(runId: string, crpId: string): Promise<CRP | null> {
+    // Validate CRP ID format
+    if (!isValidCrpId(crpId)) {
+      return null;
+    }
+
+    try {
+      // First try direct file lookup (for files named exactly as crpId.json)
+      const directPath = join(this.getRunDir(runId), 'crp', `${crpId}.json`);
       try {
-        const content = readFileSync(directPath, 'utf-8');
+        const content = await readFile(directPath, 'utf-8');
         return JSON.parse(content);
       } catch {
         // Continue to search other files
       }
-    }
 
-    // Search through all CRP files to find matching crp_id
-    const crps = this.listCRPs(runId);
-    const found = crps.find(crp => crp.crp_id === crpId);
-    return found || null;
+      // Search through all CRP files to find matching crp_id
+      const crps = await this.listCRPs(runId);
+      const found = crps.find(crp => crp.crp_id === crpId);
+      return found || null;
+    } catch {
+      return null;
+    }
   }
 
   /**
    * List VCRs for a run
    */
-  listVCRs(runId: string): VCR[] {
+  async listVCRs(runId: string): Promise<VCR[]> {
     const vcrDir = join(this.getRunDir(runId), 'vcr');
-    if (!existsSync(vcrDir)) return [];
 
-    const files = readdirSync(vcrDir).filter(f => f.endsWith('.json'));
+    try {
+      await access(vcrDir, constants.F_OK);
+    } catch {
+      return [];
+    }
+
+    const files = (await readdir(vcrDir)).filter(f => f.endsWith('.json'));
     const vcrs: VCR[] = [];
 
     for (const file of files) {
       try {
-        const content = readFileSync(join(vcrDir, file), 'utf-8');
+        const content = await readFile(join(vcrDir, file), 'utf-8');
         vcrs.push(JSON.parse(content));
       } catch {
         // Skip invalid files
@@ -210,31 +285,32 @@ export class RunManager {
   /**
    * Save a VCR (human response to CRP)
    */
-  saveVCR(runId: string, vcr: VCR): void {
+  async saveVCR(runId: string, vcr: VCR): Promise<void> {
     const vcrDir = join(this.getRunDir(runId), 'vcr');
-    mkdirSync(vcrDir, { recursive: true });
+    await mkdir(vcrDir, { recursive: true });
 
     const filePath = join(vcrDir, `${vcr.vcr_id}.json`);
-    writeFileSync(filePath, JSON.stringify(vcr, null, 2), 'utf-8');
+    await writeFile(filePath, JSON.stringify(vcr, null, 2), 'utf-8');
 
     // Update CRP status to resolved
     const crpPath = join(this.getRunDir(runId), 'crp', `${vcr.crp_id}.json`);
-    if (existsSync(crpPath)) {
-      const crp = JSON.parse(readFileSync(crpPath, 'utf-8')) as CRP;
+    try {
+      const crpContent = await readFile(crpPath, 'utf-8');
+      const crp = JSON.parse(crpContent) as CRP;
       crp.status = 'resolved';
-      writeFileSync(crpPath, JSON.stringify(crp, null, 2), 'utf-8');
+      await writeFile(crpPath, JSON.stringify(crp, null, 2), 'utf-8');
+    } catch {
+      // CRP file not found, ignore
     }
   }
 
   /**
    * Read verifier results
    */
-  readVerifierResults(runId: string): VerifierResults | null {
-    const filePath = join(this.getRunDir(runId), 'verifier', 'results.json');
-    if (!existsSync(filePath)) return null;
-
+  async readVerifierResults(runId: string): Promise<VerifierResults | null> {
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      const filePath = join(this.getRunDir(runId), 'verifier', 'results.json');
+      const content = await readFile(filePath, 'utf-8');
       return JSON.parse(content);
     } catch {
       return null;
@@ -244,12 +320,10 @@ export class RunManager {
   /**
    * Read gatekeeper verdict
    */
-  readGatekeeperVerdict(runId: string): GatekeeperVerdict | null {
-    const filePath = join(this.getRunDir(runId), 'gatekeeper', 'verdict.json');
-    if (!existsSync(filePath)) return null;
-
+  async readGatekeeperVerdict(runId: string): Promise<GatekeeperVerdict | null> {
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      const filePath = join(this.getRunDir(runId), 'gatekeeper', 'verdict.json');
+      const content = await readFile(filePath, 'utf-8');
       return JSON.parse(content);
     } catch {
       return null;
@@ -259,12 +333,10 @@ export class RunManager {
   /**
    * Read MRP evidence
    */
-  readMRPEvidence(runId: string): MRPEvidence | null {
-    const filePath = join(this.getRunDir(runId), 'mrp', 'evidence.json');
-    if (!existsSync(filePath)) return null;
-
+  async readMRPEvidence(runId: string): Promise<MRPEvidence | null> {
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      const filePath = join(this.getRunDir(runId), 'mrp', 'evidence.json');
+      const content = await readFile(filePath, 'utf-8');
       return JSON.parse(content);
     } catch {
       return null;
@@ -274,16 +346,33 @@ export class RunManager {
   /**
    * Read MRP summary
    */
-  readMRPSummary(runId: string): string | null {
-    const filePath = join(this.getRunDir(runId), 'mrp', 'summary.md');
-    if (!existsSync(filePath)) return null;
-    return readFileSync(filePath, 'utf-8');
+  async readMRPSummary(runId: string): Promise<string | null> {
+    try {
+      const filePath = join(this.getRunDir(runId), 'mrp', 'summary.md');
+      return await readFile(filePath, 'utf-8');
+    } catch {
+      return null;
+    }
   }
 
   /**
-   * Check if done.flag exists for an agent
+   * Check if done.flag exists for an agent (async)
    */
-  hasAgentCompleted(runId: string, agent: 'builder' | 'verifier'): boolean {
+  async hasAgentCompleted(runId: string, agent: 'builder' | 'verifier'): Promise<boolean> {
+    const flagPath = join(this.getRunDir(runId), agent, 'done.flag');
+    try {
+      await access(flagPath, constants.F_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if done.flag exists for an agent (sync, for backward compatibility)
+   * @deprecated Use hasAgentCompleted() instead
+   */
+  hasAgentCompletedSync(runId: string, agent: 'builder' | 'verifier'): boolean {
     const flagPath = join(this.getRunDir(runId), agent, 'done.flag');
     return existsSync(flagPath);
   }
@@ -298,9 +387,101 @@ export class RunManager {
   /**
    * Initialize runs directory
    */
-  initialize(): void {
-    if (!existsSync(this.runsDir)) {
-      mkdirSync(this.runsDir, { recursive: true });
+  async initialize(): Promise<void> {
+    await mkdir(this.runsDir, { recursive: true });
+  }
+
+  /**
+   * Delete a run by its ID
+   * @returns true if deletion was successful, false if run not found
+   */
+  async deleteRun(runId: string): Promise<boolean> {
+    // Validate run ID format
+    if (!isValidRunId(runId)) {
+      throw new Error(`Invalid run ID format: ${runId}`);
+    }
+
+    const runDir = this.getRunDir(runId);
+
+    try {
+      await access(runDir, constants.F_OK);
+    } catch {
+      return false;
+    }
+
+    // Check if run is currently active
+    const stateManager = new StateManager(runDir);
+    const state = await stateManager.loadState();
+    if (state && state.phase !== 'completed' && state.phase !== 'failed') {
+      throw new Error(`Cannot delete active run ${runId}. Stop the run first.`);
+    }
+
+    await rm(runDir, { recursive: true, force: true });
+    return true;
+  }
+
+  /**
+   * Delete multiple runs older than specified duration
+   * @param olderThanMs - Duration in milliseconds
+   * @returns Object with deleted run IDs and count
+   */
+  async cleanRuns(olderThanMs: number): Promise<{ deleted: string[]; count: number }> {
+    const runs = await this.listRuns();
+    const cutoffTime = Date.now() - olderThanMs;
+    const deleted: string[] = [];
+
+    for (const run of runs) {
+      const runStartTime = new Date(run.started_at).getTime();
+
+      // Only delete completed or failed runs that are older than the cutoff
+      if (runStartTime < cutoffTime && (run.phase === 'completed' || run.phase === 'failed')) {
+        try {
+          if (await this.deleteRun(run.run_id)) {
+            deleted.push(run.run_id);
+          }
+        } catch {
+          // Skip runs that can't be deleted
+        }
+      }
+    }
+
+    return { deleted, count: deleted.length };
+  }
+
+  /**
+   * Parse duration string to milliseconds
+   * Supports: 1d, 7d, 30d, 1h, 24h, etc.
+   */
+  static parseDuration(duration: string): number {
+    const match = duration.match(/^(\d+)([dhms])$/);
+    if (!match) {
+      throw new Error(`Invalid duration format: ${duration}. Use formats like 7d, 24h, 30m, 60s`);
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2] as keyof typeof DURATION_MULTIPLIERS;
+
+    return value * DURATION_MULTIPLIERS[unit];
+  }
+
+  /**
+   * Save model selection result for a run
+   */
+  async saveModelSelection(runId: string, result: ModelSelectionResult): Promise<void> {
+    const filePath = join(this.getRunDir(runId), 'model-selection.json');
+    await writeFile(filePath, JSON.stringify(result, null, 2), 'utf-8');
+  }
+
+  /**
+   * Read model selection result for a run
+   */
+  async readModelSelection(runId: string): Promise<ModelSelectionResult | null> {
+    try {
+      const filePath = join(this.getRunDir(runId), 'model-selection.json');
+      const content = await readFile(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return null;
     }
   }
 }

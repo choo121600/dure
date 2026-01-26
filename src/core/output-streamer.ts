@@ -1,15 +1,22 @@
 import { EventEmitter } from 'events';
 import type { AgentName, AgentOutputEvent } from '../types/index.js';
 import { TmuxManager } from './tmux-manager.js';
+import { TIMING, LIMITS } from '../config/constants.js';
 
 export interface OutputStreamerConfig {
-  pollingInterval: number;  // How often to check for new output (ms)
-  historyLines: number;     // How many lines of history to capture
+  pollingInterval: number;      // Base polling interval (ms)
+  historyLines: number;         // How many lines of history to capture
+  adaptivePolling: boolean;     // Enable adaptive polling
+  minPollingInterval: number;   // Minimum polling interval when active
+  maxPollingInterval: number;   // Maximum polling interval when idle
 }
 
 const defaultConfig: OutputStreamerConfig = {
-  pollingInterval: 1000,  // 1 second
-  historyLines: 200,
+  pollingInterval: TIMING.OUTPUT_POLLING_INTERVAL_MS,
+  historyLines: LIMITS.MAX_OUTPUT_HISTORY_LINES,
+  adaptivePolling: true,
+  minPollingInterval: TIMING.OUTPUT_POLLING_MIN_MS,
+  maxPollingInterval: TIMING.OUTPUT_POLLING_MAX_MS,
 };
 
 export class OutputStreamer extends EventEmitter {
@@ -17,7 +24,9 @@ export class OutputStreamer extends EventEmitter {
   private config: OutputStreamerConfig;
   private runId: string | null = null;
   private outputCache: Map<AgentName, string> = new Map();
-  private pollingInterval: NodeJS.Timeout | null = null;
+  private pollingTimeouts: Map<AgentName, NodeJS.Timeout> = new Map();
+  private currentIntervals: Map<AgentName, number> = new Map();
+  private lastActivityTime: Map<AgentName, number> = new Map();
   private isStreaming = false;
 
   constructor(tmuxManager: TmuxManager, config: Partial<OutputStreamerConfig> = {}) {
@@ -37,16 +46,16 @@ export class OutputStreamer extends EventEmitter {
     this.runId = runId;
     this.isStreaming = true;
 
-    // Initialize output cache
+    // Initialize output cache and polling intervals
     const agents: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
     for (const agent of agents) {
       this.outputCache.set(agent, '');
-    }
+      this.currentIntervals.set(agent, this.config.pollingInterval);
+      this.lastActivityTime.set(agent, Date.now());
 
-    // Start polling for output
-    this.pollingInterval = setInterval(() => {
-      this.captureAllOutputs();
-    }, this.config.pollingInterval);
+      // Start individual polling for each agent
+      this.scheduleNextCapture(agent);
+    }
 
     // Capture initial output
     this.captureAllOutputs();
@@ -59,12 +68,67 @@ export class OutputStreamer extends EventEmitter {
     this.isStreaming = false;
     this.runId = null;
 
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
+    // Clear all polling timeouts
+    for (const [_agent, timeout] of this.pollingTimeouts) {
+      clearTimeout(timeout);
     }
 
+    this.pollingTimeouts.clear();
     this.outputCache.clear();
+    this.currentIntervals.clear();
+    this.lastActivityTime.clear();
+  }
+
+  /**
+   * Schedule next capture for a specific agent with adaptive timing
+   */
+  private scheduleNextCapture(agent: AgentName): void {
+    if (!this.isStreaming) return;
+
+    const interval = this.currentIntervals.get(agent) || this.config.pollingInterval;
+
+    const timeout = setTimeout(() => {
+      this.captureAgentOutput(agent);
+      this.scheduleNextCapture(agent);
+    }, interval);
+
+    this.pollingTimeouts.set(agent, timeout);
+  }
+
+  /**
+   * Adjust polling interval based on activity
+   */
+  private adjustPollingInterval(agent: AgentName, hasActivity: boolean): void {
+    if (!this.config.adaptivePolling) return;
+
+    const current = this.currentIntervals.get(agent) || this.config.pollingInterval;
+
+    let newInterval: number;
+    if (hasActivity) {
+      // Activity detected - speed up polling (but not below minimum)
+      newInterval = Math.max(
+        this.config.minPollingInterval,
+        Math.floor(current / 2)
+      );
+      this.lastActivityTime.set(agent, Date.now());
+    } else {
+      // No activity - slow down polling (but not above maximum)
+      const timeSinceActivity = Date.now() - (this.lastActivityTime.get(agent) || 0);
+
+      // Only slow down if no activity for a while
+      if (timeSinceActivity > this.config.pollingInterval * 3) {
+        newInterval = Math.min(
+          this.config.maxPollingInterval,
+          Math.floor(current * 1.5)
+        );
+      } else {
+        newInterval = current;
+      }
+    }
+
+    if (newInterval !== current) {
+      this.currentIntervals.set(agent, newInterval);
+    }
   }
 
   /**
@@ -87,7 +151,9 @@ export class OutputStreamer extends EventEmitter {
       const cachedOutput = this.outputCache.get(agent) || '';
 
       // Check if there's new content
-      if (currentOutput !== cachedOutput) {
+      const hasNewContent = currentOutput !== cachedOutput;
+
+      if (hasNewContent) {
         const newContent = this.extractNewContent(cachedOutput, currentOutput);
 
         // Update cache
@@ -112,6 +178,9 @@ export class OutputStreamer extends EventEmitter {
           });
         }
       }
+
+      // Adjust polling interval based on activity
+      this.adjustPollingInterval(agent, hasNewContent);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.emit('error', { agent, error: errMsg });
@@ -179,5 +248,33 @@ export class OutputStreamer extends EventEmitter {
    */
   isCurrentlyStreaming(): boolean {
     return this.isStreaming;
+  }
+
+  /**
+   * Get current polling interval for an agent
+   */
+  getCurrentInterval(agent: AgentName): number {
+    return this.currentIntervals.get(agent) || this.config.pollingInterval;
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): OutputStreamerConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Update configuration (requires restart of streaming to take effect)
+   */
+  updateConfig(config: Partial<OutputStreamerConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Reset polling interval for an agent to default
+   */
+  resetInterval(agent: AgentName): void {
+    this.currentIntervals.set(agent, this.config.pollingInterval);
   }
 }

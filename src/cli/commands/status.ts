@@ -7,7 +7,7 @@ export async function statusCommand(): Promise<void> {
   const projectRoot = process.cwd();
   const runManager = new RunManager(projectRoot);
 
-  const activeRun = runManager.getActiveRun();
+  const activeRun = await runManager.getActiveRun();
 
   if (!activeRun) {
     console.log(chalk.yellow('No active run found.'));
@@ -17,7 +17,7 @@ export async function statusCommand(): Promise<void> {
 
   const runDir = runManager.getRunDir(activeRun.run_id);
   const stateManager = new StateManager(runDir);
-  const state = stateManager.loadState();
+  const state = await stateManager.loadState();
 
   if (!state) {
     console.log(chalk.red('Error: Could not load run state.'));

@@ -9,6 +9,24 @@ export type Phase = 'refine' | 'build' | 'verify' | 'gate' | 'waiting_human' | '
 // Verdict Types
 export type Verdict = 'PASS' | 'FAIL' | 'NEEDS_HUMAN';
 
+// Usage Info
+export interface UsageInfo {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
+  cost_usd: number;
+}
+
+// Total Usage
+export interface TotalUsage {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_creation_tokens: number;
+  total_cache_read_tokens: number;
+  total_cost_usd: number;
+}
+
 // Agent State
 export interface AgentState {
   status: AgentStatus;
@@ -16,6 +34,7 @@ export interface AgentState {
   completed_at?: string;
   timeout_at?: string;
   error?: string;
+  usage?: UsageInfo | null;
 }
 
 // Last Event (for state.json)
@@ -43,6 +62,8 @@ export interface RunState {
   last_event?: LastEvent;
   errors: string[];
   history: HistoryEntry[];
+  usage?: TotalUsage;
+  model_selection?: ModelSelectionResult;
 }
 
 export interface HistoryEntry {
@@ -82,6 +103,21 @@ export interface VCR {
   applies_to_future: boolean;
 }
 
+// MRP Usage by Agent
+export interface MRPUsageByAgent {
+  refiner?: UsageInfo;
+  builder?: UsageInfo;
+  verifier?: UsageInfo;
+  gatekeeper?: UsageInfo;
+}
+
+// MRP Usage
+export interface MRPUsage {
+  by_agent: MRPUsageByAgent;
+  total: TotalUsage;
+  iterations: number;
+}
+
 // MRP (Merge-Readiness Pack)
 export interface MRPEvidence {
   tests: {
@@ -99,6 +135,7 @@ export interface MRPEvidence {
     verifier: string;
     gatekeeper: string;
   };
+  usage?: MRPUsage;
 }
 
 // Verifier Results
@@ -147,6 +184,7 @@ export interface GlobalConfig {
     max_attempts: number;
     recoverable_errors: string[];
   };
+  model_selection?: ModelSelectionConfig;
 }
 
 export interface RefinerConfig {
@@ -281,4 +319,45 @@ export interface PromptContext {
   iteration: number;
   has_review?: boolean;
   has_vcr?: boolean;
+}
+
+// Model Selection Types
+export type ModelSelectionStrategy = 'cost_optimized' | 'quality_first' | 'balanced';
+
+export interface ModelSelectionConfig {
+  enabled: boolean;
+  strategy: ModelSelectionStrategy;
+  planner_model: AgentModel;  // ModelSelector 자체가 사용할 모델
+}
+
+export interface ComplexityFactors {
+  briefing_length: number;       // 0-100: 문자 수 기반
+  technical_depth: number;       // 0-100: 기술 키워드 밀도
+  scope_estimate: number;        // 0-100: 변경 범위 추정
+  risk_level: number;            // 0-100: 보안/성능 요구사항
+}
+
+export interface ComplexityAnalysis {
+  overall_score: number;         // 0-100
+  level: 'simple' | 'medium' | 'complex';
+  factors: ComplexityFactors;
+  recommended_models: {
+    refiner: AgentModel;
+    builder: AgentModel;
+    verifier: AgentModel;
+    gatekeeper: AgentModel;
+  };
+  reasoning: string;
+  estimated_cost_savings?: number;  // 예상 비용 절감률 (%)
+}
+
+export interface ModelSelectionResult {
+  models: {
+    refiner: AgentModel;
+    builder: AgentModel;
+    verifier: AgentModel;
+    gatekeeper: AgentModel;
+  };
+  analysis: ComplexityAnalysis;
+  selection_method: 'dynamic' | 'static';  // 동적 선택 vs 설정값 사용
 }

@@ -6,6 +6,9 @@ import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
 import { historyCommand } from './commands/history.js';
 import { logsCommand } from './commands/logs.js';
+import { deleteCommand } from './commands/delete.js';
+import { cleanCommand } from './commands/clean.js';
+import { clearCommand } from './commands/clear.js';
 
 const program = new Command();
 
@@ -40,5 +43,24 @@ program
   .command('logs')
   .description('Show real-time logs for the current run')
   .action(logsCommand);
+
+program
+  .command('delete <run-id>')
+  .description('Delete a specific run')
+  .option('-f, --force', 'Skip confirmation prompt')
+  .action(deleteCommand);
+
+program
+  .command('clean')
+  .description('Delete old completed/failed runs')
+  .option('--older-than <duration>', 'Delete runs older than duration (e.g., 7d, 24h)', '7d')
+  .option('-f, --force', 'Skip confirmation prompt')
+  .option('--dry-run', 'Show what would be deleted without actually deleting')
+  .action(cleanCommand);
+
+program
+  .command('clear-run [run-id]')
+  .description('Terminate Claude processes in all agent panes (preserves artifacts)')
+  .action(clearCommand);
 
 program.parse();

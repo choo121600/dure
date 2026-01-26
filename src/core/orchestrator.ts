@@ -1,16 +1,34 @@
 import { EventEmitter } from 'events';
 import { join } from 'path';
-import type { OrchestraConfig, RunState, Phase, GatekeeperVerdict, AgentName, AgentOutputEvent, AgentTimeoutConfig } from '../types/index.js';
+import type {
+  OrchestraConfig,
+  RunState,
+  Phase,
+  GatekeeperVerdict,
+  AgentName,
+  AgentModel,
+  AgentTimeoutConfig,
+  UsageInfo,
+  TotalUsage,
+  ModelSelectionResult,
+} from '../types/index.js';
 import { StateManager } from './state-manager.js';
 import { RunManager } from './run-manager.js';
 import { TmuxManager } from './tmux-manager.js';
 import { FileWatcher, WatchEvent, ErrorFlag } from './file-watcher.js';
 import { PromptGenerator } from '../agents/prompt-generator.js';
-import { AgentMonitor, AgentMonitorEvent } from './agent-monitor.js';
+import { AgentMonitor } from './agent-monitor.js';
 import { OutputStreamer } from './output-streamer.js';
 import { EventLogger } from './event-logger.js';
 import { MRPGenerator } from './mrp-generator.js';
-import { defaultTimeoutConfig } from '../config/defaults.js';
+import { UsageTracker } from './usage-tracker.js';
+import { ModelSelector } from './model-selector.js';
+import { RetryManager, defaultRetryConfig } from './retry-manager.js';
+import { RecoveryManager, RecoveryContext } from './recovery-strategies.js';
+import { AgentLifecycleManager } from './agent-lifecycle-manager.js';
+import { PhaseTransitionManager } from './phase-transition-manager.js';
+import { EventCoordinator, CoordinatedEvent } from './event-coordinator.js';
+import { defaultTimeoutConfig, defaultModelSelectionConfig } from '../config/defaults.js';
 
 export type OrchestratorEvent =
   | { type: 'run_started'; runId: string }
@@ -21,11 +39,16 @@ export type OrchestratorEvent =
   | { type: 'agent_stale'; agent: AgentName; inactiveMs: number; runId: string }
   | { type: 'agent_output'; agent: AgentName; content: string; runId: string }
   | { type: 'agent_failed'; agent: AgentName; errorFlag: ErrorFlag; runId: string }
+  | { type: 'agent_retry'; agent: AgentName; attempt: number; maxAttempts: number; runId: string }
+  | { type: 'agent_retry_success'; agent: AgentName; attempt: number; runId: string }
+  | { type: 'agent_retry_exhausted'; agent: AgentName; totalAttempts: number; runId: string }
   | { type: 'crp_created'; crpId: string; runId: string }
   | { type: 'vcr_received'; vcrId: string; runId: string }
   | { type: 'mrp_ready'; runId: string }
   | { type: 'run_completed'; runId: string; verdict: 'PASS' | 'FAIL' }
   | { type: 'iteration_started'; iteration: number; runId: string }
+  | { type: 'usage_updated'; agent: AgentName; usage: UsageInfo; total: TotalUsage; runId: string }
+  | { type: 'models_selected'; result: ModelSelectionResult; runId: string }
   | { type: 'error'; error: string; runId: string };
 
 export class Orchestrator extends EventEmitter {
@@ -37,9 +60,17 @@ export class Orchestrator extends EventEmitter {
   private tmuxManager: TmuxManager | null = null;
   private fileWatcher: FileWatcher | null = null;
   private promptGenerator: PromptGenerator;
-  private agentMonitor: AgentMonitor | null = null;
-  private outputStreamer: OutputStreamer | null = null;
   private eventLogger: EventLogger | null = null;
+  private modelSelector: ModelSelector;
+  private retryManager: RetryManager;
+  private recoveryManager: RecoveryManager;
+
+  // New extracted managers
+  private agentLifecycle: AgentLifecycleManager | null = null;
+  private phaseManager: PhaseTransitionManager | null = null;
+  private eventCoordinator: EventCoordinator | null = null;
+
+  private selectedModels: Record<AgentName, AgentModel> | null = null;
   private currentRunId: string | null = null;
   private isRunning = false;
 
@@ -47,7 +78,6 @@ export class Orchestrator extends EventEmitter {
     super();
     this.projectRoot = projectRoot;
     this.config = config;
-    // Merge timeout config with global config timeouts
     this.timeoutConfig = {
       ...defaultTimeoutConfig,
       refiner: config.global.timeouts?.refiner ?? defaultTimeoutConfig.refiner,
@@ -58,6 +88,13 @@ export class Orchestrator extends EventEmitter {
     };
     this.runManager = new RunManager(projectRoot);
     this.promptGenerator = new PromptGenerator(projectRoot);
+    this.modelSelector = new ModelSelector(config.global.model_selection ?? defaultModelSelectionConfig);
+    this.retryManager = new RetryManager({
+      ...defaultRetryConfig,
+      maxAttempts: config.global.auto_retry.max_attempts,
+      recoverableErrors: config.global.auto_retry.recoverable_errors as ('crash' | 'timeout' | 'validation')[],
+    });
+    this.recoveryManager = new RecoveryManager();
   }
 
   /**
@@ -68,121 +105,123 @@ export class Orchestrator extends EventEmitter {
       throw new Error('A run is already in progress');
     }
 
-    // Check for tmux
     if (!TmuxManager.isTmuxAvailable()) {
       throw new Error('tmux is not installed. Please install tmux to use Orchestral.');
     }
 
-    // Generate run ID and create run directory
-    const runId = this.runManager.generateRunId();
-    const runDir = this.runManager.createRun(runId, rawBriefing, this.config.global.max_iterations);
+    // Select models based on briefing complexity
+    const modelSelection = this.modelSelector.selectModels(rawBriefing);
+    this.selectedModels = modelSelection.models;
 
+    // Create run
+    const runId = this.runManager.generateRunId();
+    const runDir = await this.runManager.createRun(runId, rawBriefing, this.config.global.max_iterations);
     this.currentRunId = runId;
+
+    // Initialize core managers
     this.stateManager = new StateManager(runDir);
     this.eventLogger = new EventLogger(runDir);
+    await this.runManager.saveModelSelection(runId, modelSelection);
+    await this.stateManager.updateModelSelection(modelSelection);
 
-    // Use existing main session (created by `orchestral start`)
-    this.tmuxManager = new TmuxManager(
-      this.config.global.tmux_session_prefix,
-      this.projectRoot
-    );
-
-    // Generate prompt files
-    await this.generatePrompts(runId);
-
-    // Session should already exist from `orchestral start`
-    // If not, create it (for backwards compatibility)
+    // Initialize tmux - reuse existing session if available for better UX
+    // First try to use existing session (without runId), then fall back to run-specific session
+    this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot);
     if (!this.tmuxManager.sessionExists()) {
+      // No existing session, create a run-specific one
+      this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot, runId);
       this.tmuxManager.createSession();
     }
+    this.tmuxManager.updatePaneBordersWithModels(modelSelection);
 
-    // Set up file watcher
-    this.fileWatcher = new FileWatcher(runDir);
-    this.setupFileWatcherListeners();
-    this.fileWatcher.start();
+    // Generate prompts
+    await this.generatePrompts(runId);
 
-    // Set up agent monitor
-    this.agentMonitor = new AgentMonitor(this.tmuxManager, this.timeoutConfig);
-    this.setupAgentMonitorListeners();
-    this.agentMonitor.start();
-
-    // Set up output streamer
-    this.outputStreamer = new OutputStreamer(this.tmuxManager);
-    this.setupOutputStreamerListeners();
-    this.outputStreamer.startStreaming(runId);
+    // Initialize extracted managers
+    this.initializeManagers(runDir, runId);
 
     this.isRunning = true;
     this.emitEvent({ type: 'run_started', runId });
+    this.emitEvent({ type: 'models_selected', result: modelSelection, runId });
 
-    // Start the pipeline with Refiner
-    await this.startRefiner();
+    // Start pipeline
+    await this.startAgent('refiner');
 
     return runId;
   }
 
   /**
-   * Resume a run (after VCR submission)
+   * Resume a run after VCR submission
    */
   async resumeRun(runId: string): Promise<void> {
     const runDir = this.runManager.getRunDir(runId);
     this.stateManager = new StateManager(runDir);
-    const state = this.stateManager.loadState();
+    const state = await this.stateManager.loadState();
 
-    if (!state) {
-      throw new Error(`Run ${runId} not found`);
-    }
+    if (!state) throw new Error(`Run ${runId} not found`);
+    if (state.phase !== 'waiting_human') throw new Error(`Run ${runId} is not waiting for human input`);
 
-    if (state.phase !== 'waiting_human') {
-      throw new Error(`Run ${runId} is not waiting for human input`);
+    // Restore model selection
+    const savedSelection = await this.runManager.readModelSelection(runId);
+    if (savedSelection) {
+      this.selectedModels = savedSelection.models;
+    } else {
+      const rawBriefing = await this.runManager.readRawBriefing(runId);
+      if (!rawBriefing) throw new Error(`Cannot read raw briefing for run ${runId}`);
+      const modelSelection = this.modelSelector.selectModels(rawBriefing);
+      this.selectedModels = modelSelection.models;
+      await this.runManager.saveModelSelection(runId, modelSelection);
     }
 
     this.currentRunId = runId;
     this.eventLogger = new EventLogger(runDir);
-    this.tmuxManager = new TmuxManager(
-      this.config.global.tmux_session_prefix,
-      this.projectRoot
-    );
 
-    // Restart file watcher
-    this.fileWatcher = new FileWatcher(runDir);
-    this.setupFileWatcherListeners();
-    this.fileWatcher.start();
+    // Initialize tmux - reuse existing session if available
+    this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot);
+    if (!this.tmuxManager.sessionExists()) {
+      this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot, runId);
+    }
 
-    // Restart agent monitor
-    this.agentMonitor = new AgentMonitor(this.tmuxManager, this.timeoutConfig);
-    this.setupAgentMonitorListeners();
-    this.agentMonitor.start();
-
-    // Restart output streamer
-    this.outputStreamer = new OutputStreamer(this.tmuxManager);
-    this.setupOutputStreamerListeners();
-    this.outputStreamer.startStreaming(runId);
-
+    // Re-initialize managers
+    this.initializeManagers(runDir, runId);
     this.isRunning = true;
 
-    // Clear pending CRP and determine which agent to restart
+    // Clear pending CRP and restart agent
     const pendingCrp = state.pending_crp;
-    this.stateManager.setPendingCRP(null);
+    await this.stateManager.setPendingCRP(null);
 
-    // Determine which agent created the CRP and restart from there
-    const crps = this.runManager.listCRPs(runId);
+    const crps = await this.runManager.listCRPs(runId);
     const resolvedCrp = crps.find(c => c.crp_id === pendingCrp);
 
     if (resolvedCrp) {
-      switch (resolvedCrp.created_by) {
-        case 'refiner':
-          await this.startRefiner();
-          break;
-        case 'builder':
-          await this.startBuilder();
-          break;
-        case 'verifier':
-          await this.startVerifier();
-          break;
-        case 'gatekeeper':
-          await this.startGatekeeper();
-          break;
+      const agent = resolvedCrp.created_by;
+      const promptFile = join(runDir, 'prompts', `${agent}.md`);
+      const agentToPhase: Record<AgentName, Phase> = {
+        refiner: 'refine', builder: 'build', verifier: 'verify', gatekeeper: 'gate',
+      };
+
+      this.phaseManager?.transition(agentToPhase[agent]);
+      this.emitEvent({ type: 'phase_changed', phase: agentToPhase[agent], runId });
+
+      // Find VCR and build info
+      const vcrs = await this.runManager.listVCRs(runId);
+      const vcr = vcrs.find(v => v.crp_id === resolvedCrp.crp_id);
+      let vcrInfo: Parameters<AgentLifecycleManager['restartAgentWithVCR']>[3];
+
+      if (vcr) {
+        const selectedOption = resolvedCrp.options?.find(o => o.id === vcr.decision);
+        vcrInfo = {
+          crpQuestion: resolvedCrp.question,
+          crpContext: resolvedCrp.context,
+          decision: vcr.decision,
+          decisionLabel: selectedOption ? `${selectedOption.id}. ${selectedOption.label}` : vcr.decision,
+          rationale: vcr.rationale,
+          additionalNotes: vcr.additional_notes,
+        };
       }
+
+      await this.agentLifecycle?.restartAgentWithVCR(agent, runId, promptFile, vcrInfo);
+      this.emitEvent({ type: 'agent_started', agent, runId });
     }
 
     this.emitEvent({ type: 'vcr_received', vcrId: pendingCrp || '', runId });
@@ -192,37 +231,14 @@ export class Orchestrator extends EventEmitter {
    * Stop the current run
    */
   async stopRun(): Promise<void> {
-    if (this.outputStreamer) {
-      this.outputStreamer.stopStreaming();
-      this.outputStreamer = null;
-    }
-
-    if (this.agentMonitor) {
-      this.agentMonitor.stop();
-      this.agentMonitor = null;
-    }
-
-    if (this.fileWatcher) {
-      await this.fileWatcher.stop();
-      this.fileWatcher = null;
-    }
-
-    if (this.tmuxManager) {
-      this.tmuxManager.killSession();
-      this.tmuxManager = null;
-    }
-
-    this.isRunning = false;
-    this.currentRunId = null;
-    this.stateManager = null;
-    this.eventLogger = null;
+    this.cleanup(true);
   }
 
   /**
    * Get current run state
    */
-  getCurrentState(): RunState | null {
-    return this.stateManager?.loadState() || null;
+  async getCurrentState(): Promise<RunState | null> {
+    return (await this.stateManager?.loadState()) || null;
   }
 
   /**
@@ -240,412 +256,6 @@ export class Orchestrator extends EventEmitter {
   }
 
   /**
-   * Generate prompt files for all agents
-   */
-  private async generatePrompts(runId: string): Promise<void> {
-    const runDir = this.runManager.getRunDir(runId);
-    const promptsDir = join(runDir, 'prompts');
-
-    const context = {
-      project_root: this.projectRoot,
-      run_id: runId,
-      config: this.config,
-      iteration: 1,
-    };
-
-    this.promptGenerator.generateAllPrompts(promptsDir, context);
-  }
-
-  /**
-   * Set up file watcher event listeners
-   */
-  private setupFileWatcherListeners(): void {
-    if (!this.fileWatcher) return;
-
-    this.fileWatcher.on('event', async (event: WatchEvent) => {
-      try {
-        await this.handleWatchEvent(event);
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : 'Unknown error';
-        this.emitEvent({ type: 'error', error: errMsg, runId: this.currentRunId || '' });
-      }
-    });
-  }
-
-  /**
-   * Set up agent monitor event listeners
-   */
-  private setupAgentMonitorListeners(): void {
-    if (!this.agentMonitor) return;
-
-    this.agentMonitor.on('monitor_event', (event: AgentMonitorEvent) => {
-      const runId = this.currentRunId || '';
-
-      switch (event.type) {
-        case 'timeout':
-          this.emitEvent({ type: 'agent_timeout', agent: event.agent, runId });
-          // Mark agent as failed
-          if (this.stateManager) {
-            this.stateManager.updateAgentStatus(event.agent, 'failed');
-          }
-          break;
-
-        case 'stale':
-          this.emitEvent({
-            type: 'agent_stale',
-            agent: event.agent,
-            inactiveMs: event.inactiveMs,
-            runId,
-          });
-          break;
-
-        case 'process_ended':
-          // Process ended without done.flag - might be an error
-          // The file watcher will handle normal completion
-          break;
-      }
-    });
-  }
-
-  /**
-   * Set up output streamer event listeners
-   */
-  private setupOutputStreamerListeners(): void {
-    if (!this.outputStreamer) return;
-
-    this.outputStreamer.on('output', (event: AgentOutputEvent) => {
-      if (event.isNew && this.currentRunId) {
-        this.emitEvent({
-          type: 'agent_output',
-          agent: event.agent,
-          content: event.content,
-          runId: this.currentRunId,
-        });
-      }
-    });
-
-    this.outputStreamer.on('error', (event: { agent: AgentName; error: string }) => {
-      this.emitEvent({
-        type: 'error',
-        error: `Output capture error for ${event.agent}: ${event.error}`,
-        runId: this.currentRunId || '',
-      });
-    });
-  }
-
-  /**
-   * Handle file watcher events
-   */
-  private async handleWatchEvent(event: WatchEvent): Promise<void> {
-    const runId = this.currentRunId;
-    if (!runId || !this.stateManager) return;
-
-    switch (event.type) {
-      case 'refiner_done':
-        this.agentMonitor?.unwatchAgent('refiner');
-        this.stateManager.updateAgentStatus('refiner', 'completed');
-        this.emitEvent({ type: 'agent_completed', agent: 'refiner', runId });
-        await this.transitionToPhase('build');
-        break;
-
-      case 'builder_done':
-        this.agentMonitor?.unwatchAgent('builder');
-        this.stateManager.updateAgentStatus('builder', 'completed');
-        this.emitEvent({ type: 'agent_completed', agent: 'builder', runId });
-        await this.transitionToPhase('verify');
-        break;
-
-      case 'verifier_done':
-        this.agentMonitor?.unwatchAgent('verifier');
-        this.stateManager.updateAgentStatus('verifier', 'completed');
-        this.emitEvent({ type: 'agent_completed', agent: 'verifier', runId });
-        await this.transitionToPhase('gate');
-        break;
-
-      case 'gatekeeper_done':
-        this.agentMonitor?.unwatchAgent('gatekeeper');
-        this.stateManager.updateAgentStatus('gatekeeper', 'completed');
-        this.emitEvent({ type: 'agent_completed', agent: 'gatekeeper', runId });
-        await this.handleGatekeeperVerdict(event.verdict);
-        break;
-
-      case 'crp_created':
-        // Stop monitoring the agent that created the CRP
-        this.agentMonitor?.unwatchAgent(event.crp.created_by);
-        // Update agent status to waiting_human
-        this.stateManager.updateAgentStatus(event.crp.created_by, 'pending');
-        // Set pending CRP (this also sets phase to waiting_human)
-        this.stateManager.setPendingCRP(event.crp.crp_id);
-        // Emit events
-        this.emitEvent({ type: 'crp_created', crpId: event.crp.crp_id, runId });
-        this.emitEvent({ type: 'phase_changed', phase: 'waiting_human', runId });
-        // Terminal bell notification for human attention
-        if (this.config.global.log_level !== 'error') {
-          process.stdout.write('\x07'); // Terminal bell
-        }
-        break;
-
-      case 'vcr_created':
-        // VCR creation is handled by API, which calls resumeRun
-        break;
-
-      case 'mrp_created':
-        this.emitEvent({ type: 'mrp_ready', runId });
-        break;
-
-      case 'error_flag':
-        // Handle agent error flag
-        const agentName = event.agent as AgentName;
-        this.agentMonitor?.unwatchAgent(agentName);
-        this.stateManager.updateAgentStatus(agentName, 'failed', event.errorFlag.message);
-        this.stateManager.addError(`${agentName}: ${event.errorFlag.message}`);
-        this.emitEvent({
-          type: 'agent_failed',
-          agent: agentName,
-          errorFlag: event.errorFlag,
-          runId,
-        });
-
-        // Check if we should auto-retry
-        if (
-          event.errorFlag.recoverable &&
-          this.config.global.auto_retry.enabled &&
-          this.config.global.auto_retry.recoverable_errors.includes(event.errorFlag.error_type)
-        ) {
-          // Auto-retry logic would go here
-          // For now, just emit the error and let the human decide
-        }
-
-        // Terminal bell notification
-        if (this.config.global.notifications.terminal_bell) {
-          process.stdout.write('\x07');
-        }
-        break;
-
-      case 'error':
-        this.emitEvent({ type: 'error', error: event.error, runId });
-        break;
-    }
-  }
-
-  /**
-   * Transition to a new phase
-   */
-  private async transitionToPhase(phase: Phase): Promise<void> {
-    if (!this.stateManager || !this.currentRunId) return;
-
-    this.stateManager.updatePhase(phase);
-    this.emitEvent({ type: 'phase_changed', phase, runId: this.currentRunId });
-
-    switch (phase) {
-      case 'build':
-        await this.startBuilder();
-        break;
-      case 'verify':
-        await this.startVerifier();
-        break;
-      case 'gate':
-        await this.startGatekeeper();
-        break;
-    }
-  }
-
-  /**
-   * Handle Gatekeeper verdict
-   */
-  private async handleGatekeeperVerdict(verdict: GatekeeperVerdict): Promise<void> {
-    if (!this.stateManager || !this.currentRunId) return;
-
-    switch (verdict.verdict) {
-      case 'PASS':
-        // Generate MRP
-        const runDir = this.runManager.getRunDir(this.currentRunId);
-        const mrpGenerator = new MRPGenerator(runDir, this.projectRoot);
-        mrpGenerator.generate();
-
-        this.stateManager.updatePhase('ready_for_merge');
-        this.emitEvent({ type: 'mrp_ready', runId: this.currentRunId });
-        this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: 'PASS' });
-
-        // Terminal bell notification
-        process.stdout.write('\x07');
-        break;
-
-      case 'FAIL':
-        if (this.stateManager.isMaxIterationsExceeded()) {
-          this.stateManager.updatePhase('failed');
-          this.eventLogger?.logIterationExhausted(
-            this.stateManager.loadState()?.iteration || 0,
-            this.stateManager.loadState()?.max_iterations || 0
-          );
-          this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: 'FAIL' });
-          // Terminal bell notification
-          process.stdout.write('\x07');
-        } else {
-          // Retry from Builder
-          this.stateManager.incrementIteration();
-          const state = this.stateManager.loadState();
-          this.emitEvent({
-            type: 'iteration_started',
-            iteration: state?.iteration || 1,
-            runId: this.currentRunId,
-          });
-
-          // Regenerate prompts with updated context
-          await this.regeneratePromptsForRetry();
-          await this.transitionToPhase('build');
-        }
-        break;
-
-      case 'NEEDS_HUMAN':
-        // CRP should have been created, phase transition handled by crp_created event
-        break;
-    }
-  }
-
-  /**
-   * Regenerate prompts for retry iteration
-   */
-  private async regeneratePromptsForRetry(): Promise<void> {
-    if (!this.currentRunId || !this.stateManager) return;
-
-    const runDir = this.runManager.getRunDir(this.currentRunId);
-    const promptsDir = join(runDir, 'prompts');
-    const state = this.stateManager.loadState();
-
-    const context = {
-      project_root: this.projectRoot,
-      run_id: this.currentRunId,
-      config: this.config,
-      iteration: state?.iteration || 1,
-      has_review: true,
-    };
-
-    this.promptGenerator.generateAllPrompts(promptsDir, context);
-  }
-
-  /**
-   * Start Refiner agent
-   */
-  private async startRefiner(): Promise<void> {
-    if (!this.tmuxManager || !this.stateManager || !this.currentRunId) return;
-
-    this.stateManager.updateAgentStatus('refiner', 'running');
-    this.emitEvent({ type: 'agent_started', agent: 'refiner', runId: this.currentRunId });
-
-    // Start monitoring this agent
-    this.agentMonitor?.watchAgent('refiner');
-
-    const runDir = this.runManager.getRunDir(this.currentRunId);
-    const promptFile = join(runDir, 'prompts', 'refiner.md');
-
-    this.tmuxManager.startAgent('refiner', this.config.refiner.model, promptFile);
-  }
-
-  /**
-   * Start Builder agent
-   */
-  private async startBuilder(): Promise<void> {
-    if (!this.tmuxManager || !this.stateManager || !this.currentRunId) return;
-
-    this.stateManager.updateAgentStatus('builder', 'running');
-    this.emitEvent({ type: 'agent_started', agent: 'builder', runId: this.currentRunId });
-
-    // Start monitoring this agent
-    this.agentMonitor?.watchAgent('builder');
-
-    const runDir = this.runManager.getRunDir(this.currentRunId);
-    const promptFile = join(runDir, 'prompts', 'builder.md');
-
-    this.tmuxManager.startAgent('builder', this.config.builder.model, promptFile);
-  }
-
-  /**
-   * Start Verifier agent
-   */
-  private async startVerifier(): Promise<void> {
-    if (!this.tmuxManager || !this.stateManager || !this.currentRunId) return;
-
-    this.stateManager.updateAgentStatus('verifier', 'running');
-    this.emitEvent({ type: 'agent_started', agent: 'verifier', runId: this.currentRunId });
-
-    // Start monitoring this agent
-    this.agentMonitor?.watchAgent('verifier');
-
-    const runDir = this.runManager.getRunDir(this.currentRunId);
-    const promptFile = join(runDir, 'prompts', 'verifier.md');
-
-    this.tmuxManager.startAgent('verifier', this.config.verifier.model, promptFile);
-  }
-
-  /**
-   * Start Gatekeeper agent
-   */
-  private async startGatekeeper(): Promise<void> {
-    if (!this.tmuxManager || !this.stateManager || !this.currentRunId) return;
-
-    this.stateManager.updateAgentStatus('gatekeeper', 'running');
-    this.emitEvent({ type: 'agent_started', agent: 'gatekeeper', runId: this.currentRunId });
-
-    // Start monitoring this agent
-    this.agentMonitor?.watchAgent('gatekeeper');
-
-    const runDir = this.runManager.getRunDir(this.currentRunId);
-    const promptFile = join(runDir, 'prompts', 'gatekeeper.md');
-
-    this.tmuxManager.startAgent('gatekeeper', this.config.gatekeeper.model, promptFile);
-  }
-
-  /**
-   * Emit typed event and log to events.log
-   */
-  private emitEvent(event: OrchestratorEvent): void {
-    this.emit('orchestrator_event', event);
-
-    // Log to events.log
-    if (this.eventLogger) {
-      switch (event.type) {
-        case 'run_started':
-          this.eventLogger.logRunStarted(event.runId);
-          break;
-        case 'phase_changed':
-          this.eventLogger.log('INFO', 'phase.changed', { phase: event.phase });
-          break;
-        case 'agent_started':
-          this.eventLogger.logAgentStarted(event.agent);
-          break;
-        case 'agent_completed':
-          this.eventLogger.logAgentCompleted(event.agent);
-          break;
-        case 'agent_timeout':
-          this.eventLogger.logAgentTimeout(event.agent, 0);
-          break;
-        case 'agent_failed':
-          this.eventLogger.logAgentFailed(event.agent, event.errorFlag.error_type, event.errorFlag.message);
-          break;
-        case 'crp_created':
-          this.eventLogger.logCRPCreated(event.crpId, 'refiner'); // Agent info not available in event
-          break;
-        case 'vcr_received':
-          this.eventLogger.logVCRCreated(event.vcrId, '');
-          break;
-        case 'mrp_ready':
-          this.eventLogger.logMRPCreated(event.runId);
-          break;
-        case 'run_completed':
-          this.eventLogger.logRunCompleted(event.runId, event.verdict);
-          break;
-        case 'iteration_started':
-          this.eventLogger.logIterationStarted(event.iteration, 3);
-          break;
-        case 'error':
-          this.eventLogger.logError(event.error);
-          break;
-      }
-    }
-  }
-
-  /**
    * Get tmux session name
    */
   getTmuxSessionName(): string | null {
@@ -653,30 +263,390 @@ export class Orchestrator extends EventEmitter {
   }
 
   /**
-   * Get current agent outputs
+   * Get agent outputs
    */
   getAgentOutputs(): Record<AgentName, string> | null {
-    return this.outputStreamer?.getAllOutputs() || null;
+    return this.agentLifecycle?.getAllOutputs() || null;
   }
 
-  /**
-   * Get output for a specific agent
-   */
   getAgentOutput(agent: AgentName): string | null {
-    return this.outputStreamer?.getAgentOutput(agent) || null;
+    return this.agentLifecycle?.getAgentOutput(agent) || null;
   }
 
-  /**
-   * Force capture output for a specific agent
-   */
   forceCapture(agent: AgentName): string | null {
-    return this.outputStreamer?.forceCapture(agent) || null;
+    return this.agentLifecycle?.forceCapture(agent) || null;
+  }
+
+  getAgentActivity(agent: AgentName): { lastActivity: Date; isStale: boolean } | null {
+    return this.agentLifecycle?.getAgentActivity(agent) || null;
+  }
+
+  getAgentUsage(agent: AgentName): UsageInfo | null {
+    return this.agentLifecycle?.getAgentUsage(agent) || null;
+  }
+
+  getAllAgentUsage(): Record<AgentName, UsageInfo> | null {
+    return this.agentLifecycle?.getAllAgentUsage() || null;
+  }
+
+  getTotalUsage(): TotalUsage | null {
+    return this.agentLifecycle?.getTotalUsage() || null;
+  }
+
+  getSelectedModels(): Record<AgentName, AgentModel> | null {
+    return this.selectedModels ? { ...this.selectedModels } : null;
+  }
+
+  async getModelSelectionResult(runId: string): Promise<ModelSelectionResult | null> {
+    return await this.runManager.readModelSelection(runId);
+  }
+
+  getRetryManager(): RetryManager {
+    return this.retryManager;
+  }
+
+  getRecoveryManager(): RecoveryManager {
+    return this.recoveryManager;
   }
 
   /**
-   * Get agent activity info
+   * Initialize all extracted managers
    */
-  getAgentActivity(agent: AgentName): { lastActivity: Date; isStale: boolean } | null {
-    return this.agentMonitor?.getActivityInfo(agent) || null;
+  private initializeManagers(runDir: string, runId: string): void {
+    if (!this.tmuxManager || !this.stateManager || !this.selectedModels) return;
+
+    // Agent monitor
+    const agentMonitor = new AgentMonitor(this.tmuxManager, this.timeoutConfig);
+    agentMonitor.start();
+
+    // Agent lifecycle manager
+    this.agentLifecycle = new AgentLifecycleManager(
+      this.tmuxManager,
+      this.stateManager,
+      agentMonitor,
+      {
+        projectRoot: this.projectRoot,
+        timeoutConfig: this.timeoutConfig,
+        selectedModels: this.selectedModels,
+      }
+    );
+    this.agentLifecycle.setRunId(runId);
+
+    // Output streamer
+    const outputStreamer = new OutputStreamer(this.tmuxManager);
+    this.agentLifecycle.setOutputStreamer(outputStreamer);
+    this.agentLifecycle.startOutputStreaming(runId);
+
+    // Usage tracker
+    const usageTracker = new UsageTracker(this.projectRoot);
+    this.agentLifecycle.setUsageTracker(usageTracker);
+    this.agentLifecycle.startUsageTracking();
+
+    // Phase transition manager
+    this.phaseManager = new PhaseTransitionManager(this.stateManager);
+
+    // File watcher
+    this.fileWatcher = new FileWatcher(runDir);
+    this.fileWatcher.start();
+
+    // Event coordinator
+    this.eventCoordinator = new EventCoordinator();
+    this.eventCoordinator.setFileWatcher(this.fileWatcher);
+    this.eventCoordinator.setAgentMonitor(agentMonitor);
+    this.eventCoordinator.setOutputStreamer(outputStreamer);
+    this.eventCoordinator.setUsageTracker(usageTracker);
+    this.eventCoordinator.setRetryManager(this.retryManager);
+    this.eventCoordinator.setEventLogger(this.eventLogger!);
+    this.eventCoordinator.setRunId(runId);
+    this.eventCoordinator.setHandlers({
+      onFileWatchEvent: (event) => this.handleWatchEvent(event),
+      onAgentMonitorEvent: (event) => {
+        if (event.type === 'timeout' && this.stateManager) {
+          void this.stateManager.updateAgentStatus(event.agent, 'failed');
+        }
+      },
+      onUsageUpdateEvent: (event) => {
+        if (this.stateManager) {
+          void this.stateManager.updateAgentUsage(event.agent, event.usage);
+        }
+      },
+    });
+    this.eventCoordinator.setupListeners();
+
+    // Forward coordinated events to orchestrator events
+    this.eventCoordinator.on('coordinated_event', (event: CoordinatedEvent) => {
+      this.emit('orchestrator_event', event);
+    });
+  }
+
+  /**
+   * Generate prompt files for all agents
+   */
+  private async generatePrompts(runId: string): Promise<void> {
+    const runDir = this.runManager.getRunDir(runId);
+    const promptsDir = join(runDir, 'prompts');
+    await this.promptGenerator.generateAllPrompts(promptsDir, {
+      project_root: this.projectRoot,
+      run_id: runId,
+      config: this.config,
+      iteration: 1,
+    });
+  }
+
+  /**
+   * Start an agent
+   */
+  private async startAgent(agent: AgentName): Promise<void> {
+    if (!this.currentRunId || !this.agentLifecycle) return;
+    const runDir = this.runManager.getRunDir(this.currentRunId);
+    await this.agentLifecycle.startAgent(agent, runDir);
+    this.emitEvent({ type: 'agent_started', agent, runId: this.currentRunId });
+  }
+
+  /**
+   * Handle file watcher events
+   */
+  private async handleWatchEvent(event: WatchEvent): Promise<void> {
+    const runId = this.currentRunId;
+    if (!runId || !this.stateManager || !this.agentLifecycle || !this.phaseManager) return;
+
+    switch (event.type) {
+      case 'refiner_done':
+        await this.handleAgentDone('refiner', 'build');
+        break;
+      case 'builder_done':
+        await this.handleAgentDone('builder', 'verify');
+        break;
+      case 'verifier_done':
+        await this.handleAgentDone('verifier', 'gate');
+        break;
+      case 'gatekeeper_done':
+        await this.handleGatekeeperDone(event.verdict);
+        break;
+      case 'crp_created':
+        await this.handleCRPCreated(event.crp);
+        break;
+      case 'error_flag':
+        await this.handleErrorFlag(event.agent as AgentName, event.errorFlag);
+        break;
+      case 'error':
+        this.emitEvent({ type: 'error', error: event.error, runId });
+        break;
+    }
+  }
+
+  /**
+   * Handle agent completion and transition to next phase
+   */
+  private async handleAgentDone(agent: AgentName, nextPhase: Phase): Promise<void> {
+    if (!this.currentRunId || !this.stateManager || !this.agentLifecycle || !this.phaseManager) return;
+
+    await this.agentLifecycle.completeAgent(agent);
+    this.emitEvent({ type: 'agent_completed', agent, runId: this.currentRunId });
+
+    // Wait for potential CRP
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Check for unresolved CRP
+    const state = await this.stateManager.loadState();
+    if (state?.phase === 'waiting_human' || state?.pending_crp || await this.hasUnresolvedCRPByAgent(this.currentRunId, agent)) {
+      await this.handleUnresolvedCRP(agent);
+      return;
+    }
+
+    // Clear and transition
+    await this.agentLifecycle.clearAgent(agent);
+    await this.phaseManager.transition(nextPhase);
+    this.emitEvent({ type: 'phase_changed', phase: nextPhase, runId: this.currentRunId });
+    await this.startAgent(this.phaseManager.getPhaseAgent(nextPhase)!);
+  }
+
+  /**
+   * Handle gatekeeper completion
+   */
+  private async handleGatekeeperDone(verdict: GatekeeperVerdict): Promise<void> {
+    if (!this.currentRunId || !this.stateManager || !this.agentLifecycle || !this.phaseManager) return;
+
+    await this.agentLifecycle.completeAgent('gatekeeper');
+    this.emitEvent({ type: 'agent_completed', agent: 'gatekeeper', runId: this.currentRunId });
+    await this.agentLifecycle.clearAgent('gatekeeper');
+
+    const { nextPhase, shouldRetry } = await this.phaseManager.handleVerdict(verdict);
+
+    if (verdict.verdict === 'PASS') {
+      // Generate MRP
+      const runDir = this.runManager.getRunDir(this.currentRunId);
+      new MRPGenerator(runDir, this.projectRoot).generate();
+      await this.phaseManager.transition('ready_for_merge');
+      this.emitEvent({ type: 'mrp_ready', runId: this.currentRunId });
+      this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: 'PASS' });
+      process.stdout.write('\x07');
+      await this.cleanup(false);
+    } else if (verdict.verdict === 'FAIL') {
+      if (nextPhase === 'failed') {
+        await this.phaseManager.transition('failed');
+        this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: 'FAIL' });
+        process.stdout.write('\x07');
+        await this.cleanup(false);
+      } else if (shouldRetry) {
+        const { iteration } = await this.phaseManager.incrementIteration();
+        this.emitEvent({ type: 'iteration_started', iteration, runId: this.currentRunId });
+        await this.regeneratePromptsForRetry();
+        await this.phaseManager.transition('build');
+        this.emitEvent({ type: 'phase_changed', phase: 'build', runId: this.currentRunId });
+        await this.startAgent('builder');
+      }
+    }
+  }
+
+  /**
+   * Handle CRP creation
+   */
+  private async handleCRPCreated(crp: { crp_id: string; created_by: AgentName }): Promise<void> {
+    if (!this.currentRunId || !this.stateManager || !this.agentLifecycle) return;
+
+    this.agentLifecycle.stopAgent(crp.created_by);
+    await this.stateManager.updateAgentStatus(crp.created_by, 'pending');
+    await this.stateManager.setPendingCRP(crp.crp_id);
+    this.emitEvent({ type: 'crp_created', crpId: crp.crp_id, runId: this.currentRunId });
+    this.emitEvent({ type: 'phase_changed', phase: 'waiting_human', runId: this.currentRunId });
+    if (this.config.global.log_level !== 'error') {
+      process.stdout.write('\x07');
+    }
+  }
+
+  /**
+   * Handle unresolved CRP detection
+   */
+  private async handleUnresolvedCRP(agent: AgentName): Promise<void> {
+    if (!this.currentRunId || !this.stateManager) return;
+
+    const crps = (await this.runManager.listCRPs(this.currentRunId)).filter(c => c.created_by === agent);
+    const vcrs = await this.runManager.listVCRs(this.currentRunId);
+    const unresolvedCRP = crps.find(crp => !vcrs.some(vcr => vcr.crp_id === crp.crp_id));
+
+    const state = await this.stateManager.loadState();
+    if (unresolvedCRP && !state?.pending_crp) {
+      await this.stateManager.setPendingCRP(unresolvedCRP.crp_id);
+      this.emitEvent({ type: 'crp_created', crpId: unresolvedCRP.crp_id, runId: this.currentRunId });
+      this.emitEvent({ type: 'phase_changed', phase: 'waiting_human', runId: this.currentRunId });
+    }
+  }
+
+  /**
+   * Handle error flag
+   */
+  private async handleErrorFlag(agent: AgentName, errorFlag: ErrorFlag): Promise<void> {
+    if (!this.currentRunId || !this.stateManager || !this.agentLifecycle) return;
+
+    await this.agentLifecycle.failAgent(agent, errorFlag.message);
+    await this.stateManager.addError(`${agent}: ${errorFlag.message}`);
+    this.emitEvent({ type: 'agent_failed', agent, errorFlag, runId: this.currentRunId });
+
+    if (this.shouldAutoRetry(errorFlag)) {
+      await this.executeAutoRetry(agent, errorFlag);
+    } else if (this.config.global.notifications.terminal_bell) {
+      process.stdout.write('\x07');
+    }
+  }
+
+  /**
+   * Check if auto-retry should be attempted
+   */
+  private shouldAutoRetry(errorFlag: ErrorFlag): boolean {
+    return (
+      this.config.global.auto_retry.enabled &&
+      errorFlag.recoverable &&
+      this.config.global.auto_retry.recoverable_errors.includes(errorFlag.error_type) &&
+      this.recoveryManager.canRecover(errorFlag)
+    );
+  }
+
+  /**
+   * Execute auto-retry
+   */
+  private async executeAutoRetry(agent: AgentName, errorFlag: ErrorFlag): Promise<void> {
+    if (!this.currentRunId || !this.tmuxManager || !this.stateManager || !this.selectedModels) return;
+
+    const runDir = this.runManager.getRunDir(this.currentRunId);
+    const recoveryContext: RecoveryContext = {
+      agent,
+      runId: this.currentRunId,
+      errorFlag,
+      tmuxManager: this.tmuxManager,
+      stateManager: this.stateManager,
+      promptFile: join(runDir, 'prompts', `${agent}.md`),
+      model: this.selectedModels[agent],
+    };
+
+    try {
+      await this.retryManager.executeWithRetry(
+        async () => {
+          const result = await this.recoveryManager.recover(recoveryContext);
+          if (!result.success) throw new Error(result.message);
+          return result;
+        },
+        { agent, errorType: errorFlag.error_type, runId: this.currentRunId }
+      );
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emitEvent({ type: 'error', error: `Auto-retry failed for ${agent}: ${errMsg}`, runId: this.currentRunId });
+    }
+  }
+
+  /**
+   * Check for unresolved CRPs by agent
+   */
+  private async hasUnresolvedCRPByAgent(runId: string, agent: AgentName): Promise<boolean> {
+    const crps = (await this.runManager.listCRPs(runId)).filter(c => c.created_by === agent);
+    const vcrs = await this.runManager.listVCRs(runId);
+    return crps.some(crp => !vcrs.some(vcr => vcr.crp_id === crp.crp_id));
+  }
+
+  /**
+   * Regenerate prompts for retry
+   */
+  private async regeneratePromptsForRetry(): Promise<void> {
+    if (!this.currentRunId || !this.stateManager) return;
+
+    const runDir = this.runManager.getRunDir(this.currentRunId);
+    const state = await this.stateManager.loadState();
+    await this.promptGenerator.generateAllPrompts(join(runDir, 'prompts'), {
+      project_root: this.projectRoot,
+      run_id: this.currentRunId,
+      config: this.config,
+      iteration: state?.iteration || 1,
+      has_review: true,
+    });
+  }
+
+  /**
+   * Emit event
+   */
+  private emitEvent(event: OrchestratorEvent): void {
+    this.emit('orchestrator_event', event);
+  }
+
+  /**
+   * Clean up resources
+   */
+  private async cleanup(killSession: boolean): Promise<void> {
+    this.agentLifecycle?.cleanup();
+    this.eventCoordinator?.cleanup();
+    if (this.fileWatcher) {
+      await this.fileWatcher.stop();
+      this.fileWatcher = null;
+    }
+    if (killSession && this.tmuxManager) {
+      this.tmuxManager.killSession();
+      this.tmuxManager = null;
+    }
+    this.isRunning = false;
+    this.currentRunId = null;
+    this.stateManager = null;
+    this.eventLogger = null;
+    this.agentLifecycle = null;
+    this.phaseManager = null;
+    this.eventCoordinator = null;
   }
 }

@@ -6,7 +6,14 @@ import type {
   GatekeeperConfig,
   OrchestraConfig,
   AgentTimeoutConfig,
+  ModelSelectionConfig,
 } from '../types/index.js';
+
+export const defaultModelSelectionConfig: ModelSelectionConfig = {
+  enabled: false,  // 기본은 비활성화 (기존 동작 유지)
+  strategy: 'balanced',
+  planner_model: 'haiku',
+};
 
 export const defaultGlobalConfig: GlobalConfig = {
   max_iterations: 3,
@@ -29,6 +36,7 @@ export const defaultGlobalConfig: GlobalConfig = {
     max_attempts: 2,
     recoverable_errors: ['crash', 'timeout', 'validation'],
   },
+  model_selection: defaultModelSelectionConfig,
 };
 
 export const defaultRefinerConfig: RefinerConfig = {

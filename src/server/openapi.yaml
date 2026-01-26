@@ -1,0 +1,1114 @@
+openapi: 3.0.3
+info:
+  title: Orchestral API
+  version: 0.1.0
+  description: |
+    Agentic Software Engineering API
+
+    Orchestral is an MVP validation project for the "Agentic Software Engineering" paradigm.
+    It orchestrates four AI agents (Refiner, Builder, Verifier, Gatekeeper) to automatically
+    generate and review code based on human intent.
+
+    ## Authentication
+    API authentication is optional and can be enabled by setting environment variables:
+    - `ORCHESTRAL_AUTH_ENABLED=true`
+    - `ORCHESTRAL_API_KEY=your-secret-key`
+
+    When enabled, include the API key in the `x-api-key` header.
+
+  contact:
+    name: Orchestral
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: Project
+    description: Project configuration and information
+  - name: Runs
+    description: Run management and lifecycle
+  - name: CRP
+    description: Clarification Request Packets - Human decision points
+  - name: MRP
+    description: Merge Review Packets - Final review and approval
+  - name: Usage
+    description: Token usage and cost tracking
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/project:
+    get:
+      tags: [Project]
+      summary: Get project information
+      description: Returns the project root path and current configuration
+      responses:
+        '200':
+          description: Project info retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectInfoResponse'
+
+  /api/config:
+    get:
+      tags: [Project]
+      summary: Get configuration
+      description: Returns the current Orchestral configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+
+    put:
+      tags: [Project]
+      summary: Update configuration
+      description: Updates the Orchestral configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestraConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/runs:
+    get:
+      tags: [Runs]
+      summary: List all runs
+      description: Returns a list of all runs in the project
+      responses:
+        '200':
+          description: List of runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunListResponse'
+
+    post:
+      tags: [Runs]
+      summary: Start a new run
+      description: Creates and starts a new orchestration run with the provided briefing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [briefing]
+              properties:
+                briefing:
+                  type: string
+                  description: The task description/briefing for the agents
+                  minLength: 1
+                  maxLength: 100000
+                  example: "Implement a function that calculates the factorial of a number"
+      responses:
+        '200':
+          description: Run started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      runId:
+                        type: string
+                        example: "run-20260126120000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Runs]
+      summary: Clean old runs
+      description: Deletes runs older than the specified duration
+      parameters:
+        - name: olderThan
+          in: query
+          required: true
+          description: Duration string (e.g., "7d", "24h", "30m")
+          schema:
+            type: string
+            example: "7d"
+      responses:
+        '200':
+          description: Runs cleaned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: array
+                        items:
+                          type: string
+                        example: ["run-20260119120000", "run-20260118150000"]
+                      count:
+                        type: integer
+                        example: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/runs/active:
+    get:
+      tags: [Runs]
+      summary: Get active run
+      description: Returns the currently active run's state
+      responses:
+        '200':
+          description: Active run state or null if no active run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStateResponse'
+
+  /api/runs/{runId}:
+    get:
+      tags: [Runs]
+      summary: Get run details
+      description: Returns the state of a specific run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Run state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Runs]
+      summary: Delete a run
+      description: Deletes a specific run and all its data
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Run deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+                        example: true
+                      runId:
+                        type: string
+                        example: "run-20260126120000"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/runs/{runId}/stop:
+    post:
+      tags: [Runs]
+      summary: Stop a run
+      description: Stops the currently active run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Run stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Run stopped successfully"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/runs/{runId}/stop-all-agents:
+    post:
+      tags: [Runs]
+      summary: Stop all agents
+      description: Forcefully stops all running agents in a run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: All agents stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      processes_stopped:
+                        type: integer
+                        example: 2
+                      message:
+                        type: string
+                        example: "Stopped 2 agent processes"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/runs/{runId}/briefing:
+    get:
+      tags: [Runs]
+      summary: Get run briefing
+      description: Returns the raw and refined briefing for a run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Briefing data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      raw:
+                        type: string
+                        nullable: true
+                        description: Original briefing
+                      refined:
+                        type: string
+                        nullable: true
+                        description: Refined briefing from Refiner agent
+
+  /api/runs/{runId}/models:
+    get:
+      tags: [Runs]
+      summary: Get model selection
+      description: Returns the AI model selection for each agent in this run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Model selection data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelSelectionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/runs/{runId}/verifier/results:
+    get:
+      tags: [Runs]
+      summary: Get verifier results
+      description: Returns the test results from the Verifier agent
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Verifier results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    nullable: true
+                    description: Test results from verifier
+
+  /api/runs/{runId}/gatekeeper/verdict:
+    get:
+      tags: [Runs]
+      summary: Get gatekeeper verdict
+      description: Returns the code review verdict from the Gatekeeper agent
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Gatekeeper verdict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Verdict'
+
+  /api/runs/{runId}/usage:
+    get:
+      tags: [Usage]
+      summary: Get run usage
+      description: Returns token usage statistics for a specific run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/usage/live:
+    get:
+      tags: [Usage]
+      summary: Get live usage
+      description: Returns real-time token usage from the orchestrator
+      responses:
+        '200':
+          description: Live usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+
+  /api/runs/{runId}/crps:
+    get:
+      tags: [CRP]
+      summary: List CRPs for a run
+      description: Returns all Clarification Request Packets for a run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: List of CRPs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CRP'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/runs/{runId}/crp/{crpId}:
+    get:
+      tags: [CRP]
+      summary: Get specific CRP
+      description: Returns a specific Clarification Request Packet
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/CrpId'
+      responses:
+        '200':
+          description: CRP details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CRP'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/runs/{runId}/crp/{crpId}/respond:
+    post:
+      tags: [CRP]
+      summary: Respond to CRP
+      description: Submit a human decision (VCR) in response to a CRP
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/CrpId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  description: The selected option ID
+                  example: "option_1"
+                rationale:
+                  type: string
+                  description: Reason for the decision
+                additional_notes:
+                  type: string
+                  description: Additional context or instructions
+                applies_to_future:
+                  type: boolean
+                  description: Whether this decision should apply to future similar cases
+                  default: false
+      responses:
+        '200':
+          description: Response submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      vcr_id:
+                        type: string
+                        example: "vcr-001"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/runs/{runId}/retry/{agent}:
+    post:
+      tags: [Runs]
+      summary: Retry a failed agent
+      description: Manually trigger a retry for a failed agent
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - name: agent
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [refiner, builder, verifier, gatekeeper]
+      responses:
+        '200':
+          description: Retry initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/runs/{runId}/extend-timeout/{agent}:
+    post:
+      tags: [Runs]
+      summary: Extend agent timeout
+      description: Extend the timeout for a running agent
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - name: agent
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [refiner, builder, verifier, gatekeeper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [additionalMs]
+              properties:
+                additionalMs:
+                  type: integer
+                  minimum: 1
+                  maximum: 1800000
+                  description: Additional milliseconds to add to timeout
+                  example: 300000
+      responses:
+        '200':
+          description: Timeout extended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                      extendedBy:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/mrp/{runId}:
+    get:
+      tags: [MRP]
+      summary: Get MRP
+      description: Returns the Merge Review Packet for a completed run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: MRP data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: string
+                        nullable: true
+                        description: Summary of all changes
+                      evidence:
+                        $ref: '#/components/schemas/MRPEvidence'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/mrp/{runId}/approve:
+    post:
+      tags: [MRP]
+      summary: Approve MRP
+      description: Approve the changes and mark the run as complete
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: MRP approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      approved:
+                        type: boolean
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/mrp/{runId}/request-changes:
+    post:
+      tags: [MRP]
+      summary: Request changes
+      description: Request changes and send feedback back to the builder
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback:
+                  type: string
+                  description: Feedback for the builder
+      responses:
+        '200':
+          description: Changes requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      feedbackReceived:
+                        type: boolean
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: |
+        API key authentication. Enable by setting:
+        - ORCHESTRAL_AUTH_ENABLED=true
+        - ORCHESTRAL_API_KEY=your-key
+
+  parameters:
+    RunId:
+      name: runId
+      in: path
+      required: true
+      description: Run identifier (format: run-YYYYMMDDHHMMSS)
+      schema:
+        type: string
+        pattern: '^run-\d{14}$'
+        example: "run-20260126120000"
+
+    CrpId:
+      name: crpId
+      in: path
+      required: true
+      description: CRP identifier (format: crp-NNN)
+      schema:
+        type: string
+        pattern: '^crp-\d{3}$'
+        example: "crp-001"
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Invalid briefing: must not be empty"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Run not found"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "An unexpected error occurred"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+    ProjectInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            projectRoot:
+              type: string
+              example: "/Users/user/my-project"
+            config:
+              $ref: '#/components/schemas/OrchestraConfig'
+
+    ConfigResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/OrchestraConfig'
+
+    OrchestraConfig:
+      type: object
+      properties:
+        global:
+          type: object
+          properties:
+            web_port:
+              type: integer
+              example: 3000
+            log_level:
+              type: string
+              enum: [debug, info, warn, error]
+            tmux_session_prefix:
+              type: string
+              example: "orch"
+            max_iterations:
+              type: integer
+              example: 3
+        agents:
+          type: object
+          properties:
+            refiner:
+              $ref: '#/components/schemas/AgentConfig'
+            builder:
+              $ref: '#/components/schemas/AgentConfig'
+            verifier:
+              $ref: '#/components/schemas/AgentConfig'
+            gatekeeper:
+              $ref: '#/components/schemas/AgentConfig'
+
+    AgentConfig:
+      type: object
+      properties:
+        model:
+          type: string
+          enum: [haiku, sonnet, opus]
+        timeout_minutes:
+          type: integer
+
+    RunListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunListItem'
+
+    RunListItem:
+      type: object
+      properties:
+        run_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        phase:
+          $ref: '#/components/schemas/Phase'
+        has_error:
+          type: boolean
+
+    RunStateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/RunState'
+
+    RunState:
+      type: object
+      properties:
+        run_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        phase:
+          $ref: '#/components/schemas/Phase'
+        iteration:
+          type: integer
+        max_iterations:
+          type: integer
+        agents:
+          type: object
+          properties:
+            refiner:
+              $ref: '#/components/schemas/AgentState'
+            builder:
+              $ref: '#/components/schemas/AgentState'
+            verifier:
+              $ref: '#/components/schemas/AgentState'
+            gatekeeper:
+              $ref: '#/components/schemas/AgentState'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
+        error:
+          type: string
+          nullable: true
+
+    Phase:
+      type: string
+      enum: [refine, build, verify, gate, human_review, complete, failed, stopped]
+
+    AgentState:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, running, completed, failed, timeout]
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        usage:
+          $ref: '#/components/schemas/UsageInfo'
+
+    HistoryEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        event:
+          type: string
+        details:
+          type: object
+
+    UsageInfo:
+      type: object
+      properties:
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_write_tokens:
+          type: integer
+        cost_usd:
+          type: number
+          format: float
+
+    TotalUsage:
+      type: object
+      properties:
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_write_tokens:
+          type: integer
+        total_cost_usd:
+          type: number
+          format: float
+
+    UsageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          nullable: true
+          properties:
+            by_agent:
+              type: object
+              properties:
+                refiner:
+                  $ref: '#/components/schemas/UsageInfo'
+                builder:
+                  $ref: '#/components/schemas/UsageInfo'
+                verifier:
+                  $ref: '#/components/schemas/UsageInfo'
+                gatekeeper:
+                  $ref: '#/components/schemas/UsageInfo'
+            total:
+              $ref: '#/components/schemas/TotalUsage'
+
+    ModelSelectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          nullable: true
+          properties:
+            refiner:
+              type: string
+              enum: [haiku, sonnet, opus]
+            builder:
+              type: string
+              enum: [haiku, sonnet, opus]
+            verifier:
+              type: string
+              enum: [haiku, sonnet, opus]
+            gatekeeper:
+              type: string
+              enum: [haiku, sonnet, opus]
+            analysis:
+              type: object
+              properties:
+                complexity:
+                  type: string
+                  enum: [simple, moderate, complex]
+                estimated_tokens:
+                  type: integer
+                reasoning:
+                  type: string
+
+    CRP:
+      type: object
+      properties:
+        crp_id:
+          type: string
+          example: "crp-001"
+        created_at:
+          type: string
+          format: date-time
+        agent:
+          type: string
+          enum: [refiner, builder, verifier, gatekeeper]
+        question:
+          type: string
+          description: The question requiring human input
+        context:
+          type: string
+          description: Additional context for the question
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              description:
+                type: string
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+
+    VCR:
+      type: object
+      properties:
+        vcr_id:
+          type: string
+        crp_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        decision:
+          type: string
+        rationale:
+          type: string
+        additional_notes:
+          type: string
+        applies_to_future:
+          type: boolean
+
+    Verdict:
+      type: object
+      nullable: true
+      properties:
+        verdict:
+          type: string
+          enum: [PASS, FAIL, NEEDS_HUMAN]
+        summary:
+          type: string
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              severity:
+                type: string
+                enum: [critical, major, minor]
+              description:
+                type: string
+              file:
+                type: string
+              line:
+                type: integer
+
+    MRPEvidence:
+      type: object
+      nullable: true
+      properties:
+        files_changed:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              operation:
+                type: string
+                enum: [created, modified, deleted]
+        test_results:
+          type: object
+          properties:
+            passed:
+              type: integer
+            failed:
+              type: integer
+            skipped:
+              type: integer
+        review_notes:
+          type: array
+          items:
+            type: string

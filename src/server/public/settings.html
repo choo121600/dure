@@ -3,44 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Orchestral - Settings Configuration">
+  <meta name="theme-color" content="#0d1117">
   <title>Orchestral - Settings</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">🎼 Orchestral</div>
-    <div class="nav-links">
-      <a href="/">Dashboard</a>
-      <a href="/settings" class="active">Settings</a>
-      <a href="/history">History</a>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-brand" aria-label="Orchestral">🎼 Orchestral</div>
+    <div class="nav-links" role="menubar">
+      <a href="/" role="menuitem">Dashboard</a>
+      <a href="/settings" class="active" role="menuitem" aria-current="page">Settings</a>
+      <a href="/history" role="menuitem">History</a>
     </div>
-    <a href="/run/new" class="btn btn-primary">New Run</a>
+    <a href="/run/new" class="btn btn-primary" aria-label="Start a new run">New Run</a>
   </nav>
 
-  <main class="container">
-    <section>
-      <h2>Global Settings</h2>
-      <form id="global-form">
+  <main class="container" id="main-content" role="main">
+    <section aria-labelledby="global-settings-heading">
+      <h2 id="global-settings-heading">Global Settings</h2>
+      <form id="global-form" aria-describedby="global-settings-heading">
         <div class="form-group">
-          <label for="max-iterations">Max Iterations</label>
-          <input type="number" id="max-iterations" name="max-iterations" min="1" max="10" value="3">
-          <small>Maximum number of retry attempts before failing</small>
+          <label for="max-iterations" id="max-iterations-label">Max Iterations</label>
+          <input type="number" id="max-iterations" name="max-iterations" min="1" max="10" value="3" aria-describedby="max-iterations-desc">
+          <small id="max-iterations-desc">Maximum number of retry attempts before failing</small>
         </div>
 
         <div class="form-group">
-          <label for="web-port">Web Port</label>
-          <input type="number" id="web-port" name="web-port" min="1024" max="65535" value="3000">
-          <small>Port for the web server (requires restart)</small>
+          <label for="web-port" id="web-port-label">Web Port</label>
+          <input type="number" id="web-port" name="web-port" min="1024" max="65535" value="3000" aria-describedby="web-port-desc">
+          <small id="web-port-desc">Port for the web server (requires restart)</small>
         </div>
 
         <div class="form-group">
-          <label for="log-level">Log Level</label>
-          <select id="log-level" name="log-level">
+          <label for="log-level" id="log-level-label">Log Level</label>
+          <select id="log-level" name="log-level" aria-labelledby="log-level-label">
             <option value="debug">Debug</option>
             <option value="info" selected>Info</option>
             <option value="warn">Warn</option>
             <option value="error">Error</option>
           </select>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="model-selection-heading">
+      <h2 id="model-selection-heading">Model Selection</h2>
+      <form id="model-selection-form" aria-describedby="model-selection-heading">
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="model-selection-enabled" name="model-selection-enabled" aria-describedby="model-selection-desc">
+            <label for="model-selection-enabled">Enable Dynamic Model Selection</label>
+          </div>
+          <small id="model-selection-desc">Automatically select models based on briefing complexity analysis</small>
+        </div>
+
+        <div class="form-group" id="strategy-group">
+          <label for="model-selection-strategy">Strategy</label>
+          <select id="model-selection-strategy" name="model-selection-strategy" aria-describedby="strategy-desc">
+            <option value="cost_optimized">Cost Optimized (Use Haiku when possible)</option>
+            <option value="balanced" selected>Balanced (Default)</option>
+            <option value="quality_first">Quality First (Use Sonnet more often)</option>
+          </select>
+          <small id="strategy-desc">How to balance cost vs quality when selecting models</small>
+        </div>
+
+        <div id="model-selection-info" class="info-box" style="display: none;" role="note">
+          <strong>Note:</strong> When dynamic model selection is enabled, individual agent model settings below will be overridden based on the briefing complexity analysis.
         </div>
       </form>
     </section>
@@ -118,22 +149,37 @@
       </form>
     </section>
 
-    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-      <button id="save-btn" class="btn btn-primary">Save Settings</button>
-      <button id="reset-btn" class="btn btn-secondary">Reset to Defaults</button>
+    <div class="run-actions" style="margin-top: 1.5rem;" role="group" aria-label="Settings actions">
+      <button id="save-btn" class="btn btn-primary" aria-label="Save all settings">Save Settings</button>
+      <button id="reset-btn" class="btn btn-secondary" aria-label="Reset settings to default values">Reset to Defaults</button>
     </div>
   </main>
 
+  <script src="/app.js"></script>
   <script>
     let currentConfig = null;
 
     async function loadConfig() {
-      const res = await fetch('/api/config');
-      const data = await res.json();
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Loading...';
 
-      if (data.success) {
-        currentConfig = data.data;
-        populateForm(currentConfig);
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+
+        if (data.success) {
+          currentConfig = data.data;
+          populateForm(currentConfig);
+        } else {
+          showToast('Failed to load configuration', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+        showToast('Failed to load configuration', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Settings';
       }
     }
 
@@ -142,6 +188,12 @@
       document.getElementById('max-iterations').value = config.global.max_iterations;
       document.getElementById('web-port').value = config.global.web_port;
       document.getElementById('log-level').value = config.global.log_level;
+
+      // Model Selection
+      const modelSelectionEnabled = config.global.model_selection?.enabled ?? false;
+      document.getElementById('model-selection-enabled').checked = modelSelectionEnabled;
+      document.getElementById('model-selection-strategy').value = config.global.model_selection?.strategy ?? 'balanced';
+      updateModelSelectionUI(modelSelectionEnabled);
 
       // Refiner
       document.getElementById('refiner-model').value = config.refiner.model;
@@ -159,13 +211,33 @@
       document.getElementById('gatekeeper-model').value = config.gatekeeper.model;
     }
 
+    function updateModelSelectionUI(enabled) {
+      const strategyGroup = document.getElementById('strategy-group');
+      const infoBox = document.getElementById('model-selection-info');
+      const agentModelSelects = document.querySelectorAll('#refiner-model, #builder-model, #verifier-model, #gatekeeper-model');
+
+      strategyGroup.style.opacity = enabled ? '1' : '0.5';
+      document.getElementById('model-selection-strategy').disabled = !enabled;
+      infoBox.style.display = enabled ? 'block' : 'none';
+
+      agentModelSelects.forEach(select => {
+        select.disabled = enabled;
+        select.parentElement.style.opacity = enabled ? '0.5' : '1';
+      });
+    }
+
     function gatherFormData() {
       return {
         global: {
           max_iterations: parseInt(document.getElementById('max-iterations').value),
           tmux_session_prefix: currentConfig.global.tmux_session_prefix,
           web_port: parseInt(document.getElementById('web-port').value),
-          log_level: document.getElementById('log-level').value
+          log_level: document.getElementById('log-level').value,
+          model_selection: {
+            enabled: document.getElementById('model-selection-enabled').checked,
+            strategy: document.getElementById('model-selection-strategy').value,
+            planner_model: currentConfig.global.model_selection?.planner_model ?? 'haiku'
+          }
         },
         refiner: {
           ...currentConfig.refiner,
@@ -199,35 +271,66 @@
     }
 
     document.getElementById('save-btn').addEventListener('click', async () => {
-      const config = gatherFormData();
+      const btn = document.getElementById('save-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
 
-      const res = await fetch('/api/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
+      try {
+        const config = gatherFormData();
 
-      const data = await res.json();
+        const res = await fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
 
-      if (data.success) {
-        alert('Settings saved!');
-        currentConfig = data.data;
-      } else {
-        alert('Failed to save: ' + data.error);
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Settings saved successfully', 'success');
+          currentConfig = data.data;
+        } else {
+          showToast('Failed to save: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+        showToast('Failed to save settings: ' + error.message, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
     });
 
     document.getElementById('reset-btn').addEventListener('click', async () => {
       if (!confirm('Reset all settings to defaults?')) return;
 
-      // Fetch fresh defaults
-      const res = await fetch('/api/config');
-      const data = await res.json();
+      const btn = document.getElementById('reset-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Resetting...';
 
-      if (data.success) {
-        populateForm(data.data);
-        alert('Settings reset to defaults. Click Save to apply.');
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+
+        if (data.success) {
+          populateForm(data.data);
+          showToast('Settings reset to defaults. Click Save to apply.', 'info');
+        } else {
+          showToast('Failed to reset settings', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to reset settings:', error);
+        showToast('Failed to reset settings', 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
+    });
+
+    document.getElementById('model-selection-enabled').addEventListener('change', (e) => {
+      updateModelSelectionUI(e.target.checked);
     });
 
     loadConfig();

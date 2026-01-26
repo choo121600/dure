@@ -3,32 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Orchestral - Agentic Software Engineering Dashboard">
+  <meta name="theme-color" content="#0d1117">
   <title>Orchestral - Dashboard</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">🎼 Orchestral</div>
-    <div class="nav-links">
-      <a href="/" class="active">Dashboard</a>
-      <a href="/settings">Settings</a>
-      <a href="/history">History</a>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-brand" aria-label="Orchestral">🎼 Orchestral</div>
+    <div class="nav-links" role="menubar">
+      <a href="/" class="active" role="menuitem" aria-current="page">Dashboard</a>
+      <a href="/settings" role="menuitem">Settings</a>
+      <a href="/history" role="menuitem">History</a>
     </div>
-    <a href="/run/new" class="btn btn-primary">New Run</a>
+    <a href="/run/new" class="btn btn-primary" aria-label="Start a new run">New Run</a>
   </nav>
 
-  <main class="container">
-    <section class="project-info">
-      <h2>Project</h2>
-      <p id="project-root" class="mono">Loading...</p>
+  <main class="container" id="main-content" role="main">
+    <section class="project-info" aria-labelledby="project-heading">
+      <h2 id="project-heading">Project</h2>
+      <p id="project-root" class="mono" aria-live="polite">Loading...</p>
     </section>
 
-    <section class="current-run" id="current-run-section">
-      <h2>Current Run</h2>
-      <div id="no-run" class="empty-state">
+    <section class="current-run" id="current-run-section" aria-labelledby="current-run-heading">
+      <h2 id="current-run-heading">Current Run</h2>
+      <div id="no-run" class="empty-state" role="status" aria-live="polite">
         <p>No active run.</p>
-        <a href="/run/new" class="btn btn-primary">Start New Run</a>
+        <a href="/run/new" class="btn btn-primary" aria-label="Start a new orchestral run">Start New Run</a>
       </div>
       <div id="run-info" style="display: none;">
         <div class="run-header">
@@ -37,30 +41,92 @@
           <span class="run-iteration" id="run-iteration"></span>
         </div>
 
-        <div class="pipeline">
-          <div class="pipeline-step" id="step-refine">
-            <div class="step-icon">📝</div>
+        <div class="pipeline" role="list" aria-label="Pipeline stages">
+          <div class="pipeline-step" id="step-refine" role="listitem">
+            <div class="step-icon" aria-hidden="true">📝</div>
             <div class="step-name">Refine</div>
-            <div class="step-status" id="status-refiner"></div>
+            <div class="step-status" id="status-refiner" aria-label="Refiner status"></div>
           </div>
-          <div class="pipeline-arrow">→</div>
-          <div class="pipeline-step" id="step-build">
-            <div class="step-icon">🔨</div>
+          <div class="pipeline-arrow" aria-hidden="true">→</div>
+          <div class="pipeline-step" id="step-build" role="listitem">
+            <div class="step-icon" aria-hidden="true">🔨</div>
             <div class="step-name">Build</div>
-            <div class="step-status" id="status-builder"></div>
+            <div class="step-status" id="status-builder" aria-label="Builder status"></div>
           </div>
-          <div class="pipeline-arrow">→</div>
-          <div class="pipeline-step" id="step-verify">
-            <div class="step-icon">🔍</div>
+          <div class="pipeline-arrow" aria-hidden="true">→</div>
+          <div class="pipeline-step" id="step-verify" role="listitem">
+            <div class="step-icon" aria-hidden="true">🔍</div>
             <div class="step-name">Verify</div>
-            <div class="step-status" id="status-verifier"></div>
+            <div class="step-status" id="status-verifier" aria-label="Verifier status"></div>
           </div>
-          <div class="pipeline-arrow">→</div>
-          <div class="pipeline-step" id="step-gate">
-            <div class="step-icon">🚪</div>
+          <div class="pipeline-arrow" aria-hidden="true">→</div>
+          <div class="pipeline-step" id="step-gate" role="listitem">
+            <div class="step-icon" aria-hidden="true">🚪</div>
             <div class="step-name">Gate</div>
-            <div class="step-status" id="status-gatekeeper"></div>
+            <div class="step-status" id="status-gatekeeper" aria-label="Gatekeeper status"></div>
           </div>
+        </div>
+
+        <div id="model-selection-section" class="model-selection-section" style="margin-top: 1rem; display: none;">
+          <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+            Model Selection
+            <span id="model-selection-badge" class="model-badge"></span>
+          </h3>
+          <div id="model-selection-info" class="model-info">
+            <div class="model-analysis" id="model-analysis"></div>
+          </div>
+        </div>
+
+        <div id="usage-section" class="usage-section" style="margin-top: 1rem;">
+          <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem;">Usage (this run)</h3>
+          <table class="usage-table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Model</th>
+                <th>Input</th>
+                <th>Output</th>
+                <th>Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Refiner</td>
+                <td id="model-refiner" class="model-cell">--</td>
+                <td id="usage-refiner-input">--</td>
+                <td id="usage-refiner-output">--</td>
+                <td id="usage-refiner-cost">--</td>
+              </tr>
+              <tr>
+                <td>Builder</td>
+                <td id="model-builder" class="model-cell">--</td>
+                <td id="usage-builder-input">--</td>
+                <td id="usage-builder-output">--</td>
+                <td id="usage-builder-cost">--</td>
+              </tr>
+              <tr>
+                <td>Verifier</td>
+                <td id="model-verifier" class="model-cell">--</td>
+                <td id="usage-verifier-input">--</td>
+                <td id="usage-verifier-output">--</td>
+                <td id="usage-verifier-cost">--</td>
+              </tr>
+              <tr>
+                <td>Gatekeeper</td>
+                <td id="model-gatekeeper" class="model-cell">--</td>
+                <td id="usage-gatekeeper-input">--</td>
+                <td id="usage-gatekeeper-output">--</td>
+                <td id="usage-gatekeeper-cost">--</td>
+              </tr>
+              <tr class="usage-total">
+                <td><strong>Total</strong></td>
+                <td id="model-selection-method">--</td>
+                <td id="usage-total-input"><strong>--</strong></td>
+                <td id="usage-total-output"><strong>--</strong></td>
+                <td id="usage-total-cost"><strong>--</strong></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div id="action-required" class="action-required" style="display: none;">
@@ -69,9 +135,10 @@
           <a id="action-link" href="#" class="btn btn-warning">Respond</a>
         </div>
 
-        <div class="run-actions">
-          <a id="view-details-link" href="#" class="btn btn-secondary">View Details</a>
-          <button id="stop-run-btn" class="btn btn-danger">Stop Run</button>
+        <div class="run-actions" role="group" aria-label="Run actions">
+          <a id="view-details-link" href="#" class="btn btn-secondary" aria-label="View run details">View Details</a>
+          <button id="stop-all-agents-btn" class="btn btn-warning" aria-label="Stop all running agents">Stop All Agents</button>
+          <button id="stop-run-btn" class="btn btn-danger" aria-label="Stop the current run">Stop Run</button>
         </div>
 
         <div id="live-output-section" style="margin-top: 1.5rem;">
@@ -121,19 +188,19 @@
       </div>
     </section>
 
-    <section class="recent-runs">
-      <h2>Recent Runs</h2>
-      <table class="runs-table">
+    <section class="recent-runs" aria-labelledby="recent-runs-heading">
+      <h2 id="recent-runs-heading">Recent Runs</h2>
+      <table class="runs-table" aria-describedby="recent-runs-heading">
         <thead>
           <tr>
-            <th>Run ID</th>
-            <th>Phase</th>
-            <th>Iteration</th>
-            <th>Started</th>
-            <th></th>
+            <th scope="col">Run ID</th>
+            <th scope="col">Phase</th>
+            <th scope="col">Iteration</th>
+            <th scope="col">Started</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
-        <tbody id="recent-runs-body">
+        <tbody id="recent-runs-body" aria-live="polite">
           <tr>
             <td colspan="5" class="empty">Loading...</td>
           </tr>
@@ -147,23 +214,36 @@
     const socket = io();
 
     async function loadDashboard() {
-      // Load project info
-      const projectRes = await fetch('/api/project');
-      const projectData = await projectRes.json();
-      if (projectData.success) {
-        document.getElementById('project-root').textContent = projectData.data.projectRoot;
+      try {
+        // Load project info with loading state
+        const projectEl = document.getElementById('project-root');
+        projectEl.textContent = 'Loading...';
+        projectEl.setAttribute('aria-busy', 'true');
+
+        const projectRes = await fetch('/api/project');
+        const projectData = await projectRes.json();
+        if (projectData.success) {
+          projectEl.textContent = projectData.data.projectRoot;
+        } else {
+          projectEl.textContent = 'Failed to load project info';
+        }
+        projectEl.setAttribute('aria-busy', 'false');
+
+        // Load active run
+        await loadActiveRun();
+
+        // Load recent runs
+        await loadRecentRuns();
+      } catch (error) {
+        console.error('Failed to load dashboard:', error);
+        showToast('Failed to load dashboard data', 'error');
       }
-
-      // Load active run
-      await loadActiveRun();
-
-      // Load recent runs
-      await loadRecentRuns();
     }
 
     async function loadActiveRun() {
-      const res = await fetch('/api/runs/active');
-      const data = await res.json();
+      try {
+        const res = await fetch('/api/runs/active');
+        const data = await res.json();
 
       if (data.success && data.data) {
         const state = data.data;
@@ -201,26 +281,81 @@
         document.getElementById('no-run').style.display = 'block';
         document.getElementById('run-info').style.display = 'none';
       }
+      } catch (error) {
+        console.error('Failed to load active run:', error);
+      }
     }
 
     async function loadRecentRuns() {
-      const res = await fetch('/api/runs');
-      const data = await res.json();
+      const tbody = document.getElementById('recent-runs-body');
+      tbody.innerHTML = '<tr><td colspan="5" class="loading-cell"><span class="loading-spinner"></span> Loading...</td></tr>';
+
+      try {
+        const res = await fetch('/api/runs');
+        const data = await res.json();
 
       const tbody = document.getElementById('recent-runs-body');
 
       if (data.success && data.data.length > 0) {
         tbody.innerHTML = data.data.slice(0, 5).map(run => `
-          <tr>
+          <tr data-run-id="${run.run_id}">
             <td class="mono">${run.run_id}</td>
             <td><span class="phase-badge phase-${run.phase}">${formatPhase(run.phase)}</span></td>
             <td>${run.iteration}</td>
             <td>${new Date(run.started_at).toLocaleString()}</td>
-            <td><a href="/run/${run.run_id}" class="btn btn-small">View</a></td>
+            <td class="actions-cell">
+              <a href="/run/${run.run_id}" class="btn btn-small">View</a>
+              ${canDeleteRun(run.phase) ? `<button class="btn btn-small btn-danger delete-run-btn" data-run-id="${run.run_id}">Delete</button>` : ''}
+            </td>
           </tr>
         `).join('');
+
+        // Add click handlers for delete buttons
+        document.querySelectorAll('.delete-run-btn').forEach(btn => {
+          btn.addEventListener('click', handleDeleteRun);
+        });
       } else {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No runs yet</td></tr>';
+      }
+      } catch (error) {
+        console.error('Failed to load recent runs:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load runs</td></tr>';
+      }
+    }
+
+    function canDeleteRun(phase) {
+      return phase === 'completed' || phase === 'failed';
+    }
+
+    async function handleDeleteRun(event) {
+      const runId = event.target.dataset.runId;
+      const btn = event.target;
+
+      if (!confirm(`Are you sure you want to delete ${runId}? This cannot be undone.`)) {
+        return;
+      }
+
+      // Show loading state on button
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      try {
+        const res = await fetch(`/api/runs/${runId}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(`Run ${runId} deleted successfully`, 'success');
+          await loadRecentRuns();
+        } else {
+          showToast('Failed to delete run: ' + data.error, 'error');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      } catch (error) {
+        showToast('Failed to delete run: ' + error.message, 'error');
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
     }
 
@@ -258,17 +393,77 @@
     document.getElementById('stop-run-btn').addEventListener('click', async () => {
       if (!confirm('Are you sure you want to stop the current run?')) return;
 
-      const runId = document.getElementById('run-id').textContent;
-      const res = await fetch(`/api/runs/${runId}/stop`, { method: 'POST' });
-      const data = await res.json();
+      const btn = document.getElementById('stop-run-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Stopping...';
 
-      if (data.success) {
-        await loadActiveRun();
-        await loadRecentRuns();
-      } else {
-        alert('Failed to stop run: ' + data.error);
+      try {
+        const runId = document.getElementById('run-id').textContent;
+        const res = await fetch(`/api/runs/${runId}/stop`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Run stopped successfully', 'success');
+          await loadActiveRun();
+          await loadRecentRuns();
+        } else {
+          showToast('Failed to stop run: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showToast('Failed to stop run: ' + error.message, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
     });
+
+    // Stop all agents handler
+    document.getElementById('stop-all-agents-btn').addEventListener('click', async () => {
+      if (!confirm('Are you sure? This will terminate all agent processes but preserve run artifacts.')) return;
+
+      const btn = document.getElementById('stop-all-agents-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Stopping...';
+
+      try {
+        const runId = document.getElementById('run-id').textContent;
+        const res = await fetch(`/api/runs/${runId}/stop-all-agents`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          const message = data.data.message || `All agents terminated (${data.data.processes_stopped} processes stopped)`;
+          showToast(message, 'success');
+          await loadActiveRun();
+          await loadRecentRuns();
+        } else {
+          showToast('Failed to stop agents: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showToast('Failed to stop agents: ' + error.message, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    });
+
+    // Toast notification helper
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 100);
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
 
     // Live output storage
     const liveOutputs = {
@@ -336,6 +531,168 @@
         }
       }
     });
+
+    // Usage data
+    socket.on('usage_initial', (data) => {
+      if (data && data.by_agent) {
+        updateAllUsage(data.by_agent, data.total);
+      }
+    });
+
+    socket.on('usage_update', (event) => {
+      updateAgentUsageDisplay(event.agent, event.usage);
+      if (event.total) {
+        updateTotalUsageDisplay(event.total);
+      }
+    });
+
+    socket.on('models_selected', (event) => {
+      if (event.result) {
+        updateModelSelection(event.result);
+      }
+    });
+
+    function updateAllUsage(byAgent, total) {
+      for (const agent of ['refiner', 'builder', 'verifier', 'gatekeeper']) {
+        if (byAgent[agent]) {
+          updateAgentUsageDisplay(agent, byAgent[agent]);
+        }
+      }
+      if (total) {
+        updateTotalUsageDisplay(total);
+      }
+    }
+
+    function updateAgentUsageDisplay(agent, usage) {
+      const inputEl = document.getElementById('usage-' + agent + '-input');
+      const outputEl = document.getElementById('usage-' + agent + '-output');
+      const costEl = document.getElementById('usage-' + agent + '-cost');
+
+      if (inputEl) inputEl.textContent = formatTokens(usage.input_tokens);
+      if (outputEl) outputEl.textContent = formatTokens(usage.output_tokens);
+      if (costEl) costEl.textContent = formatCost(usage.cost_usd);
+    }
+
+    function updateTotalUsageDisplay(total) {
+      const inputEl = document.getElementById('usage-total-input');
+      const outputEl = document.getElementById('usage-total-output');
+      const costEl = document.getElementById('usage-total-cost');
+
+      if (inputEl) inputEl.innerHTML = '<strong>' + formatTokens(total.total_input_tokens) + '</strong>';
+      if (outputEl) outputEl.innerHTML = '<strong>' + formatTokens(total.total_output_tokens) + '</strong>';
+      if (costEl) costEl.innerHTML = '<strong>' + formatCost(total.total_cost_usd) + '</strong>';
+    }
+
+    function formatTokens(tokens) {
+      if (tokens === 0 || tokens === undefined) return '--';
+      if (tokens >= 1000000) return (tokens / 1000000).toFixed(1) + 'M';
+      if (tokens >= 1000) return (tokens / 1000).toFixed(1) + 'K';
+      return tokens.toString();
+    }
+
+    function formatCost(cost) {
+      if (cost === 0 || cost === undefined) return '--';
+      if (cost < 0.001) return '$' + cost.toFixed(4);
+      if (cost < 1) return '$' + cost.toFixed(3);
+      return '$' + cost.toFixed(2);
+    }
+
+    // Load usage when loading active run
+    async function loadUsage(runId) {
+      try {
+        const res = await fetch('/api/runs/' + runId + '/usage');
+        const data = await res.json();
+        if (data.success && data.data) {
+          updateAllUsage(data.data.by_agent, data.data.total);
+        }
+      } catch (e) {
+        console.error('Failed to load usage:', e);
+      }
+    }
+
+    // Load model selection info
+    async function loadModelSelection(runId) {
+      try {
+        const res = await fetch('/api/runs/' + runId + '/models');
+        const data = await res.json();
+        if (data.success && data.data) {
+          updateModelSelection(data.data);
+        }
+      } catch (e) {
+        console.error('Failed to load model selection:', e);
+      }
+    }
+
+    function updateModelSelection(selection) {
+      const section = document.getElementById('model-selection-section');
+      const badge = document.getElementById('model-selection-badge');
+      const analysis = document.getElementById('model-analysis');
+      const methodEl = document.getElementById('model-selection-method');
+
+      if (!selection) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+
+      // Update models in table
+      for (const agent of ['refiner', 'builder', 'verifier', 'gatekeeper']) {
+        const el = document.getElementById('model-' + agent);
+        if (el && selection.models[agent]) {
+          el.textContent = selection.models[agent];
+          el.className = 'model-cell model-' + selection.models[agent];
+        }
+      }
+
+      // Update badge
+      if (selection.selection_method === 'dynamic') {
+        badge.textContent = selection.analysis.level;
+        badge.className = 'model-badge level-' + selection.analysis.level;
+      } else {
+        badge.textContent = 'static';
+        badge.className = 'model-badge level-static';
+      }
+
+      // Update analysis info
+      if (selection.analysis) {
+        const a = selection.analysis;
+        let analysisHtml = `<span class="analysis-reasoning">${a.reasoning}</span>`;
+        if (a.estimated_cost_savings && a.estimated_cost_savings > 0) {
+          analysisHtml += ` <span class="cost-savings">~${a.estimated_cost_savings}% savings</span>`;
+        }
+
+        // Add detailed complexity factors
+        if (a.factors) {
+          analysisHtml += '<div class="complexity-factors">';
+          analysisHtml += `<div class="factor-item"><span class="factor-label">Overall:</span> <span class="factor-value">${a.overall_score}/100 (${a.level.toUpperCase()})</span></div>`;
+          analysisHtml += `<div class="factor-item"><span class="factor-label">Briefing Length:</span> <span class="factor-value">${a.factors.briefing_length}/100</span></div>`;
+          analysisHtml += `<div class="factor-item"><span class="factor-label">Technical Depth:</span> <span class="factor-value">${a.factors.technical_depth}/100</span></div>`;
+          analysisHtml += `<div class="factor-item"><span class="factor-label">Scope Estimate:</span> <span class="factor-value">${a.factors.scope_estimate}/100</span></div>`;
+          analysisHtml += `<div class="factor-item"><span class="factor-label">Risk Level:</span> <span class="factor-value">${a.factors.risk_level}/100</span></div>`;
+          analysisHtml += '</div>';
+        }
+
+        analysis.innerHTML = analysisHtml;
+      }
+
+      // Update method in total row
+      if (methodEl) {
+        methodEl.textContent = selection.selection_method === 'dynamic' ? 'Dynamic' : 'Static';
+        methodEl.className = 'method-' + selection.selection_method;
+      }
+    }
+
+    // Modify loadActiveRun to also load usage and model selection
+    const originalLoadActiveRun = loadActiveRun;
+    loadActiveRun = async function() {
+      await originalLoadActiveRun();
+      const runIdEl = document.getElementById('run-id');
+      if (runIdEl && runIdEl.textContent) {
+        await loadUsage(runIdEl.textContent);
+        await loadModelSelection(runIdEl.textContent);
+      }
+    };
 
     loadDashboard();
   </script>
