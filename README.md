@@ -237,10 +237,31 @@ Claude CLI가 설치되어 있고 PATH에 포함되어 있는지 확인하세요
 orchestral start --port 3001
 ```
 
+## 📚 문서
+
+상세한 문서는 [공식 문서 사이트](https://yourusername.github.io/orchestral/)를 참고하세요.
+
+- [빠른 시작](https://yourusername.github.io/orchestral/#/guide/getting-started)
+- [Briefing 작성 가이드](https://yourusername.github.io/orchestral/#/guide/writing-briefings)
+- [아키텍처](https://yourusername.github.io/orchestral/#/architecture/overview)
+- [API 레퍼런스](https://yourusername.github.io/orchestral/#/api/cli)
+
+### 로컬에서 문서 확인
+
+```bash
+# Docsify CLI 설치
+npm install -g docsify-cli
+
+# 문서 서버 실행
+docsify serve docs
+
+# http://localhost:3000 접속
+```
+
 ## 라이선스
 
 MIT
 
 ## 기여
 
-이슈와 PR을 환영합니다.
+이슈와 PR을 환영합니다. 자세한 내용은 [기여 가이드](https://yourusername.github.io/orchestral/#/misc/contributing)를 참고하세요.
