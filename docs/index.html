@@ -67,16 +67,11 @@
         tabComments: true,
         tabHeadings: true
       },
-      mermaid: {
-        theme: 'default'
-      },
       markdown: {
         renderer: {
           code: function(code, lang) {
             if (lang === "mermaid") {
-              return (
-                '<div class="mermaid">' + mermaid.render('mermaid-svg-' + Date.now(), code) + "</div>"
-              );
+              return '<div class="mermaid">' + code + '</div>';
             }
             return this.origin.code.apply(this, arguments);
           }
@@ -92,12 +87,28 @@
   <script src="//cdn.jsdelivr.net/npm/docsify-pagination@2"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify-tabs@1"></script>
   <!-- Mermaid -->
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
-    mermaid.initialize({ startOnLoad: true });
-    window.mermaid = mermaid;
+  <script src="//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose'
+    });
   </script>
-  <script src="//cdn.jsdelivr.net/npm/docsify-mermaid@2/dist/docsify-mermaid.js"></script>
+  <script>
+    // Mermaid 렌더링 플러그인
+    window.$docsify.plugins = [].concat(window.$docsify.plugins || [], [
+      function(hook, vm) {
+        hook.doneEach(function() {
+          // 모든 .mermaid 요소를 찾아서 렌더링
+          const mermaidElements = document.querySelectorAll('.mermaid');
+          if (mermaidElements.length > 0) {
+            mermaid.init(undefined, mermaidElements);
+          }
+        });
+      }
+    ]);
+  </script>
   <!-- Syntax highlighting -->
   <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-typescript.min.js"></script>
