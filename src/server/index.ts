@@ -13,6 +13,8 @@ import { Orchestrator, OrchestratorEvent } from '../core/orchestrator.js';
 import { createApiRouter } from './routes/api.js';
 import { createCrpRouter } from './routes/crp.js';
 import { createMrpRouter } from './routes/mrp.js';
+import { createHealthRouter } from './routes/health.js';
+import { GracefulShutdown, ShutdownOptions } from './shutdown.js';
 import { apiKeyAuth, socketAuth, isAuthEnabled } from './middleware/auth.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -67,11 +69,20 @@ interface SecurityOptions {
   corsOrigins?: string | string[];
 }
 
+/**
+ * Extended server with graceful shutdown capability
+ */
+export interface ExtendedServer extends Server {
+  /** Graceful shutdown controller */
+  gracefulShutdown: GracefulShutdown;
+}
+
 export function createServer(
   projectRoot: string,
   config: OrchestraConfig,
-  securityOptions: SecurityOptions = {}
-): Server {
+  securityOptions: SecurityOptions = {},
+  shutdownOptions: ShutdownOptions = {}
+): ExtendedServer {
   const app: Express = express();
   const httpServer = createHttpServer(app);
   const io = new SocketServer(httpServer, {
@@ -166,6 +177,10 @@ export function createServer(
       },
     })
   );
+
+  // Health check routes (no authentication required)
+  // Must be registered before API key auth middleware
+  app.use('/health', createHealthRouter(projectRoot, orchestrator, config.global.tmux_session_prefix));
 
   // API Key Authentication (if enabled)
   app.use('/api', apiKeyAuth);
@@ -378,5 +393,12 @@ export function createServer(
     res.sendFile(join(__dirname, 'public', 'history.html'));
   });
 
-  return httpServer;
+  // Setup graceful shutdown
+  const gracefulShutdown = new GracefulShutdown(httpServer, orchestrator, shutdownOptions, io, logger);
+
+  // Extend httpServer with gracefulShutdown
+  const extendedServer = httpServer as ExtendedServer;
+  extendedServer.gracefulShutdown = gracefulShutdown;
+
+  return extendedServer;
 }

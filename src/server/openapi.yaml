@@ -26,6 +26,8 @@ servers:
     description: Local development server
 
 tags:
+  - name: Health
+    description: Health check endpoints for monitoring and orchestration
   - name: Project
     description: Project configuration and information
   - name: Runs
@@ -41,6 +43,76 @@ security:
   - ApiKeyAuth: []
 
 paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Full health check
+      description: |
+        Returns detailed health information including:
+        - Overall status (healthy/degraded/unhealthy)
+        - Individual component checks (orchestrator, tmux, fileSystem)
+        - Server uptime and version
+
+        No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Healthy or degraded status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Unhealthy status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: |
+        Simple check that the server is responding.
+        Used by Kubernetes liveness probe.
+        Always returns 200 if the server is running.
+
+        No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: |
+        Check if the server is ready to accept traffic.
+        Used by Kubernetes readiness probe.
+        Checks orchestrator accessibility and file system write access.
+
+        No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Server is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
   /api/project:
     get:
       tags: [Project]
@@ -751,6 +823,70 @@ components:
             error: "An unexpected error occurred"
 
   schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall health status
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          example: "0.1.0"
+        uptime:
+          type: integer
+          description: Server uptime in seconds
+        checks:
+          type: object
+          properties:
+            orchestrator:
+              $ref: '#/components/schemas/HealthCheckResult'
+            tmux:
+              $ref: '#/components/schemas/HealthCheckResult'
+            fileSystem:
+              $ref: '#/components/schemas/HealthCheckResult'
+
+    HealthCheckResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pass, fail]
+        message:
+          type: string
+        latency_ms:
+          type: number
+
+    LivenessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          properties:
+            orchestrator:
+              type: boolean
+            fileSystem:
+              type: boolean
+
     ErrorResponse:
       type: object
       properties:

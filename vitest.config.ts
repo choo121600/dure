@@ -23,13 +23,16 @@ export default defineConfig({
         'src/cli/index.ts',
         'src/cli/commands/**',
       ],
-      // Thresholds will be raised as more tests are added
-      // Current focus: core modules (state-manager, run-manager, file-watcher, sanitize)
+      // Coverage thresholds - prevent regression
+      // Current coverage (2026-01-27): Stmts 39.64%, Branch 33.73%, Funcs 43.4%, Lines 40.29%
+      // Phase 1 target: lines 70%, functions 70%, branches 60%, statements 70%
+      // Phase 2 target: 80% across all metrics
+      // Phase 3 target: 90% across all metrics
       thresholds: {
-        lines: 30,
-        functions: 30,
-        branches: 25,
-        statements: 30,
+        lines: 38,
+        functions: 40,
+        branches: 30,
+        statements: 38,
       },
     },
     testTimeout: 30000,

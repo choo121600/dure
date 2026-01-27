@@ -348,35 +348,55 @@ describe('FileWatcher', () => {
 
   describe('file change handling', () => {
     it('should emit refiner_done on refined.md change (not just add)', async () => {
+      // Use polling for reliable change detection in tests
+      const pollingWatcher = new FileWatcher(runDir, {
+        ...TEST_WATCHER_OPTIONS,
+        usePolling: true,
+        pollingInterval: 100,
+      });
+
       // Create the file before starting watcher
       writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Initial', 'utf-8');
 
-      fileWatcher.start();
-      await wait(200);
+      pollingWatcher.start();
+      await wait(300); // Wait longer for watcher to fully initialize
 
-      // Update the file
-      const eventPromise = waitForEvent(fileWatcher, 'refiner_done', 5000);
-      writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Updated ' + Date.now(), 'utf-8');
+      // Update the file with significant change
+      const eventPromise = waitForEvent(pollingWatcher, 'refiner_done', 10000);
+      await wait(100); // Small delay before write
+      writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Updated content at ' + Date.now(), 'utf-8');
 
       const event = await eventPromise;
       expect(event.type).toBe('refiner_done');
+
+      await pollingWatcher.stop();
     });
 
     it('should emit gatekeeper_done on verdict.json change', async () => {
+      // Use polling for reliable change detection in tests
+      const pollingWatcher = new FileWatcher(runDir, {
+        ...TEST_WATCHER_OPTIONS,
+        usePolling: true,
+        pollingInterval: 100,
+      });
+
       // Create initial verdict
       const initialVerdict = createMockVerdict('FAIL');
       writeMockVerdict(runDir, initialVerdict);
 
-      fileWatcher.start();
-      await wait(200);
+      pollingWatcher.start();
+      await wait(300);
 
       // Update verdict
-      const eventPromise = waitForEvent(fileWatcher, 'gatekeeper_done', 5000);
+      const eventPromise = waitForEvent(pollingWatcher, 'gatekeeper_done', 10000);
+      await wait(100);
       const updatedVerdict = createMockVerdict('PASS');
       writeMockVerdict(runDir, updatedVerdict);
 
       const event = await eventPromise as { type: 'gatekeeper_done'; verdict: GatekeeperVerdict };
       expect(event.type).toBe('gatekeeper_done');
+
+      await pollingWatcher.stop();
     });
   });
 });

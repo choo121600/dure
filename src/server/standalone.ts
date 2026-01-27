@@ -33,23 +33,18 @@ runManager.initialize();
 
 const config = configManager.loadConfig();
 
-// Start server
-const server = createServer(projectRoot, config);
+// Start server with graceful shutdown support
+const server = createServer(projectRoot, config, {}, {
+  timeoutMs: 30000,
+  signals: ['SIGTERM', 'SIGINT'],
+  preserveTmux: true,
+});
+
+// Register graceful shutdown handlers
+server.gracefulShutdown.register();
 
 server.listen(port, () => {
   console.log(`ACE Server running on http://localhost:${port}`);
   console.log(`Project: ${projectRoot}`);
-});
-
-// Handle shutdown
-process.on('SIGINT', () => {
-  server.close(() => {
-    process.exit(0);
-  });
-});
-
-process.on('SIGTERM', () => {
-  server.close(() => {
-    process.exit(0);
-  });
+  console.log('Graceful shutdown enabled (SIGTERM, SIGINT)');
 });
