@@ -264,3 +264,91 @@ tmux send-keys -t orchestral-run-{timestamp}:main.1 \
 3. 웹 UI에 알림 표시
 4. 인간이 응답 → `vcr/vcr-{n}.json` 생성
 5. ACE 서버가 VCR 감지 → 해당 에이전트 `/clear` 후 재시작
+
+## 코어 클래스 구조
+
+### Orchestrator 책임 분리
+
+Orchestrator의 책임을 여러 전문 클래스로 분리하여 단일 책임 원칙(SRP)을 준수합니다.
+
+```
+src/core/
+├── orchestrator.ts           # 조율 역할만 담당 (진입점)
+├── run-lifecycle-manager.ts  # 런 생성/재개/중지 관리
+├── agent-coordinator.ts      # 에이전트 시작/완료/전환 조정
+├── error-recovery-service.ts # 에러 감지/재시도 로직
+├── verdict-handler.ts        # Gatekeeper 판정 처리 (PASS/FAIL/NEEDS_HUMAN)
+├── agent-lifecycle-manager.ts # 개별 에이전트 생명주기 관리
+├── phase-transition-manager.ts # 페이즈 전환 상태 관리
+├── event-coordinator.ts      # 이벤트 수집 및 조정
+└── interrupt-recovery.ts     # 중단된 런 복구
+```
+
+### 클래스 다이어그램
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Orchestrator                            │
+│ - 이벤트 발행 (EventEmitter)                                 │
+│ - 공개 API 제공                                              │
+└───────────────────────────────┬─────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌───────────────┐      ┌───────────────┐       ┌───────────────┐
+│ RunLifecycle  │      │    Agent      │       │    Error      │
+│   Manager     │      │  Coordinator  │       │  Recovery     │
+│               │      │               │       │   Service     │
+│ - startRun()  │      │ - handleDone()│       │ - handleError │
+│ - resumeRun() │      │ - handleCRP() │       │ - shouldRetry │
+│ - stopRun()   │      │ - transition()│       │ - executeRetry│
+└───────────────┘      └───────────────┘       └───────────────┘
+        │                       │
+        ▼                       ▼
+┌───────────────┐      ┌───────────────┐
+│   Verdict     │      │    Phase      │
+│   Handler     │      │  Transition   │
+│               │      │   Manager     │
+│ - PASS → MRP  │      │               │
+│ - FAIL → retry│      │ - validate()  │
+│ - NEEDS_HUMAN │      │ - transition()│
+└───────────────┘      └───────────────┘
+```
+
+### Graceful Shutdown
+
+서버 종료 시 안전한 상태 저장을 위한 구조:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   GracefulShutdown                           │
+├─────────────────────────────────────────────────────────────┤
+│ 1. 새로운 요청 거부 시작                                      │
+│ 2. 진행 중인 HTTP 요청 완료 대기                             │
+│ 3. WebSocket 연결에 종료 알림 전송                           │
+│ 4. 진행 중인 런 상태 저장 (phase: 'interrupted')             │
+│ 5. tmux 세션 유지 (에이전트 계속 실행 가능)                  │
+│ 6. 파일 워처 정리                                            │
+│ 7. 서버 종료                                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 인터럽트 복구
+
+서버 재시작 시 중단된 런을 복구하는 구조:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   InterruptRecovery                          │
+├─────────────────────────────────────────────────────────────┤
+│ detectInterruptedRuns()                                      │
+│   └─ .orchestral/runs/ 스캔                                  │
+│   └─ phase: 'interrupted' 런 식별                            │
+│                                                              │
+│ 복구 전략:                                                   │
+│   - refine/build/verify: 해당 에이전트 재시작                │
+│   - gate: Gatekeeper 재시작                                  │
+│   - waiting_human: 그대로 대기                               │
+└─────────────────────────────────────────────────────────────┘
+```

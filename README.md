@@ -1,5 +1,9 @@
 # Orchestral 🎼
 
+[![CI](https://github.com/choo121600/orchestral/actions/workflows/ci.yml/badge.svg)](https://github.com/choo121600/orchestral/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/choo121600/orchestral/branch/main/graph/badge.svg)](https://codecov.io/gh/choo121600/orchestral)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > 의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템
 
 Agentic Software Engineering MVP - 4개의 AI 에이전트가 코드를 생성하고, 인간은 판단만 하는 시스템입니다.
@@ -74,6 +78,12 @@ orchestral stop
 
 # 과거 run 목록
 orchestral history
+
+# 중단된 run 복구
+orchestral recover [run-id]
+
+# 중단된 run 목록 확인
+orchestral recover --list
 ```
 
 ## 워크플로우
@@ -239,12 +249,12 @@ orchestral start --port 3001
 
 ## 📚 문서
 
-상세한 문서는 [공식 문서 사이트](https://yourusername.github.io/orchestral/)를 참고하세요.
+상세한 문서는 [공식 문서 사이트](https://choo121600.github.io/orchestral/)를 참고하세요.
 
-- [빠른 시작](https://yourusername.github.io/orchestral/#/guide/getting-started)
-- [Briefing 작성 가이드](https://yourusername.github.io/orchestral/#/guide/writing-briefings)
-- [아키텍처](https://yourusername.github.io/orchestral/#/architecture/overview)
-- [API 레퍼런스](https://yourusername.github.io/orchestral/#/api/cli)
+- [빠른 시작](https://choo121600.github.io/orchestral/#/guide/getting-started)
+- [Briefing 작성 가이드](https://choo121600.github.io/orchestral/#/guide/writing-briefings)
+- [아키텍처](https://choo121600.github.io/orchestral/#/architecture/overview)
+- [API 레퍼런스](https://choo121600.github.io/orchestral/#/api/cli)
 
 ### 로컬에서 문서 확인
 

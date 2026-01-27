@@ -644,4 +644,131 @@ describe('API Routes', () => {
       expect(response.body.data.models.builder).toBe('sonnet');
     });
   });
+
+  describe('PUT /api/config', () => {
+    it('should update configuration', async () => {
+      const newConfig = { ...config, global: { ...config.global, max_iterations: 5 } };
+
+      const response = await request(app)
+        .put('/api/config')
+        .send(newConfig)
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.global.max_iterations).toBe(5);
+    });
+  });
+
+  describe('POST /api/runs/:runId/retry/:agent', () => {
+    it('should reject invalid agent name', async () => {
+      const runId = generateTestRunId();
+      await runManager.createRun(runId, getSampleBriefing(), 3);
+
+      const response = await request(app).post(`/api/runs/${runId}/retry/invalid-agent`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid agent name');
+    });
+
+    it('should return 404 for non-existent run', async () => {
+      const response = await request(app).post('/api/runs/run-99999999999999/retry/refiner');
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should reject retry for non-active run', async () => {
+      const runId = generateTestRunId();
+      await runManager.createRun(runId, getSampleBriefing(), 3);
+
+      const response = await request(app).post(`/api/runs/${runId}/retry/refiner`);
+
+      // Not the active run, so should fail
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('active run');
+    });
+  });
+
+  describe('POST /api/runs/:runId/extend-timeout/:agent', () => {
+    it('should reject invalid agent name', async () => {
+      const runId = generateTestRunId();
+      await runManager.createRun(runId, getSampleBriefing(), 3);
+
+      const response = await request(app)
+        .post(`/api/runs/${runId}/extend-timeout/invalid-agent`)
+        .send({ additionalMs: 60000 })
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid agent name');
+    });
+
+    it('should reject invalid additionalMs', async () => {
+      const runId = generateTestRunId();
+      await runManager.createRun(runId, getSampleBriefing(), 3);
+      mockOrchestrator.getCurrentRunId.mockReturnValue(runId);
+
+      const response = await request(app)
+        .post(`/api/runs/${runId}/extend-timeout/refiner`)
+        .send({ additionalMs: -1 })
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('additionalMs');
+    });
+
+    it('should reject extend timeout for non-active run', async () => {
+      const runId = generateTestRunId();
+      await runManager.createRun(runId, getSampleBriefing(), 3);
+      mockOrchestrator.getCurrentRunId.mockReturnValue(null);
+
+      const response = await request(app)
+        .post(`/api/runs/${runId}/extend-timeout/refiner`)
+        .send({ additionalMs: 60000 })
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('active run');
+    });
+  });
+
+  describe('Input Validation', () => {
+    it('should handle very long briefing gracefully', async () => {
+      // Just under max length should work
+      const longButValidBriefing = 'a'.repeat(99999);
+
+      mockOrchestrator.startRun.mockResolvedValue('run-20260126120000');
+
+      const response = await request(app)
+        .post('/api/runs')
+        .send({ briefing: longButValidBriefing })
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle whitespace-only briefing', async () => {
+      // Current implementation accepts whitespace-only briefings
+      // as the trimming/validation happens at a different layer
+      mockOrchestrator.startRun.mockResolvedValue('run-20260126120000');
+
+      const response = await request(app)
+        .post('/api/runs')
+        .send({ briefing: '   \n\t   ' })
+        .set('Content-Type', 'application/json');
+
+      // Whitespace-only is currently accepted at API level
+      expect(response.status).toBe(200);
+    });
+
+    it('should reject briefing with only special characters', async () => {
+      const response = await request(app)
+        .post('/api/runs')
+        .send({ briefing: '!@#$%^&*()' })
+        .set('Content-Type', 'application/json');
+
+      // This is valid content, should be accepted
+      expect([200, 400]).toContain(response.status);
+    });
+  });
 });

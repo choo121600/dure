@@ -3,6 +3,7 @@ import { existsSync, accessSync, constants, writeFileSync, unlinkSync } from 'fs
 import { join } from 'path';
 import { TmuxManager } from '../../core/tmux-manager.js';
 import type { Orchestrator } from '../../core/orchestrator.js';
+import { InterruptRecovery, InterruptedRun } from '../../core/interrupt-recovery.js';
 
 /**
  * Health check result for individual components
@@ -46,6 +47,15 @@ export interface ReadinessResponse {
     orchestrator: boolean;
     fileSystem: boolean;
   };
+}
+
+/**
+ * Interrupted runs response
+ */
+export interface InterruptedRunsResponse {
+  count: number;
+  runs: InterruptedRun[];
+  timestamp: string;
 }
 
 // Track server start time for uptime calculation
@@ -250,6 +260,35 @@ export function createHealthRouter(
     };
 
     res.status(isReady ? 200 : 503).json(response);
+  });
+
+  /**
+   * GET /health/interrupted - List interrupted runs
+   *
+   * Returns a list of runs that were interrupted and may need recovery.
+   * Useful for monitoring and operational visibility.
+   */
+  router.get('/interrupted', async (_req: Request, res: Response) => {
+    try {
+      const recovery = new InterruptRecovery(projectRoot, {
+        tmuxSessionPrefix: sessionPrefix,
+      });
+
+      const runs = await recovery.detectInterruptedRuns();
+
+      const response: InterruptedRunsResponse = {
+        count: runs.length,
+        runs,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to detect interrupted runs',
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   return router;

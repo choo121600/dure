@@ -9,6 +9,7 @@ import { logsCommand } from './commands/logs.js';
 import { deleteCommand } from './commands/delete.js';
 import { cleanCommand } from './commands/clean.js';
 import { clearCommand } from './commands/clear.js';
+import { recoverCommand } from './commands/recover.js';
 
 const program = new Command();
 
@@ -62,5 +63,13 @@ program
   .command('clear-run [run-id]')
   .description('Terminate Claude processes in all agent panes (preserves artifacts)')
   .action(clearCommand);
+
+program
+  .command('recover [run-id]')
+  .description('Detect and recover interrupted runs')
+  .option('-l, --list', 'List all interrupted runs')
+  .option('-a, --auto', 'Automatically recover without prompts')
+  .option('-f, --force', 'Skip confirmation prompts')
+  .action(recoverCommand);
 
 program.parse();

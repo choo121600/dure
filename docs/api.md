@@ -10,6 +10,9 @@ orchestral status                   # 현재 run 상태
 orchestral logs                     # 실시간 로그
 orchestral stop                     # run 중지
 orchestral history                  # 과거 run 목록
+orchestral recover                  # 중단된 run 목록 확인
+orchestral recover [run-id]         # 특정 run 복구
+orchestral recover --auto           # 자동 복구 모드
 ```
 
 ## ACE 웹서버 페이지 구조
@@ -90,6 +93,92 @@ UI 구현: `src/server/public/`
 2024-01-15T14:30:22Z [INFO] run.started run_id=run-20240115-143022
 2024-01-15T14:30:25Z [INFO] agent.started agent=refiner
 2024-01-15T14:31:00Z [INFO] agent.completed agent=refiner duration_ms=35000
+```
+
+## 헬스체크 엔드포인트
+
+운영 환경에서 서버 상태를 모니터링하기 위한 엔드포인트입니다. Kubernetes liveness/readiness probe와 호환됩니다.
+
+### GET /health
+
+전체 시스템 상태를 반환합니다.
+
+**응답 예시:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-27T10:30:00Z",
+  "version": "0.1.0",
+  "uptime": 3600,
+  "checks": {
+    "orchestrator": { "status": "pass", "message": "Running", "latency_ms": 2 },
+    "tmux": { "status": "pass", "message": "Session active" },
+    "fileSystem": { "status": "pass", "message": "Writable", "latency_ms": 5 }
+  }
+}
+```
+
+**상태 값:**
+- `healthy`: 모든 체크 통과
+- `degraded`: 일부 체크 실패 (서비스 가능)
+- `unhealthy`: 핵심 체크 실패
+
+### GET /health/live
+
+서버가 응답 가능한지만 확인합니다 (Kubernetes liveness probe용).
+
+**응답:**
+```json
+{ "status": "ok", "timestamp": "2026-01-27T10:30:00Z" }
+```
+
+### GET /health/ready
+
+모든 의존성이 준비되었는지 확인합니다 (Kubernetes readiness probe용).
+
+**응답 (200 OK):**
+```json
+{
+  "status": "ready",
+  "timestamp": "2026-01-27T10:30:00Z",
+  "checks": {
+    "fileSystem": { "status": "pass" },
+    "config": { "status": "pass" }
+  }
+}
+```
+
+**응답 (503 Service Unavailable):**
+```json
+{
+  "status": "not_ready",
+  "timestamp": "2026-01-27T10:30:00Z",
+  "checks": {
+    "fileSystem": { "status": "fail", "message": "Directory not writable" }
+  }
+}
+```
+
+### GET /health/interrupted
+
+중단된 run 목록을 반환합니다.
+
+**응답:**
+```json
+{
+  "count": 2,
+  "runs": [
+    {
+      "runId": "run-20260127-093015",
+      "phase": "build",
+      "lastAgent": "builder",
+      "interruptedAt": "2026-01-27T09:35:00Z",
+      "canResume": true,
+      "resumeStrategy": "restart_agent"
+    }
+  ],
+  "timestamp": "2026-01-27T10:30:00Z"
+}
 ```
 
 ## Usage 추적
