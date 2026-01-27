@@ -420,6 +420,13 @@
 
     // Stop all agents handler
     document.getElementById('stop-all-agents-btn').addEventListener('click', async () => {
+      const runId = document.getElementById('run-id').textContent?.trim();
+
+      if (!runId) {
+        showToast('No active run selected', 'error');
+        return;
+      }
+
       if (!confirm('Are you sure? This will terminate all agent processes but preserve run artifacts.')) return;
 
       const btn = document.getElementById('stop-all-agents-btn');
@@ -428,7 +435,6 @@
       btn.innerHTML = '<span class="loading-spinner"></span> Stopping...';
 
       try {
-        const runId = document.getElementById('run-id').textContent;
         const res = await fetch(`/api/runs/${runId}/stop-all-agents`, { method: 'POST' });
         const data = await res.json();
 

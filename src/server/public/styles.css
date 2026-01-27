@@ -408,6 +408,18 @@ section h2 {
   color: var(--text-muted);
 }
 
+.question-block {
+  padding: 1.25rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.question-block h4 {
+  margin-top: 0;
+}
+
 /* MRP */
 .mrp-summary {
   background-color: var(--bg-tertiary);

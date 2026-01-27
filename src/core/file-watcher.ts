@@ -24,17 +24,37 @@ export type WatchEvent =
   | { type: 'error_flag'; errorFlag: ErrorFlag; agent: string }
   | { type: 'error'; error: string };
 
+export interface FileWatcherOptions {
+  /** Use polling for more reliable file detection (slower but more compatible) */
+  usePolling?: boolean;
+  /** Polling interval in ms when usePolling is true */
+  pollingInterval?: number;
+  /** Debounce time in ms */
+  debounceMs?: number;
+  /** Stability threshold in ms for awaitWriteFinish. Set to 0 to disable. */
+  stabilityThreshold?: number;
+}
+
 export class FileWatcher extends EventEmitter {
   private runDir: string;
   private watcher: FSWatcher | null = null;
   private isWatching = false;
   // Track recently emitted events to prevent duplicates
   private recentEvents: Map<string, number> = new Map();
-  private readonly DEBOUNCE_MS = 2000;
+  private readonly DEBOUNCE_MS: number;
+  private readonly options: FileWatcherOptions;
 
-  constructor(runDir: string) {
+  constructor(runDir: string, options: FileWatcherOptions = {}) {
     super();
     this.runDir = runDir;
+    this.options = {
+      usePolling: false,
+      pollingInterval: 100,
+      debounceMs: 2000,
+      stabilityThreshold: 500,
+      ...options,
+    };
+    this.DEBOUNCE_MS = this.options.debounceMs!;
   }
 
   /**
@@ -69,15 +89,23 @@ export class FileWatcher extends EventEmitter {
   start(): void {
     if (this.isWatching) return;
 
-    this.watcher = watch(this.runDir, {
+    const watchOptions: Parameters<typeof watch>[1] = {
       persistent: true,
       ignoreInitial: true,
       depth: 3,
-      awaitWriteFinish: {
-        stabilityThreshold: 500,
-        pollInterval: 100,
-      },
-    });
+      usePolling: this.options.usePolling,
+      interval: this.options.pollingInterval,
+    };
+
+    // Only enable awaitWriteFinish if stabilityThreshold > 0
+    if (this.options.stabilityThreshold && this.options.stabilityThreshold > 0) {
+      watchOptions.awaitWriteFinish = {
+        stabilityThreshold: this.options.stabilityThreshold,
+        pollInterval: this.options.pollingInterval,
+      };
+    }
+
+    this.watcher = watch(this.runDir, watchOptions);
 
     this.watcher.on('add', (filePath) => this.handleFileAdd(filePath));
     this.watcher.on('change', (filePath) => this.handleFileChange(filePath));

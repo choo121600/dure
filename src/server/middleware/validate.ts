@@ -82,19 +82,46 @@ export function validateCrpId(req: Request, res: Response, next: NextFunction): 
 
 /**
  * Middleware to validate and sanitize CRP response (VCR submission)
+ * Supports both single-question (decision: string) and multi-question (decisions: object) formats
  * Also sanitizes optional text fields
  */
 export function validateCRPResponse(req: Request, res: Response, next: NextFunction): void {
-  const { decision, rationale, additional_notes, applies_to_future } = req.body;
+  const { decision, decisions, rationale, additional_notes, applies_to_future } = req.body;
 
-  // Validate decision (required)
-  const decisionValidation = validateDecision(decision);
-  if (!decisionValidation.isValid) {
-    res.status(400).json({
-      success: false,
-      error: decisionValidation.error,
-    });
-    return;
+  // Check if this is a multi-question response
+  const isMultiQuestion = decisions !== undefined || (decision && typeof decision === 'object');
+
+  if (isMultiQuestion) {
+    // Multi-question format validation
+    const decisionsObj = decisions || decision;
+    if (typeof decisionsObj !== 'object' || decisionsObj === null) {
+      res.status(400).json({
+        success: false,
+        error: 'Multi-question response requires decisions object',
+      });
+      return;
+    }
+
+    // Validate each decision value is a non-empty string
+    for (const [questionId, optionId] of Object.entries(decisionsObj)) {
+      if (typeof optionId !== 'string' || optionId.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid decision for question ${questionId}`,
+        });
+        return;
+      }
+    }
+  } else {
+    // Single question format validation
+    const decisionValidation = validateDecision(decision);
+    if (!decisionValidation.isValid) {
+      res.status(400).json({
+        success: false,
+        error: decisionValidation.error,
+      });
+      return;
+    }
   }
 
   // Sanitize optional text fields

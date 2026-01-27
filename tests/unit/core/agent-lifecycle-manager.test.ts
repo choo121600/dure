@@ -5,6 +5,7 @@ import type { AgentName, AgentModel, AgentTimeoutConfig } from '../../../src/typ
 // Mock dependencies
 const mockTmuxManager = {
   startAgent: vi.fn(),
+  startAgentAndWaitReady: vi.fn().mockResolvedValue(undefined),
   clearAgent: vi.fn(),
   restartAgentWithVCR: vi.fn(),
   updatePaneBordersWithModels: vi.fn(),
@@ -13,8 +14,8 @@ const mockTmuxManager = {
 };
 
 const mockStateManager = {
-  updateAgentStatus: vi.fn(),
-  updateAgentUsage: vi.fn(),
+  updateAgentStatus: vi.fn().mockResolvedValue(undefined),
+  updateAgentUsage: vi.fn().mockResolvedValue(undefined),
   loadState: vi.fn().mockReturnValue({
     run_id: 'run-20260126000000',
     phase: 'refine',
@@ -173,7 +174,7 @@ describe('AgentLifecycleManager', () => {
 
       expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('refiner', 'running');
       expect(mockAgentMonitor.watchAgent).toHaveBeenCalledWith('refiner');
-      expect(mockTmuxManager.startAgent).toHaveBeenCalledWith(
+      expect(mockTmuxManager.startAgentAndWaitReady).toHaveBeenCalledWith(
         'refiner',
         'haiku',
         '/test/project/.orchestral/runs/run-20260126000000/prompts/refiner.md'
@@ -233,7 +234,7 @@ describe('AgentLifecycleManager', () => {
   });
 
   describe('restartAgentWithVCR', () => {
-    it('should restart agent with VCR info', () => {
+    it('should restart agent with VCR info', async () => {
       const vcrInfo = {
         crpQuestion: 'Test question?',
         decision: 'A',
@@ -241,7 +242,7 @@ describe('AgentLifecycleManager', () => {
         rationale: 'Because A is best',
       };
 
-      manager.restartAgentWithVCR('refiner', 'run-123', '/test/prompt.md', vcrInfo);
+      await manager.restartAgentWithVCR('refiner', 'run-123', '/test/prompt.md', vcrInfo);
 
       expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('refiner', 'running');
       expect(mockAgentMonitor.watchAgent).toHaveBeenCalledWith('refiner');

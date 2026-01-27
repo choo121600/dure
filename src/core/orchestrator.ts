@@ -176,10 +176,11 @@ export class Orchestrator extends EventEmitter {
     this.currentRunId = runId;
     this.eventLogger = new EventLogger(runDir);
 
-    // Initialize tmux - reuse existing session if available
+    // Initialize tmux - reuse existing session if available, or create new one
     this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot);
     if (!this.tmuxManager.sessionExists()) {
       this.tmuxManager = new TmuxManager(this.config.global.tmux_session_prefix, this.projectRoot, runId);
+      this.tmuxManager.createSession();
     }
 
     // Re-initialize managers
@@ -200,7 +201,7 @@ export class Orchestrator extends EventEmitter {
         refiner: 'refine', builder: 'build', verifier: 'verify', gatekeeper: 'gate',
       };
 
-      this.phaseManager?.transition(agentToPhase[agent]);
+      await this.phaseManager?.transition(agentToPhase[agent]);
       this.emitEvent({ type: 'phase_changed', phase: agentToPhase[agent], runId });
 
       // Find VCR and build info
@@ -209,12 +210,37 @@ export class Orchestrator extends EventEmitter {
       let vcrInfo: Parameters<AgentLifecycleManager['restartAgentWithVCR']>[3];
 
       if (vcr) {
-        const selectedOption = resolvedCrp.options?.find(o => o.id === vcr.decision);
+        // Handle both single-question and multi-question CRP formats
+        const isMultiQuestion = resolvedCrp.questions && Array.isArray(resolvedCrp.questions);
+        let decisionLabel: string;
+        let crpQuestion: string;
+        let crpContext: string;
+
+        if (isMultiQuestion) {
+          // Multi-question format: build summary of all decisions
+          const decisions = typeof vcr.decision === 'object' ? vcr.decision : {};
+          const labels = resolvedCrp.questions!.map(q => {
+            const optionId = decisions[q.id];
+            const option = q.options?.find(o => o.id === optionId);
+            return `${q.id}: ${option ? option.label : optionId || 'N/A'}`;
+          });
+          decisionLabel = labels.join('; ');
+          crpQuestion = resolvedCrp.questions!.map(q => q.question).join(' | ');
+          crpContext = resolvedCrp.context || '';
+        } else {
+          // Single question format (legacy)
+          const decision = typeof vcr.decision === 'string' ? vcr.decision : '';
+          const selectedOption = resolvedCrp.options?.find(o => o.id === decision);
+          decisionLabel = selectedOption ? `${selectedOption.id}. ${selectedOption.label}` : decision;
+          crpQuestion = resolvedCrp.question || '';
+          crpContext = resolvedCrp.context || '';
+        }
+
         vcrInfo = {
-          crpQuestion: resolvedCrp.question,
-          crpContext: resolvedCrp.context,
-          decision: vcr.decision,
-          decisionLabel: selectedOption ? `${selectedOption.id}. ${selectedOption.label}` : vcr.decision,
+          crpQuestion,
+          crpContext,
+          decision: typeof vcr.decision === 'string' ? vcr.decision : JSON.stringify(vcr.decision),
+          decisionLabel,
           rationale: vcr.rationale,
           additionalNotes: vcr.additional_notes,
         };

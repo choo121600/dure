@@ -404,7 +404,7 @@ export function createApiRouter(
   // Submit VCR (respond to CRP)
   router.post('/runs/:runId/crp/:crpId/respond', validateRunId, validateCrpId, validateCRPResponse, async (req: Request, res: Response) => {
     const { runId, crpId } = req.params;
-    const { decision, rationale, additional_notes, applies_to_future } = req.body;
+    const { decision, decisions, rationale, additional_notes, applies_to_future } = req.body;
 
     if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
@@ -424,6 +424,10 @@ export function createApiRouter(
     }
 
     try {
+      // Check if this is a multi-question CRP
+      const isMultiQuestion = crp.questions && Array.isArray(crp.questions);
+      const finalDecision = isMultiQuestion ? (decisions || decision) : decision;
+
       // Generate VCR ID
       const vcrs = await runManager.listVCRs(runId);
       const vcrNumber = vcrs.length + 1;
@@ -434,7 +438,8 @@ export function createApiRouter(
         vcr_id: vcrId,
         crp_id: crpId,
         created_at: new Date().toISOString(),
-        decision,
+        decision: finalDecision,
+        decisions: isMultiQuestion ? finalDecision : undefined,
         rationale: rationale || '',
         additional_notes: additional_notes || '',
         applies_to_future: applies_to_future || false,

@@ -4,7 +4,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { FileWatcher, WatchEvent, ErrorFlag } from '../../../src/core/file-watcher.js';
+import { FileWatcher, WatchEvent, ErrorFlag, FileWatcherOptions } from '../../../src/core/file-watcher.js';
+
+/** Test-optimized options for FileWatcher */
+const TEST_WATCHER_OPTIONS: FileWatcherOptions = {
+  usePolling: false,
+  pollingInterval: 100,
+  debounceMs: 500,
+  stabilityThreshold: 0,  // Disable awaitWriteFinish for faster test execution
+};
 import {
   createTempDir,
   cleanupTempDir,
@@ -21,6 +29,31 @@ import {
 } from '../../helpers/test-utils.js';
 import type { CRP, GatekeeperVerdict } from '../../../src/types/index.js';
 
+/**
+ * Wait for a specific event type with timeout
+ */
+function waitForEvent(
+  fileWatcher: FileWatcher,
+  eventType: string,
+  timeoutMs: number = 5000
+): Promise<WatchEvent> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timeout waiting for event: ${eventType}`));
+    }, timeoutMs);
+
+    const handler = (event: WatchEvent) => {
+      if (event.type === eventType) {
+        clearTimeout(timeout);
+        fileWatcher.off('event', handler);
+        resolve(event);
+      }
+    };
+
+    fileWatcher.on('event', handler);
+  });
+}
+
 describe('FileWatcher', () => {
   let tempDir: string;
   let runDir: string;
@@ -31,7 +64,7 @@ describe('FileWatcher', () => {
     tempDir = createTempDir('file-watcher-test');
     runId = generateTestRunId();
     runDir = createMockRunDir(tempDir, runId);
-    fileWatcher = new FileWatcher(runDir);
+    fileWatcher = new FileWatcher(runDir, TEST_WATCHER_OPTIONS);
   });
 
   afterEach(async () => {
@@ -68,176 +101,129 @@ describe('FileWatcher', () => {
 
   describe('done.flag detection', () => {
     it('should emit builder_done when builder/done.flag is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200); // Wait for watcher to initialize
 
-      await wait(100); // Wait for watcher to initialize
-
+      const eventPromise = waitForEvent(fileWatcher, 'builder_done', 5000);
       createDoneFlag(runDir, 'builder');
 
-      await wait(1500); // Wait for debounce and file detection
-
-      const builderDoneEvents = events.filter((e) => e.type === 'builder_done');
-      expect(builderDoneEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('builder_done');
     });
 
     it('should emit verifier_done when verifier/done.flag is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'verifier_done', 5000);
       createDoneFlag(runDir, 'verifier');
 
-      await wait(1500);
-
-      const verifierDoneEvents = events.filter((e) => e.type === 'verifier_done');
-      expect(verifierDoneEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('verifier_done');
     });
   });
 
   describe('refiner_done detection', () => {
     it('should emit refiner_done when briefing/refined.md is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'refiner_done', 5000);
       writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Refined briefing', 'utf-8');
 
-      await wait(1500);
-
-      const refinerDoneEvents = events.filter((e) => e.type === 'refiner_done');
-      expect(refinerDoneEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('refiner_done');
     });
   });
 
   describe('gatekeeper_done detection', () => {
     it('should emit gatekeeper_done with verdict when verdict.json is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'gatekeeper_done', 5000);
       const verdict = createMockVerdict('PASS');
       writeMockVerdict(runDir, verdict);
 
-      await wait(1500);
-
-      const gatekeeperDoneEvents = events.filter(
-        (e) => e.type === 'gatekeeper_done'
-      ) as Array<{ type: 'gatekeeper_done'; verdict: GatekeeperVerdict }>;
-      expect(gatekeeperDoneEvents.length).toBeGreaterThanOrEqual(1);
-      expect(gatekeeperDoneEvents[0].verdict.verdict).toBe('PASS');
+      const event = await eventPromise as { type: 'gatekeeper_done'; verdict: GatekeeperVerdict };
+      expect(event.type).toBe('gatekeeper_done');
+      expect(event.verdict.verdict).toBe('PASS');
     });
 
     it('should parse FAIL verdict correctly', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'gatekeeper_done', 5000);
       const verdict = createMockVerdict('FAIL', { issues: ['Issue 1', 'Issue 2'] });
       writeMockVerdict(runDir, verdict);
 
-      await wait(1500);
-
-      const gatekeeperDoneEvents = events.filter(
-        (e) => e.type === 'gatekeeper_done'
-      ) as Array<{ type: 'gatekeeper_done'; verdict: GatekeeperVerdict }>;
-      expect(gatekeeperDoneEvents.length).toBeGreaterThanOrEqual(1);
-      expect(gatekeeperDoneEvents[0].verdict.verdict).toBe('FAIL');
-      expect(gatekeeperDoneEvents[0].verdict.issues).toContain('Issue 1');
+      const event = await eventPromise as { type: 'gatekeeper_done'; verdict: GatekeeperVerdict };
+      expect(event.type).toBe('gatekeeper_done');
+      expect(event.verdict.verdict).toBe('FAIL');
+      expect(event.verdict.issues).toContain('Issue 1');
     });
   });
 
   describe('CRP detection', () => {
     it('should emit crp_created when CRP file is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'crp_created', 5000);
       const crp = createMockCRP('crp-001');
       writeMockCRP(runDir, crp);
 
-      await wait(1500);
-
-      const crpCreatedEvents = events.filter(
-        (e) => e.type === 'crp_created'
-      ) as Array<{ type: 'crp_created'; crp: CRP }>;
-      expect(crpCreatedEvents.length).toBeGreaterThanOrEqual(1);
-      expect(crpCreatedEvents[0].crp.crp_id).toBe('crp-001');
+      const event = await eventPromise as { type: 'crp_created'; crp: CRP };
+      expect(event.type).toBe('crp_created');
+      expect(event.crp.crp_id).toBe('crp-001');
     });
 
     it('should emit error for invalid CRP JSON', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'error', 5000);
       writeFileSync(join(runDir, 'crp', 'crp-invalid.json'), 'invalid json {{{', 'utf-8');
 
-      await wait(1500);
-
-      const errorEvents = events.filter((e) => e.type === 'error');
-      expect(errorEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('error');
     });
   });
 
   describe('VCR detection', () => {
     it('should emit vcr_created when VCR file is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'vcr_created', 5000);
       const vcr = createMockVCR('vcr-001', 'crp-001');
       writeMockVCR(runDir, vcr);
 
-      await wait(1500);
-
-      const vcrCreatedEvents = events.filter(
-        (e) => e.type === 'vcr_created'
-      ) as Array<{ type: 'vcr_created'; vcrId: string; crpId: string }>;
-      expect(vcrCreatedEvents.length).toBeGreaterThanOrEqual(1);
-      expect(vcrCreatedEvents[0].vcrId).toBe('vcr-001');
-      expect(vcrCreatedEvents[0].crpId).toBe('crp-001');
+      const event = await eventPromise as { type: 'vcr_created'; vcrId: string; crpId: string };
+      expect(event.type).toBe('vcr_created');
+      expect(event.vcrId).toBe('vcr-001');
+      expect(event.crpId).toBe('crp-001');
     });
   });
 
   describe('MRP detection', () => {
     it('should emit mrp_created when mrp/summary.md is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'mrp_created', 5000);
       writeFileSync(join(runDir, 'mrp', 'summary.md'), '# MRP Summary', 'utf-8');
 
-      await wait(1500);
-
-      const mrpCreatedEvents = events.filter((e) => e.type === 'mrp_created');
-      expect(mrpCreatedEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('mrp_created');
     });
   });
 
   describe('error.flag detection', () => {
     it('should emit error_flag when error.flag is created', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
-
-      await wait(100);
+      await wait(200);
 
       const errorFlag: ErrorFlag = {
         agent: 'builder',
@@ -247,36 +233,27 @@ describe('FileWatcher', () => {
         recoverable: true,
       };
 
+      const eventPromise = waitForEvent(fileWatcher, 'error_flag', 5000);
       writeFileSync(join(runDir, 'builder', 'error.flag'), JSON.stringify(errorFlag), 'utf-8');
 
-      await wait(1500);
-
-      const errorFlagEvents = events.filter(
-        (e) => e.type === 'error_flag'
-      ) as Array<{ type: 'error_flag'; errorFlag: ErrorFlag; agent: string }>;
-      expect(errorFlagEvents.length).toBeGreaterThanOrEqual(1);
-      expect(errorFlagEvents[0].errorFlag.error_type).toBe('crash');
-      expect(errorFlagEvents[0].agent).toBe('builder');
+      const event = await eventPromise as { type: 'error_flag'; errorFlag: ErrorFlag; agent: string };
+      expect(event.type).toBe('error_flag');
+      expect(event.errorFlag.error_type).toBe('crash');
+      expect(event.agent).toBe('builder');
     });
 
     it('should handle invalid error.flag JSON', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      const eventPromise = waitForEvent(fileWatcher, 'error_flag', 5000);
       writeFileSync(join(runDir, 'builder', 'error.flag'), 'not valid json', 'utf-8');
 
-      await wait(1500);
-
-      const errorFlagEvents = events.filter(
-        (e) => e.type === 'error_flag'
-      ) as Array<{ type: 'error_flag'; errorFlag: ErrorFlag; agent: string }>;
-      expect(errorFlagEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise as { type: 'error_flag'; errorFlag: ErrorFlag; agent: string };
+      expect(event.type).toBe('error_flag');
       // Should create a basic error flag even if JSON is invalid
-      expect(errorFlagEvents[0].errorFlag.error_type).toBe('crash');
-      expect(errorFlagEvents[0].errorFlag.recoverable).toBe(false);
+      expect(event.errorFlag.error_type).toBe('crash');
+      expect(event.errorFlag.recoverable).toBe(false);
     });
   });
 
@@ -285,17 +262,18 @@ describe('FileWatcher', () => {
       const events: WatchEvent[] = [];
       fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
-      // Create done.flag twice quickly
+      // Create done.flag - wait for first event
+      const eventPromise = waitForEvent(fileWatcher, 'builder_done', 5000);
       createDoneFlag(runDir, 'builder');
-      await wait(100);
+      await eventPromise;
 
-      // Modify the file (this should be debounced)
+      // Modify the file quickly (this should be debounced)
       writeFileSync(join(runDir, 'builder', 'done.flag'), 'updated', 'utf-8');
 
-      await wait(1500);
+      // Wait for potential second event (should not arrive due to debounce - 500ms)
+      await wait(600);
 
       // Should only have one builder_done event due to debounce
       const builderDoneEvents = events.filter((e) => e.type === 'builder_done');
@@ -306,20 +284,17 @@ describe('FileWatcher', () => {
       const events: WatchEvent[] = [];
       fileWatcher.on('event', (event) => events.push(event));
       fileWatcher.start();
+      await wait(200);
 
-      await wait(100);
-
+      // First event
+      const firstEventPromise = waitForEvent(fileWatcher, 'builder_done', 5000);
       createDoneFlag(runDir, 'builder');
+      await firstEventPromise;
 
-      // Wait longer than debounce window
-      await wait(3000);
+      // Wait longer than debounce window (500ms in test mode)
+      await wait(700);
 
-      // Simulate another creation by modifying (triggering change event)
-      writeFileSync(join(runDir, 'builder', 'done.flag'), 'new content ' + Date.now(), 'utf-8');
-
-      await wait(1500);
-
-      // builder_done events should be at least 1 (the second may or may not trigger depending on timing)
+      // builder_done events should be at least 1
       const builderDoneEvents = events.filter((e) => e.type === 'builder_done');
       expect(builderDoneEvents.length).toBeGreaterThanOrEqual(1);
     });
@@ -373,47 +348,35 @@ describe('FileWatcher', () => {
 
   describe('file change handling', () => {
     it('should emit refiner_done on refined.md change (not just add)', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
-
       // Create the file before starting watcher
       writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Initial', 'utf-8');
 
       fileWatcher.start();
-
-      await wait(100);
+      await wait(200);
 
       // Update the file
-      writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Updated', 'utf-8');
+      const eventPromise = waitForEvent(fileWatcher, 'refiner_done', 5000);
+      writeFileSync(join(runDir, 'briefing', 'refined.md'), '# Updated ' + Date.now(), 'utf-8');
 
-      await wait(1500);
-
-      const refinerDoneEvents = events.filter((e) => e.type === 'refiner_done');
-      expect(refinerDoneEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise;
+      expect(event.type).toBe('refiner_done');
     });
 
     it('should emit gatekeeper_done on verdict.json change', async () => {
-      const events: WatchEvent[] = [];
-      fileWatcher.on('event', (event) => events.push(event));
-
       // Create initial verdict
       const initialVerdict = createMockVerdict('FAIL');
       writeMockVerdict(runDir, initialVerdict);
 
       fileWatcher.start();
-
-      await wait(100);
+      await wait(200);
 
       // Update verdict
+      const eventPromise = waitForEvent(fileWatcher, 'gatekeeper_done', 5000);
       const updatedVerdict = createMockVerdict('PASS');
       writeMockVerdict(runDir, updatedVerdict);
 
-      await wait(1500);
-
-      const gatekeeperDoneEvents = events.filter(
-        (e) => e.type === 'gatekeeper_done'
-      ) as Array<{ type: 'gatekeeper_done'; verdict: GatekeeperVerdict }>;
-      expect(gatekeeperDoneEvents.length).toBeGreaterThanOrEqual(1);
+      const event = await eventPromise as { type: 'gatekeeper_done'; verdict: GatekeeperVerdict };
+      expect(event.type).toBe('gatekeeper_done');
     });
   });
 });

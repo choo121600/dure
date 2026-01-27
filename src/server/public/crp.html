@@ -29,18 +29,21 @@
       </div>
 
       <div class="mrp-summary" style="margin-bottom: 1.5rem;">
-        <h3 style="margin-bottom: 0.5rem;">Question</h3>
-        <p id="crp-question" style="font-size: 1.1rem; margin-bottom: 1rem;"></p>
-        <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Context</h4>
-        <p id="crp-context" style="color: var(--text-secondary);"></p>
+        <div id="single-question-view">
+          <h3 style="margin-bottom: 0.5rem;">Question</h3>
+          <p id="crp-question" style="font-size: 1.1rem; margin-bottom: 1rem;"></p>
+          <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Context</h4>
+          <p id="crp-context" style="color: var(--text-secondary);"></p>
+        </div>
+        <div id="multi-question-view" style="display: none;">
+          <h3 style="margin-bottom: 0.5rem;">Context</h3>
+          <p id="crp-context-multi" style="color: var(--text-secondary); margin-bottom: 1rem;"></p>
+        </div>
       </div>
 
       <form id="crp-form">
-        <div class="form-group">
-          <label>Options</label>
-          <div class="options-list" id="options-list">
-            <!-- Options will be populated here -->
-          </div>
+        <div id="questions-container">
+          <!-- Questions with options will be populated here -->
         </div>
 
         <div class="form-group">
@@ -83,7 +86,8 @@
     const runId = pathParts[2];
     const crpId = pathParts[4];
 
-    let selectedOption = null;
+    let selectedOptions = {}; // { questionId: optionId }
+    let isMultiQuestion = false;
 
     async function loadCRP() {
       const res = await fetch(`/api/crp/${runId}/${crpId}`);
@@ -99,32 +103,80 @@
 
       document.getElementById('crp-id').textContent = crp.crp_id;
       document.getElementById('crp-from').textContent = crp.created_by.charAt(0).toUpperCase() + crp.created_by.slice(1);
-      document.getElementById('crp-question').textContent = crp.question;
-      document.getElementById('crp-context').textContent = crp.context;
       document.getElementById('back-link').href = `/run/${runId}`;
 
-      // Render options
-      const optionsList = document.getElementById('options-list');
-      optionsList.innerHTML = crp.options.map(opt => `
-        <label class="option-card" data-option="${opt.id}">
-          <input type="radio" name="decision" value="${opt.id}">
-          <div class="option-header">
-            <span class="option-id">${opt.id}</span>
-            <span class="option-label">${opt.label}</span>
-            ${crp.recommendation === opt.id ? '<span class="option-recommended">Recommended</span>' : ''}
-          </div>
-          <div class="option-description">${opt.description}</div>
-          <div class="option-risk">Risk: ${opt.risk}</div>
-        </label>
-      `).join('');
+      const container = document.getElementById('questions-container');
 
-      // Add click handlers for options
+      // Check if CRP uses questions array (multi-question) or single question format
+      if (crp.questions && Array.isArray(crp.questions)) {
+        isMultiQuestion = true;
+        document.getElementById('single-question-view').style.display = 'none';
+        document.getElementById('multi-question-view').style.display = 'block';
+
+        if (crp.context) {
+          document.getElementById('crp-context-multi').textContent = crp.context;
+        }
+
+        // Render each question with its options
+        container.innerHTML = crp.questions.map((q, idx) => `
+          <div class="form-group question-block" data-question-id="${q.id}">
+            <h4 style="margin-bottom: 0.5rem; color: var(--accent-blue);">Q${idx + 1}: ${q.question}</h4>
+            ${q.context ? `<p style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem;">${q.context}</p>` : ''}
+            <div class="options-list">
+              ${(q.options || []).map(opt => `
+                <label class="option-card" data-question="${q.id}" data-option="${opt.id}">
+                  <input type="radio" name="decision-${q.id}" value="${opt.id}">
+                  <div class="option-header">
+                    <span class="option-id">${opt.id}</span>
+                    <span class="option-label">${opt.label}</span>
+                    ${q.recommendation === opt.id ? '<span class="option-recommended">Recommended</span>' : ''}
+                  </div>
+                  <div class="option-description">${opt.description}</div>
+                  ${opt.risk ? `<div class="option-risk">Risk: ${opt.risk}</div>` : ''}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+
+      } else {
+        // Single question format (legacy)
+        isMultiQuestion = false;
+        document.getElementById('single-question-view').style.display = 'block';
+        document.getElementById('multi-question-view').style.display = 'none';
+        document.getElementById('crp-question').textContent = crp.question || '';
+        document.getElementById('crp-context').textContent = crp.context || '';
+
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Options</label>
+            <div class="options-list" id="options-list">
+              ${(crp.options || []).map(opt => `
+                <label class="option-card" data-question="single" data-option="${opt.id}">
+                  <input type="radio" name="decision-single" value="${opt.id}">
+                  <div class="option-header">
+                    <span class="option-id">${opt.id}</span>
+                    <span class="option-label">${opt.label}</span>
+                    ${crp.recommendation === opt.id ? '<span class="option-recommended">Recommended</span>' : ''}
+                  </div>
+                  <div class="option-description">${opt.description}</div>
+                  ${opt.risk ? `<div class="option-risk">Risk: ${opt.risk}</div>` : ''}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Add click handlers for all option cards
       document.querySelectorAll('.option-card').forEach(card => {
         card.addEventListener('click', () => {
-          document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+          const questionId = card.dataset.question;
+          // Deselect other options in the same question
+          document.querySelectorAll(`.option-card[data-question="${questionId}"]`).forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           card.querySelector('input').checked = true;
-          selectedOption = card.dataset.option;
+          selectedOptions[questionId] = card.dataset.option;
         });
       });
     }
@@ -132,8 +184,18 @@
     document.getElementById('crp-form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!selectedOption) {
+      // Validate that all questions have been answered
+      const questionBlocks = document.querySelectorAll('.question-block');
+      const requiredQuestions = isMultiQuestion ? questionBlocks.length : 1;
+      const answeredQuestions = Object.keys(selectedOptions).length;
+
+      if (answeredQuestions === 0) {
         alert('Please select an option');
+        return;
+      }
+
+      if (isMultiQuestion && answeredQuestions < requiredQuestions) {
+        alert(`Please answer all questions (${answeredQuestions}/${requiredQuestions} answered)`);
         return;
       }
 
@@ -142,11 +204,15 @@
       submitBtn.textContent = 'Submitting...';
 
       try {
+        // Format decisions based on single or multi-question mode
+        const decisions = isMultiQuestion ? selectedOptions : selectedOptions['single'];
+
         const res = await fetch(`/api/crp/${runId}/${crpId}/respond`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            decision: selectedOption,
+            decision: decisions,
+            decisions: isMultiQuestion ? selectedOptions : undefined,
             rationale: document.getElementById('rationale').value,
             additionalNotes: document.getElementById('additional-notes').value,
             appliesToFuture: document.getElementById('applies-to-future').checked

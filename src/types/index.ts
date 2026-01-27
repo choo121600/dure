@@ -77,19 +77,36 @@ export interface CRPOption {
   id: string;
   label: string;
   description: string;
-  risk: string;
+  risk?: string;
+  pros?: string[];
+  cons?: string[];
 }
 
+export interface CRPQuestion {
+  id: string;
+  question: string;
+  context?: string;
+  options?: CRPOption[];
+  recommendation?: string;
+  required?: boolean;
+}
+
+// CRP supports both single-question (legacy) and multi-question formats
 export interface CRP {
   crp_id: string;
   created_at: string;
   created_by: AgentName;
-  type: 'clarification' | 'architecture' | 'security' | 'dependency';
-  question: string;
-  context: string;
-  options: CRPOption[];
-  recommendation: string;
+  type: 'clarification' | 'architecture' | 'security' | 'dependency' | 'architecture_decision';
+  // Single question format (legacy)
+  question?: string;
+  context?: string;
+  options?: CRPOption[];
+  recommendation?: string;
+  // Multi-question format
+  questions?: CRPQuestion[];
+  // Common fields
   status: 'pending' | 'resolved';
+  additional_context?: string;
 }
 
 // VCR (Version Controlled Resolution)
@@ -97,7 +114,10 @@ export interface VCR {
   vcr_id: string;
   crp_id: string;
   created_at: string;
-  decision: string;
+  // Single decision (legacy) or multi-question decision
+  decision: string | Record<string, string>;
+  // Multi-question decisions mapping (questionId -> optionId)
+  decisions?: Record<string, string>;
   rationale: string;
   additional_notes?: string;
   applies_to_future: boolean;
@@ -119,22 +139,43 @@ export interface MRPUsage {
 }
 
 // MRP (Merge-Readiness Pack)
+export interface MRPTestResults {
+  total: number;
+  passed: number;
+  failed: number;
+  coverage?: number;
+  categories?: Record<string, unknown>;
+}
+
 export interface MRPEvidence {
-  tests: {
-    total: number;
-    passed: number;
-    failed: number;
-    coverage?: number;
-  };
+  run_id?: string;
+  completed_at?: string;
+  tests: MRPTestResults;
   files_changed: string[];
+  files_created?: string[];
+  lines_added?: number;
+  lines_deleted?: number;
+  net_change?: number;
   decisions: string[];
   iterations: number;
+  max_iterations?: number;
   logs: {
     refiner: string;
     builder: string;
     verifier: string;
     gatekeeper: string;
   };
+  artifacts?: Record<string, unknown>;
+  quality_metrics?: Record<string, unknown>;
+  security?: Record<string, unknown>;
+  compatibility?: Record<string, unknown>;
+  performance?: Record<string, unknown>;
+  coverage_details?: Record<string, unknown>;
+  edge_cases_tested?: string[];
+  adversarial_findings?: string[];
+  verdict?: Verdict;
+  ready_for_merge?: boolean;
+  gatekeeper_confidence?: string;
   usage?: MRPUsage;
 }
 
@@ -142,6 +183,12 @@ export interface MRPEvidence {
 export interface TestFailure {
   test: string;
   reason: string;
+}
+
+export interface TestSummary {
+  total: number;
+  passed: number;
+  categories?: string[];
 }
 
 export interface VerifierResults {
@@ -152,14 +199,47 @@ export interface VerifierResults {
   failures: TestFailure[];
   edge_cases_tested: string[];
   adversarial_findings: string[];
+  test_summary?: {
+    model_selector_tests?: TestSummary;
+    edge_cases_tests?: TestSummary;
+    adversarial_tests?: TestSummary;
+  };
+  fix_verification?: Record<string, unknown>;
+  coverage_details?: Record<string, unknown>;
+  execution_time?: string;
+  timestamp?: string;
 }
 
 // Gatekeeper Verdict
+export interface VerdictDetails {
+  tests_passing: boolean;
+  tests_total: number;
+  tests_passed: number;
+  tests_failed: number;
+  coverage_percentage?: number;
+  coverage_meets_minimum?: boolean;
+  critical_issues_found?: number;
+  security_concerns?: number;
+  breaking_changes?: number;
+  external_dependencies_added?: number;
+}
+
+export interface QualityScores {
+  code_quality?: string;
+  design_quality?: string;
+  test_quality?: string;
+  documentation_quality?: string;
+}
+
 export interface GatekeeperVerdict {
   verdict: Verdict;
   reason: string;
   issues?: string[];
   timestamp: string;
+  details?: VerdictDetails;
+  quality_scores?: QualityScores;
+  iteration?: number;
+  max_iterations?: number;
 }
 
 // Configuration Types

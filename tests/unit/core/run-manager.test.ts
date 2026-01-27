@@ -27,10 +27,10 @@ describe('RunManager', () => {
   let tempDir: string;
   let runManager: RunManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     tempDir = createTempDir('run-manager-test');
     runManager = new RunManager(tempDir);
-    runManager.initialize();
+    await runManager.initialize();
   });
 
   afterEach(() => {

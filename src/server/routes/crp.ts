@@ -58,7 +58,7 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
   // Submit VCR (response to CRP)
   router.post('/:runId/:crpId/respond', async (req: Request, res: Response) => {
     const { runId, crpId } = req.params;
-    const { decision, rationale, additionalNotes, appliesToFuture } = req.body;
+    const { decision, decisions, rationale, additionalNotes, appliesToFuture } = req.body;
 
     if (!(await runManager.runExists(runId))) {
       const response: ApiResponse<null> = {
@@ -77,14 +77,52 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       return res.status(404).json(response);
     }
 
-    // Validate decision
-    const validOptions = crp.options.map(o => o.id);
-    if (!validOptions.includes(decision)) {
-      const response: ApiResponse<null> = {
-        success: false,
-        error: `Invalid decision. Must be one of: ${validOptions.join(', ')}`,
-      };
-      return res.status(400).json(response);
+    // Validate decision based on CRP format (single vs multi-question)
+    const isMultiQuestion = crp.questions && Array.isArray(crp.questions);
+
+    if (isMultiQuestion) {
+      // Multi-question validation
+      const decisionsToValidate = decisions || decision;
+      if (typeof decisionsToValidate !== 'object') {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: 'Multi-question CRP requires decisions object',
+        };
+        return res.status(400).json(response);
+      }
+
+      for (const q of crp.questions!) {
+        const selectedOption = decisionsToValidate[q.id];
+        if (!selectedOption && q.required !== false) {
+          const response: ApiResponse<null> = {
+            success: false,
+            error: `Missing answer for question: ${q.id}`,
+          };
+          return res.status(400).json(response);
+        }
+        if (selectedOption && q.options) {
+          const validOptions = q.options.map(o => o.id);
+          if (!validOptions.includes(selectedOption)) {
+            const response: ApiResponse<null> = {
+              success: false,
+              error: `Invalid option "${selectedOption}" for question ${q.id}. Must be one of: ${validOptions.join(', ')}`,
+            };
+            return res.status(400).json(response);
+          }
+        }
+      }
+    } else {
+      // Single question validation (legacy)
+      if (crp.options && crp.options.length > 0) {
+        const validOptions = crp.options.map(o => o.id);
+        if (!validOptions.includes(decision)) {
+          const response: ApiResponse<null> = {
+            success: false,
+            error: `Invalid decision. Must be one of: ${validOptions.join(', ')}`,
+          };
+          return res.status(400).json(response);
+        }
+      }
     }
 
     // Create VCR
@@ -93,7 +131,8 @@ export function createCrpRouter(projectRoot: string, orchestrator: Orchestrator)
       vcr_id: vcrId,
       crp_id: crpId,
       created_at: new Date().toISOString(),
-      decision,
+      decision: isMultiQuestion ? (decisions || decision) : decision,
+      decisions: isMultiQuestion ? (decisions || decision) : undefined,
       rationale: rationale || '',
       additional_notes: additionalNotes,
       applies_to_future: appliesToFuture || false,
