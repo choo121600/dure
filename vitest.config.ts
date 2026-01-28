@@ -13,6 +13,18 @@ export default defineConfig({
       'node_modules/**',
       'tests/benchmarks/**',
     ],
+    // Memory optimization: limit concurrent workers
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        minThreads: 1,
+        maxThreads: 2,
+      },
+    },
+    // Reduce output verbosity to minimize context accumulation
+    reporters: ['basic'],
+    // Disable watch mode output noise
+    outputFile: undefined,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
