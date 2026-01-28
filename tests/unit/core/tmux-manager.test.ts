@@ -13,15 +13,17 @@ vi.mock('fs', () => ({
   existsSync: vi.fn().mockReturnValue(true),
 }));
 
-import { execSync, spawnSync } from 'child_process';
+import { execSync, spawnSync, spawn } from 'child_process';
 
 const mockExecSync = execSync as ReturnType<typeof vi.fn>;
 const mockSpawnSync = spawnSync as ReturnType<typeof vi.fn>;
+const mockSpawn = spawn as ReturnType<typeof vi.fn>;
 
 describe('TmuxManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSpawnSync.mockReturnValue({ status: 0 });
+    mockSpawn.mockReturnValue({ unref: vi.fn() });
   });
 
   afterEach(() => {
@@ -293,6 +295,466 @@ describe('TmuxManager', () => {
 
       // Should not throw
       expect(() => manager.updatePaneBordersWithModels(modelSelection)).not.toThrow();
+    });
+
+    it('should include all agents in pane border format', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.updatePaneBordersWithModels(modelSelection);
+
+      // Find the set-option call
+      const setOptionCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('set-option')
+      );
+      expect(setOptionCall).toBeDefined();
+
+      const formatArg = setOptionCall?.[1]?.find((arg: string) => arg.includes('Refiner'));
+      expect(formatArg).toContain('Refiner');
+      expect(formatArg).toContain('Builder');
+      expect(formatArg).toContain('Verifier');
+      expect(formatArg).toContain('Gatekeeper');
+    });
+  });
+
+  describe('waitForClaudeReady', () => {
+    it('should return true when Claude ready indicator found', async () => {
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for isPaneActive
+        .mockReturnValueOnce({ status: 0, stdout: '0:node\n1:bash' }) // list-panes for isPaneActive
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
+        .mockReturnValueOnce({ status: 0, stdout: '> Type /help or ...\nTips:' }); // capture-pane output
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+      const result = await manager.waitForClaudeReady('refiner', 1000, 100);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when timeout exceeded', async () => {
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for isPaneActive
+        .mockReturnValueOnce({ status: 0, stdout: '0:bash\n1:bash' }) // list-panes - no process running
+        .mockReturnValue({ status: 0 }); // subsequent calls
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+      const result = await manager.waitForClaudeReady('refiner', 200, 100);
+
+      expect(result).toBe(false);
+    }, 5000);
+
+    it('should detect Claude by box drawing character', async () => {
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for isPaneActive
+        .mockReturnValueOnce({ status: 0, stdout: '0:node\n1:bash' }) // list-panes
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
+        .mockReturnValueOnce({ status: 0, stdout: '╭────────────────────╮' }); // UI element
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+      const result = await manager.waitForClaudeReady('refiner', 1000, 100);
+
+      expect(result).toBe(true);
+    });
+
+    it('should detect Claude by prompt character', async () => {
+      mockSpawnSync
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for isPaneActive
+        .mockReturnValueOnce({ status: 0, stdout: '0:node\n1:bash' }) // list-panes
+        .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
+        .mockReturnValueOnce({ status: 0, stdout: 'Welcome\n> ' }); // prompt
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+      const result = await manager.waitForClaudeReady('refiner', 1000, 100);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('sendPendingPrompt', () => {
+    it('should do nothing when no pending prompt exists', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      await manager.sendPendingPrompt('refiner');
+
+      // Should not call load-buffer or paste-buffer
+      const loadBufferCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('load-buffer')
+      );
+      expect(loadBufferCall).toBeUndefined();
+    });
+
+    it('should send prompt when pending prompt exists', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      // First start agent to create pending prompt
+      manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
+
+      // Clear mocks to track sendPendingPrompt calls
+      vi.clearAllMocks();
+      mockSpawnSync.mockReturnValue({ status: 0 });
+
+      await manager.sendPendingPrompt('refiner');
+
+      // Should call load-buffer with the prompt file
+      const loadBufferCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('load-buffer')
+      );
+      expect(loadBufferCall).toBeDefined();
+
+      // Should call paste-buffer
+      const pasteBufferCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('paste-buffer')
+      );
+      expect(pasteBufferCall).toBeDefined();
+    });
+
+    it('should clear pending prompt after sending', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
+      await manager.sendPendingPrompt('refiner');
+
+      // Clear mocks
+      vi.clearAllMocks();
+      mockSpawnSync.mockReturnValue({ status: 0 });
+
+      // Try to send again - should do nothing
+      await manager.sendPendingPrompt('refiner');
+
+      const loadBufferCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('load-buffer')
+      );
+      expect(loadBufferCall).toBeUndefined();
+    });
+  });
+
+  describe('startAgentAndWaitReady', () => {
+    it('should start agent and wait for ready', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      // Use short delay for test
+      const result = await manager.startAgentAndWaitReady('refiner', 'haiku', '/project/root/prompts/refiner.md', 100);
+
+      expect(result).toBe(true);
+
+      // Verify startAgent was called (send-keys for cd && claude)
+      const sendKeysCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('send-keys')
+      );
+      expect(sendKeysCall).toBeDefined();
+    });
+
+    it('should use default delay when not provided', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      // Don't await - just check it starts
+      const promise = manager.startAgentAndWaitReady('refiner', 'haiku', '/project/root/prompts/refiner.md');
+
+      // Clean up
+      await promise;
+    }, 10000);
+  });
+
+  describe('restartAgentWithVCR', () => {
+    beforeEach(() => {
+      mockSpawn.mockReturnValue({ unref: vi.fn() });
+    });
+
+    it('should send VCR response to agent pane', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.restartAgentWithVCR(
+        'refiner',
+        'run-20260126000000',
+        '/project/root/prompts/refiner.md'
+      );
+
+      expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should include VCR info in message when provided', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      let capturedCommand = '';
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        capturedCommand = args[1];
+        return { unref: vi.fn() };
+      });
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.restartAgentWithVCR(
+        'refiner',
+        'run-20260126000000',
+        '/project/root/prompts/refiner.md',
+        {
+          crpQuestion: 'Which approach?',
+          crpContext: 'Context here',
+          decision: 'A',
+          decisionLabel: 'Option A - Use library',
+          rationale: 'Better performance',
+          additionalNotes: 'Extra note',
+        }
+      );
+
+      expect(capturedCommand).toContain('Option A - Use library');
+      expect(capturedCommand).toContain('Better performance');
+      expect(capturedCommand).toContain('Extra note');
+    });
+
+    it('should send simple message when no VCR info provided', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      let capturedCommand = '';
+      mockSpawn.mockImplementation((cmd: string, args: string[]) => {
+        capturedCommand = args[1];
+        return { unref: vi.fn() };
+      });
+
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.restartAgentWithVCR(
+        'builder',
+        'run-20260126000000',
+        '/project/root/prompts/builder.md'
+      );
+
+      expect(capturedCommand).toContain('VCR 응답이 도착했습니다');
+    });
+
+    it('should throw error for invalid agent name', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.restartAgentWithVCR(
+        'invalid' as any,
+        'run-20260126000000',
+        '/project/root/prompts/invalid.md'
+      )).toThrow('Invalid agent name');
+    });
+  });
+
+  describe('clearAgent', () => {
+    it('should send /clear command to agent pane', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.clearAgent('refiner');
+
+      // Find the send-keys call with /clear
+      const clearCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('/clear')
+      );
+      expect(clearCall).toBeDefined();
+      expect(clearCall?.[1]).toContain('-l'); // literal flag
+    });
+
+    it('should send C-j after /clear', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.clearAgent('builder');
+
+      // Find the send-keys call with C-j
+      const submitCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('C-j')
+      );
+      expect(submitCall).toBeDefined();
+    });
+
+    it('should throw error for invalid agent name', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.clearAgent('invalid' as any)).toThrow('Invalid agent name');
+    });
+
+    it('should clear different agents correctly', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      // Clear each agent and verify pane targeting
+      const agents = ['refiner', 'builder', 'verifier', 'gatekeeper'] as const;
+      for (const agent of agents) {
+        vi.clearAllMocks();
+        mockSpawnSync.mockReturnValue({ status: 0 });
+
+        manager.clearAgent(agent);
+
+        // Check send-keys was called with correct target
+        const sendKeysCall = mockSpawnSync.mock.calls.find(
+          (call: any[]) => call[0] === 'tmux' && call[1]?.[0] === 'send-keys'
+        );
+        expect(sendKeysCall).toBeDefined();
+        expect(sendKeysCall?.[1]).toContain('-t');
+      }
+    });
+  });
+
+  describe('sendKeys', () => {
+    it('should send keys to correct pane', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.sendKeys('builder', 'echo hello');
+
+      // Should call send-keys with -l for literal and then Enter
+      const literalCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('-l')
+      );
+      expect(literalCall).toBeDefined();
+
+      const enterCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('Enter')
+      );
+      expect(enterCall).toBeDefined();
+    });
+
+    it('should target debug pane correctly', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.sendKeys('debug', 'ls -la');
+
+      const sendKeysCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.[0] === 'send-keys'
+      );
+      expect(sendKeysCall).toBeDefined();
+      // Debug is pane 4
+      expect(sendKeysCall?.[1]).toContain('-t');
+      expect(sendKeysCall?.[1]?.some((arg: string) => arg.includes('.4'))).toBe(true);
+    });
+
+    it('should target server pane correctly', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.sendKeys('server', 'npm start');
+
+      const sendKeysCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.[0] === 'send-keys'
+      );
+      expect(sendKeysCall).toBeDefined();
+      // Server is pane 5
+      expect(sendKeysCall?.[1]).toContain('-t');
+      expect(sendKeysCall?.[1]?.some((arg: string) => arg.includes('.5'))).toBe(true);
+    });
+  });
+
+  describe('startAgent', () => {
+    it('should start Claude with correct model', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
+
+      // Should call send-keys with claude command
+      const claudeCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' &&
+          call[1]?.some((arg: string) => arg.includes('claude') && arg.includes('haiku'))
+      );
+      expect(claudeCall).toBeDefined();
+    });
+
+    it('should throw error for invalid agent name', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.startAgent('invalid' as any, 'haiku', '/project/root/prompts/invalid.md'))
+        .toThrow('Invalid agent name');
+    });
+
+    it('should throw error for invalid model', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.startAgent('refiner', 'invalid' as any, '/project/root/prompts/refiner.md'))
+        .toThrow('Invalid model');
+    });
+
+    it('should store pending prompt for later sending', async () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.startAgent('builder', 'sonnet', '/project/root/prompts/builder.md');
+
+      // Verify pending prompt is stored by trying to send it
+      vi.clearAllMocks();
+      mockSpawnSync.mockReturnValue({ status: 0 });
+
+      // sendPendingPrompt should find and send the pending prompt
+      await manager.sendPendingPrompt('builder');
+
+      const loadBufferCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' && call[1]?.includes('load-buffer')
+      );
+      expect(loadBufferCall).toBeDefined();
+    });
+  });
+
+  describe('startServer', () => {
+    it('should start server on specified port', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.startServer(3000);
+
+      // Should call send-keys with node command
+      const serverCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' &&
+          call[1]?.some((arg: string) => arg.includes('node') && arg.includes('3000'))
+      );
+      expect(serverCall).toBeDefined();
+    });
+
+    it('should throw error for invalid port', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.startServer(0)).toThrow('Invalid port');
+      expect(() => manager.startServer(-1)).toThrow('Invalid port');
+      expect(() => manager.startServer(65536)).toThrow('Invalid port');
+      expect(() => manager.startServer(3.14)).toThrow('Invalid port');
+    });
+  });
+
+  describe('listSessions', () => {
+    it('should return sessions with matching prefix', () => {
+      mockSpawnSync.mockReturnValue({
+        status: 0,
+        stdout: 'orchestral-run-001\norchestral-run-002\nother-session',
+      });
+
+      const sessions = TmuxManager.listSessions('orchestral');
+
+      expect(sessions).toContain('orchestral-run-001');
+      expect(sessions).toContain('orchestral-run-002');
+      expect(sessions).not.toContain('other-session');
+    });
+
+    it('should return empty array when no sessions', () => {
+      mockSpawnSync.mockReturnValue({ status: 1 });
+
+      const sessions = TmuxManager.listSessions('orchestral');
+
+      expect(sessions).toEqual([]);
+    });
+
+    it('should return empty array on error', () => {
+      // Save the original mock and restore it after the test
+      const errorMock = vi.fn(() => {
+        throw new Error('tmux error');
+      });
+      mockSpawnSync.mockImplementationOnce(errorMock);
+
+      const sessions = TmuxManager.listSessions('orchestral');
+
+      expect(sessions).toEqual([]);
     });
   });
 });

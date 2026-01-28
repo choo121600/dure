@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { join } from 'path';
-import type { AgentName, AgentModel, OrchestraConfig } from '../types/index.js';
+import type { AgentName, AgentModel, OrchestraConfig, AsyncResult } from '../types/index.js';
+import { ok, err, RecoveryError, ErrorCodes, createRecoveryExhaustedError } from '../types/index.js';
 import type { ErrorFlag } from './file-watcher.js';
 import { RetryManager, RetryConfig, RetryEvent } from './retry-manager.js';
 import { RecoveryManager, RecoveryContext, RecoveryResult } from './recovery-strategies.js';
@@ -18,6 +19,15 @@ export interface RecoveryAttempt {
   attempt: number;
   result: 'success' | 'failed' | 'exhausted';
   action: RecoveryResult['action'];
+  message: string;
+}
+
+/**
+ * Success result from recovery operation
+ * Used with Result pattern for type-safe error handling
+ */
+export interface RecoverySuccess {
+  action: 'restart' | 'extend_timeout' | 'skip' | 'abort';
   message: string;
 }
 
@@ -166,6 +176,97 @@ export class ErrorRecoveryService extends EventEmitter {
         action: 'abort',
         message: `Recovery failed after ${this.config.global.auto_retry.max_attempts} attempts: ${errorMessage}`,
       };
+    }
+  }
+
+  /**
+   * Handle an error and attempt recovery with Result pattern (safe version)
+   * Returns AsyncResult<RecoverySuccess, RecoveryError> for type-safe error handling
+   */
+  async handleErrorSafe(
+    agent: AgentName,
+    errorFlag: ErrorFlag,
+    context: {
+      runId: string;
+      runManager: RunManager;
+      tmuxManager: TmuxManager;
+      stateManager: StateManager;
+      selectedModels: Record<AgentName, AgentModel>;
+    }
+  ): AsyncResult<RecoverySuccess, RecoveryError> {
+    const { runId } = context;
+
+    // Check if recovery should be attempted
+    if (!this.shouldRecover(errorFlag)) {
+      const reason = this.getSkipReason(errorFlag);
+      this.emitEvent({ type: 'recovery_skipped', agent, reason, runId });
+      return err(new RecoveryError(
+        reason,
+        ErrorCodes.RECOVERY_NOT_POSSIBLE,
+        { agent, runId, errorType: errorFlag.error_type }
+      ));
+    }
+
+    this.emitEvent({ type: 'recovery_started', agent, errorFlag, runId });
+
+    // Build recovery context
+    const runDir = context.runManager.getRunDir(runId);
+    const recoveryContext: RecoveryContext = {
+      agent,
+      runId,
+      errorFlag,
+      tmuxManager: context.tmuxManager,
+      stateManager: context.stateManager,
+      promptFile: join(runDir, 'prompts', `${agent}.md`),
+      model: context.selectedModels[agent],
+    };
+
+    try {
+      // Execute recovery with retry logic
+      const result = await this.retryManager.executeWithRetry(
+        async () => {
+          const recoveryResult = await this.recoveryManager.recover(recoveryContext);
+          if (!recoveryResult.success) {
+            throw new Error(recoveryResult.message);
+          }
+          return recoveryResult;
+        },
+        { agent, errorType: errorFlag.error_type, runId }
+      );
+
+      // Record successful recovery
+      const attemptCount = this.retryManager.getAttemptCount({ agent, errorType: errorFlag.error_type, runId });
+      this.recordRecoveryAttempt(runId, {
+        agent,
+        errorType: errorFlag.error_type,
+        timestamp: new Date(),
+        attempt: attemptCount,
+        result: 'success',
+        action: result.action,
+        message: result.message,
+      });
+
+      this.emitEvent({ type: 'recovery_success', agent, attempt: attemptCount, runId });
+      return ok({ action: result.action, message: result.message });
+    } catch (error) {
+      const originalError = error instanceof Error ? error : new Error(String(error));
+      const maxAttempts = this.config.global.auto_retry.max_attempts;
+
+      // Record failed recovery with full error details
+      this.recordRecoveryAttempt(runId, {
+        agent,
+        errorType: errorFlag.error_type,
+        timestamp: new Date(),
+        attempt: maxAttempts,
+        result: 'exhausted',
+        action: 'abort',
+        message: originalError.message,
+      });
+
+      this.emitEvent({ type: 'recovery_exhausted', agent, totalAttempts: maxAttempts, runId });
+
+      // Return RecoveryError with full cause chain
+      return err(createRecoveryExhaustedError(agent, maxAttempts, originalError));
     }
   }
 

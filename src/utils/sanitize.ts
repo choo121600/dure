@@ -4,6 +4,17 @@
  */
 
 import { resolve, normalize, isAbsolute } from 'path';
+import type { Result } from '../types/index.js';
+import { ok, err } from '../types/index.js';
+import {
+  ValidationError,
+  ErrorCodes,
+  createPathValidationError,
+  createPathTraversalError,
+  createNullBytesError,
+  createMaxLengthError,
+  createSessionNameError,
+} from '../types/index.js';
 
 /**
  * Whitelist of allowed characters for session names
@@ -85,6 +96,54 @@ export function sanitizePath(inputPath: string, baseDir?: string): string {
 }
 
 /**
+ * Sanitize a file path with Result pattern (safe version)
+ * Returns Result<string, ValidationError> instead of throwing
+ *
+ * @param inputPath - The path to sanitize
+ * @param baseDir - Optional base directory to constrain the path
+ * @returns Result containing the sanitized path or a ValidationError
+ */
+export function sanitizePathSafe(inputPath: string, baseDir?: string): Result<string, ValidationError> {
+  if (!inputPath || typeof inputPath !== 'string') {
+    return err(createPathValidationError(
+      'Invalid path: path must be a non-empty string',
+      inputPath ?? ''
+    ));
+  }
+
+  // Check for null bytes (used in some attacks)
+  if (inputPath.includes('\0')) {
+    return err(createNullBytesError('path', inputPath));
+  }
+
+  // Check path length
+  if (inputPath.length > MAX_PATH_LENGTH) {
+    return err(createMaxLengthError('path', inputPath.length, MAX_PATH_LENGTH));
+  }
+
+  // Normalize the path to resolve .. and . segments
+  const normalizedPath = normalize(inputPath);
+
+  // If baseDir is provided, ensure the path stays within it
+  if (baseDir) {
+    const resolvedBase = resolve(baseDir);
+    const resolvedPath = isAbsolute(normalizedPath)
+      ? resolve(normalizedPath)
+      : resolve(resolvedBase, normalizedPath);
+
+    // Ensure the resolved path starts with the base directory
+    if (!resolvedPath.startsWith(resolvedBase + '/') && resolvedPath !== resolvedBase) {
+      return err(createPathTraversalError(inputPath, baseDir));
+    }
+
+    return ok(resolvedPath);
+  }
+
+  // Return the normalized path (or resolve it if relative)
+  return ok(isAbsolute(normalizedPath) ? normalizedPath : resolve(normalizedPath));
+}
+
+/**
  * Sanitize a tmux session name
  * - Only allows alphanumeric characters, dashes, and underscores
  * - Enforces maximum length
@@ -118,6 +177,47 @@ export function sanitizeSessionName(name: string): string {
   }
 
   return trimmed;
+}
+
+/**
+ * Sanitize a tmux session name with Result pattern (safe version)
+ * Returns Result<string, ValidationError> instead of throwing
+ *
+ * @param name - The session name to sanitize
+ * @returns Result containing the sanitized session name or a ValidationError
+ */
+export function sanitizeSessionNameSafe(name: string): Result<string, ValidationError> {
+  if (!name || typeof name !== 'string') {
+    return err(createSessionNameError(
+      'Invalid session name: name must be a non-empty string',
+      name ?? ''
+    ));
+  }
+
+  // Trim whitespace
+  const trimmed = name.trim();
+
+  // Check length
+  if (trimmed.length > MAX_SESSION_NAME_LENGTH) {
+    return err(createMaxLengthError('sessionName', trimmed.length, MAX_SESSION_NAME_LENGTH));
+  }
+
+  if (trimmed.length === 0) {
+    return err(createSessionNameError(
+      'Invalid session name: name cannot be empty',
+      name
+    ));
+  }
+
+  // Validate against whitelist pattern
+  if (!SESSION_NAME_PATTERN.test(trimmed)) {
+    return err(createSessionNameError(
+      'Invalid session name: only alphanumeric characters, dashes, and underscores are allowed',
+      name
+    ));
+  }
+
+  return ok(trimmed);
 }
 
 /**
@@ -187,6 +287,49 @@ export function validateBriefing(briefing: unknown): { isValid: boolean; error?:
   }
 
   return { isValid: true };
+}
+
+/**
+ * Validate briefing content with Result pattern (safe version)
+ * Returns Result<string, ValidationError> containing the sanitized briefing
+ *
+ * @param briefing - The briefing content to validate
+ * @returns Result containing the validated briefing or a ValidationError
+ */
+export function validateBriefingSafe(briefing: unknown): Result<string, ValidationError> {
+  if (!briefing) {
+    return err(new ValidationError(
+      'Briefing is required',
+      ErrorCodes.VALIDATION_INVALID_BRIEFING,
+      { field: 'briefing' }
+    ));
+  }
+
+  if (typeof briefing !== 'string') {
+    return err(new ValidationError(
+      'Briefing must be a string',
+      ErrorCodes.VALIDATION_INVALID_BRIEFING,
+      { field: 'briefing', value: typeof briefing }
+    ));
+  }
+
+  if (briefing.length === 0) {
+    return err(new ValidationError(
+      'Briefing cannot be empty',
+      ErrorCodes.VALIDATION_INVALID_BRIEFING,
+      { field: 'briefing' }
+    ));
+  }
+
+  if (briefing.length > MAX_BRIEFING_LENGTH) {
+    return err(createMaxLengthError('briefing', briefing.length, MAX_BRIEFING_LENGTH));
+  }
+
+  if (briefing.includes('\0')) {
+    return err(createNullBytesError('briefing', briefing.slice(0, 100)));
+  }
+
+  return ok(briefing);
 }
 
 /**
@@ -260,6 +403,60 @@ export function validateDecision(
   }
 
   return { isValid: true };
+}
+
+/**
+ * Validate a decision value with Result pattern (safe version)
+ * Returns Result<string, ValidationError> containing the validated decision
+ *
+ * @param decision - The decision value
+ * @param allowedOptions - Optional array of allowed option IDs
+ * @returns Result containing the validated decision or a ValidationError
+ */
+export function validateDecisionSafe(
+  decision: unknown,
+  allowedOptions?: string[]
+): Result<string, ValidationError> {
+  if (!decision) {
+    return err(new ValidationError(
+      'Decision is required',
+      ErrorCodes.VALIDATION_INVALID_DECISION,
+      { field: 'decision' }
+    ));
+  }
+
+  if (typeof decision !== 'string') {
+    return err(new ValidationError(
+      'Decision must be a string',
+      ErrorCodes.VALIDATION_INVALID_DECISION,
+      { field: 'decision', value: typeof decision }
+    ));
+  }
+
+  if (decision.length === 0) {
+    return err(new ValidationError(
+      'Decision cannot be empty',
+      ErrorCodes.VALIDATION_INVALID_DECISION,
+      { field: 'decision' }
+    ));
+  }
+
+  if (decision.length > 1000) {
+    return err(createMaxLengthError('decision', decision.length, 1000));
+  }
+
+  // If allowed options are provided, validate against them
+  if (allowedOptions && allowedOptions.length > 0) {
+    if (!allowedOptions.includes(decision)) {
+      return err(new ValidationError(
+        `Invalid decision. Allowed options: ${allowedOptions.join(', ')}`,
+        ErrorCodes.VALIDATION_INVALID_DECISION,
+        { field: 'decision', value: decision, allowedOptions }
+      ));
+    }
+  }
+
+  return ok(decision);
 }
 
 /**

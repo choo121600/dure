@@ -4,6 +4,7 @@ import { join } from 'path';
 import { TmuxManager } from '../../core/tmux-manager.js';
 import type { Orchestrator } from '../../core/orchestrator.js';
 import { InterruptRecovery, InterruptedRun } from '../../core/interrupt-recovery.js';
+import type { Phase, RunState } from '../../types/index.js';
 
 /**
  * Health check result for individual components
@@ -56,6 +57,64 @@ export interface InterruptedRunsResponse {
   count: number;
   runs: InterruptedRun[];
   timestamp: string;
+}
+
+/**
+ * Component health status
+ */
+export interface ComponentHealth {
+  status: 'up' | 'down' | 'degraded';
+  message?: string;
+  lastCheck: string;
+  latency_ms?: number;
+}
+
+/**
+ * Current run information
+ */
+export interface CurrentRunInfo {
+  runId: string;
+  phase: Phase;
+  iteration: number;
+  startedAt: string;
+  agents: {
+    refiner: string;
+    builder: string;
+    verifier: string;
+    gatekeeper: string;
+  };
+}
+
+/**
+ * Health metrics summary
+ */
+export interface HealthMetrics {
+  totalRuns?: number;
+  successfulRuns?: number;
+  failedRuns?: number;
+  averageRunDuration?: number;
+}
+
+/**
+ * Detailed health response
+ */
+export interface HealthDetailsResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  version: string;
+  uptime: number;
+  timestamp: string;
+  components: {
+    fileSystem: ComponentHealth;
+    tmux: ComponentHealth;
+    orchestrator: ComponentHealth;
+  };
+  currentRun?: CurrentRunInfo;
+  interruptedRuns?: number;
+  config?: {
+    maxIterations: number;
+    sessionPrefix: string;
+    projectRoot: string;
+  };
 }
 
 // Track server start time for uptime calculation
@@ -289,6 +348,109 @@ export function createHealthRouter(
         timestamp: new Date().toISOString(),
       });
     }
+  });
+
+  /**
+   * GET /health/details - Detailed health information
+   *
+   * Returns comprehensive health information including:
+   * - Component-level health status
+   * - Current run information (if any)
+   * - Configuration details
+   * - Interrupted runs count
+   *
+   * Always returns 200 with status field indicating health
+   * (allows monitoring systems to parse response even when unhealthy)
+   */
+  router.get('/details', async (_req: Request, res: Response) => {
+    const timestamp = new Date().toISOString();
+
+    // Check components
+    const orchestratorCheck = checkOrchestrator(orchestrator);
+    const tmuxCheck = checkTmux(sessionPrefix);
+    const fileSystemCheck = checkFileSystem(projectRoot);
+
+    // Build component health
+    const components: HealthDetailsResponse['components'] = {
+      orchestrator: {
+        status: orchestratorCheck.status === 'pass' ? 'up' : 'down',
+        message: orchestratorCheck.message,
+        lastCheck: timestamp,
+        latency_ms: orchestratorCheck.latency_ms,
+      },
+      tmux: {
+        status: tmuxCheck.status === 'pass' ? 'up' : 'down',
+        message: tmuxCheck.message,
+        lastCheck: timestamp,
+        latency_ms: tmuxCheck.latency_ms,
+      },
+      fileSystem: {
+        status: fileSystemCheck.status === 'pass' ? 'up' : 'down',
+        message: fileSystemCheck.message,
+        lastCheck: timestamp,
+        latency_ms: fileSystemCheck.latency_ms,
+      },
+    };
+
+    // Determine overall status
+    const checks = {
+      orchestrator: orchestratorCheck,
+      tmux: tmuxCheck,
+      fileSystem: fileSystemCheck,
+    };
+    const overallStatus = determineOverallStatus(checks);
+
+    // Get current run info if available
+    let currentRun: CurrentRunInfo | undefined;
+    try {
+      const state = await orchestrator.getCurrentState();
+      if (state && orchestrator.getIsRunning()) {
+        currentRun = {
+          runId: state.run_id,
+          phase: state.phase,
+          iteration: state.iteration,
+          startedAt: state.started_at,
+          agents: {
+            refiner: state.agents.refiner.status,
+            builder: state.agents.builder.status,
+            verifier: state.agents.verifier.status,
+            gatekeeper: state.agents.gatekeeper.status,
+          },
+        };
+      }
+    } catch {
+      // Ignore errors getting current run
+    }
+
+    // Get interrupted runs count
+    let interruptedRuns: number | undefined;
+    try {
+      const recovery = new InterruptRecovery(projectRoot, {
+        tmuxSessionPrefix: sessionPrefix,
+      });
+      const runs = await recovery.detectInterruptedRuns();
+      interruptedRuns = runs.length;
+    } catch {
+      // Ignore errors detecting interrupted runs
+    }
+
+    const response: HealthDetailsResponse = {
+      status: overallStatus,
+      version: packageVersion,
+      uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+      timestamp,
+      components,
+      currentRun,
+      interruptedRuns,
+      config: {
+        maxIterations: 10, // TODO: Get from actual config if available
+        sessionPrefix,
+        projectRoot,
+      },
+    };
+
+    // Always return 200, status field indicates health
+    res.status(200).json(response);
   });
 
   return router;

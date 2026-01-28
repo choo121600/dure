@@ -28,6 +28,20 @@ import { ErrorRecoveryService } from './error-recovery-service.js';
 import { VerdictHandler } from './verdict-handler.js';
 import { AgentCoordinator } from './agent-coordinator.js';
 import { ManagerFactory, ManagerContext } from './manager-factory.js';
+import type { Logger } from '../utils/logger.js';
+import { NoOpLogger } from '../utils/logger.js';
+import type { Metrics, TimerStop } from '../utils/metrics.js';
+import { NoOpMetrics, MetricNames, createAgentLabels, createRunLabels, createTokenLabels } from '../utils/metrics.js';
+import { EventDispatcher } from './event-dispatcher.js';
+
+/**
+ * Options for Orchestrator constructor
+ */
+export interface OrchestratorOptions {
+  timeoutConfig?: Partial<AgentTimeoutConfig>;
+  logger?: Logger;
+  metrics?: Metrics;
+}
 
 export type OrchestratorEvent =
   | { type: 'run_started'; runId: string }
@@ -61,6 +75,9 @@ export class Orchestrator extends EventEmitter {
   private readonly recoveryManager: RecoveryManager;
   private readonly runLifecycleManager: RunLifecycleManager;
   private readonly errorRecoveryService: ErrorRecoveryService;
+  private readonly logger: Logger;
+  private readonly metrics: Metrics;
+  private readonly eventDispatcher: EventDispatcher;
 
   // Current run state (nullable - only set during active run)
   private stateManager: StateManager | null = null;
@@ -71,11 +88,23 @@ export class Orchestrator extends EventEmitter {
   private currentRunId: string | null = null;
   private isRunning = false;
 
-  constructor(projectRoot: string, config: OrchestraConfig, timeoutConfig?: Partial<AgentTimeoutConfig>) {
+  // Metric timers
+  private runTimer: TimerStop | null = null;
+  private agentTimers: Map<AgentName, TimerStop> = new Map();
+
+  constructor(projectRoot: string, config: OrchestraConfig, options?: OrchestratorOptions) {
     super();
     this.projectRoot = projectRoot;
     this.config = config;
-    this.timeoutConfig = this.buildTimeoutConfig(config, timeoutConfig);
+    this.timeoutConfig = this.buildTimeoutConfig(config, options?.timeoutConfig);
+    this.logger = options?.logger ?? new NoOpLogger();
+    this.metrics = options?.metrics ?? new NoOpMetrics();
+    this.eventDispatcher = new EventDispatcher({ logger: this.logger });
+
+    // Forward events from dispatcher to this emitter
+    this.eventDispatcher.on('orchestrator_event', (event) => {
+      this.emit('orchestrator_event', event);
+    });
 
     // Initialize core dependencies
     this.runManager = new RunManager(projectRoot);
@@ -95,26 +124,50 @@ export class Orchestrator extends EventEmitter {
     this.errorRecoveryService = new ErrorRecoveryService(this.retryManager, this.recoveryManager, config);
 
     this.setupEventForwarding();
+
+    this.logger.debug('Orchestrator initialized', {
+      projectRoot,
+      maxIterations: config.global.max_iterations,
+    });
   }
 
   // ============ Public API ============
 
   async startRun(rawBriefing: string): Promise<string> {
-    if (this.isRunning) throw new Error('A run is already in progress');
+    if (this.isRunning) {
+      this.logger.warn('Attempted to start run while one is already in progress');
+      throw new Error('A run is already in progress');
+    }
+
+    this.logger.info('Starting new run', { briefingLength: rawBriefing.length });
 
     const result = await this.runLifecycleManager.initializeRun(rawBriefing);
     this.setRunContext(result);
     this.initializeManagers(result.runDir, result.runId);
 
     this.isRunning = true;
+
+    // Start run metrics
+    this.metrics.incrementCounter(MetricNames.RUN_TOTAL, createRunLabels(result.runId, 'started'));
+    this.metrics.setGauge(MetricNames.ACTIVE_RUNS, 1);
+    this.runTimer = this.metrics.startTimer(MetricNames.RUN_DURATION, createRunLabels(result.runId));
+
     this.emitEvent({ type: 'run_started', runId: result.runId });
     this.emitEvent({ type: 'models_selected', result: result.modelSelection, runId: result.runId });
+
+    this.logger.info('Run started', {
+      runId: result.runId,
+      models: result.selectedModels,
+      maxIterations: this.config.global.max_iterations,
+    });
 
     await this.startAgent('refiner');
     return result.runId;
   }
 
   async resumeRun(runId: string): Promise<void> {
+    this.logger.info('Resuming run', { runId });
+
     const result = await this.runLifecycleManager.prepareResume(runId);
     this.setRunContext(result);
     this.initializeManagers(result.runDir, result.runId);
@@ -127,12 +180,16 @@ export class Orchestrator extends EventEmitter {
       this.emitEvent({ type: 'phase_changed', phase, runId });
       await this.managers?.agentLifecycle.restartAgentWithVCR(agent, runId, promptFile, vcrInfo);
       this.emitEvent({ type: 'agent_started', agent, runId });
+
+      this.logger.info('Run resumed', { runId, agent, phase });
     }
     this.emitEvent({ type: 'vcr_received', vcrId: '', runId });
   }
 
   async stopRun(): Promise<void> {
+    this.logger.info('Stopping run', { runId: this.currentRunId ?? undefined });
     await this.cleanup(true);
+    this.logger.info('Run stopped');
   }
 
   // ============ Public Getters ============
@@ -259,9 +316,18 @@ export class Orchestrator extends EventEmitter {
 
   private async startAgent(agent: AgentName): Promise<void> {
     if (!this.currentRunId || !this.managers) return;
+
+    this.logger.debug('Starting agent', { runId: this.currentRunId, agent });
+
+    // Start agent timer
+    const timer = this.metrics.startTimer(MetricNames.AGENT_DURATION, createAgentLabels(agent, this.currentRunId));
+    this.agentTimers.set(agent, timer);
+
     const runDir = this.runManager.getRunDir(this.currentRunId);
     await this.managers.agentLifecycle.startAgent(agent, runDir);
     this.emitEvent({ type: 'agent_started', agent, runId: this.currentRunId });
+
+    this.logger.info('Agent started', { runId: this.currentRunId, agent });
   }
 
   private async handleWatchEvent(event: WatchEvent): Promise<void> {
@@ -281,14 +347,43 @@ export class Orchestrator extends EventEmitter {
 
   private async handleAgentDone(agent: AgentName, nextPhase: Phase): Promise<void> {
     if (!this.currentRunId || !this.managers) return;
+
+    // Stop agent timer
+    const timer = this.agentTimers.get(agent);
+    if (timer) {
+      timer();
+      this.agentTimers.delete(agent);
+    }
+
+    this.logger.debug('Agent completed', { runId: this.currentRunId, agent, nextPhase });
+
     const action = await this.managers.agentCoordinator.handleAgentDone(agent, this.currentRunId, nextPhase);
     if (action.type === 'transition') {
+      this.logger.info('Phase transition', {
+        runId: this.currentRunId,
+        from: this.agentToPhase(agent),
+        to: nextPhase,
+        nextAgent: action.nextAgent,
+      });
       this.emitEvent({ type: 'agent_started', agent: action.nextAgent, runId: this.currentRunId });
     }
   }
 
   private async handleGatekeeperDone(verdict: GatekeeperVerdict): Promise<void> {
     if (!this.currentRunId || !this.stateManager || !this.managers) return;
+
+    // Stop gatekeeper timer
+    const timer = this.agentTimers.get('gatekeeper');
+    if (timer) {
+      timer();
+      this.agentTimers.delete('gatekeeper');
+    }
+
+    this.logger.info('Gatekeeper verdict received', {
+      runId: this.currentRunId,
+      verdict: verdict.verdict,
+      reason: verdict.reason,
+    });
 
     await this.managers.agentLifecycle.completeAgent('gatekeeper');
     this.emitEvent({ type: 'agent_completed', agent: 'gatekeeper', runId: this.currentRunId });
@@ -298,10 +393,28 @@ export class Orchestrator extends EventEmitter {
     await this.managers.verdictHandler.executeVerdictResult(result, this.currentRunId, this.stateManager);
 
     if (result.action === 'complete' || result.action === 'fail') {
-      this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: result.action === 'complete' ? 'PASS' : 'FAIL' });
+      const finalVerdict = result.action === 'complete' ? 'PASS' : 'FAIL';
+      const status = finalVerdict === 'PASS' ? 'success' : 'failure';
+
+      // Record run completion metrics
+      this.metrics.incrementCounter(MetricNames.RUN_TOTAL, createRunLabels(this.currentRunId, status));
+      if (this.runTimer) {
+        this.runTimer();
+        this.runTimer = null;
+      }
+
+      this.logger.info('Run completed', { runId: this.currentRunId, verdict: finalVerdict });
+      this.emitEvent({ type: 'run_completed', runId: this.currentRunId, verdict: finalVerdict });
       process.stdout.write('\x07');
       await this.cleanup(false);
     } else if (result.action === 'retry') {
+      // Record iteration metric
+      const state = await this.stateManager.loadState();
+      if (state) {
+        this.metrics.incrementCounter(MetricNames.RUN_ITERATIONS, createRunLabels(this.currentRunId));
+      }
+
+      this.logger.info('Retrying build phase', { runId: this.currentRunId });
       this.emitEvent({ type: 'phase_changed', phase: 'build', runId: this.currentRunId });
       await this.startAgent('builder');
     }
@@ -309,6 +422,26 @@ export class Orchestrator extends EventEmitter {
 
   private async handleErrorFlag(agent: AgentName, errorFlag: ErrorFlag): Promise<void> {
     if (!this.currentRunId || !this.stateManager || !this.managers || !this.selectedModels || !this.tmuxManager) return;
+
+    // Record agent error metric
+    this.metrics.incrementCounter(MetricNames.AGENT_ERRORS, {
+      ...createAgentLabels(agent, this.currentRunId),
+      error_type: errorFlag.error_type,
+    });
+
+    // Stop agent timer on error
+    const timer = this.agentTimers.get(agent);
+    if (timer) {
+      timer();
+      this.agentTimers.delete(agent);
+    }
+
+    this.logger.error('Agent error detected', new Error(errorFlag.message), {
+      runId: this.currentRunId,
+      agent,
+      errorType: errorFlag.error_type,
+      recoverable: errorFlag.recoverable,
+    });
 
     await this.managers.agentLifecycle.failAgent(agent, errorFlag.message);
     await this.stateManager.addError(`${agent}: ${errorFlag.message}`);
@@ -322,16 +455,46 @@ export class Orchestrator extends EventEmitter {
       selectedModels: this.selectedModels,
     });
 
-    if (!result.success && this.config.global.notifications.terminal_bell) {
-      process.stdout.write('\x07');
+    if (!result.success) {
+      this.logger.error('Error recovery failed', undefined, {
+        runId: this.currentRunId,
+        agent,
+        action: result.action,
+        message: result.message,
+      });
+      if (this.config.global.notifications.terminal_bell) {
+        process.stdout.write('\x07');
+      }
+    } else {
+      // Record retry metric
+      this.metrics.incrementCounter(MetricNames.AGENT_RETRIES, createAgentLabels(agent, this.currentRunId));
+
+      this.logger.info('Error recovery succeeded', {
+        runId: this.currentRunId,
+        agent,
+        action: result.action,
+      });
     }
   }
 
   private emitEvent(event: OrchestratorEvent): void {
-    this.emit('orchestrator_event', event);
+    this.eventDispatcher.dispatch(event);
   }
 
   private async cleanup(killSession: boolean): Promise<void> {
+    // Stop any running timers
+    if (this.runTimer) {
+      this.runTimer();
+      this.runTimer = null;
+    }
+    for (const timer of this.agentTimers.values()) {
+      timer();
+    }
+    this.agentTimers.clear();
+
+    // Update active runs gauge
+    this.metrics.setGauge(MetricNames.ACTIVE_RUNS, 0);
+
     if (this.managers) {
       await ManagerFactory.cleanup(this.managers, killSession, this.tmuxManager);
     }

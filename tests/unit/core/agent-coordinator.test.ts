@@ -164,6 +164,86 @@ describe('AgentCoordinator', () => {
       expect(action.type).toBe('wait_crp');
       expect((action as any).crpId).toBe('crp-001');
     }, 5000);
+
+    // Additional transition tests for all agents
+    it('should transition from builder to verifier', async () => {
+      mockPhaseManager.getCurrentPhase.mockResolvedValue('build');
+
+      const action = await coordinator.handleAgentDone('builder', 'run-20260126000000', 'verify');
+
+      expect(mockAgentLifecycle.completeAgent).toHaveBeenCalledWith('builder');
+      expect(mockAgentLifecycle.clearAgent).toHaveBeenCalledWith('builder');
+      expect(mockPhaseManager.transition).toHaveBeenCalledWith('verify');
+      expect(action.type).toBe('transition');
+      expect((action as any).nextPhase).toBe('verify');
+      expect((action as any).nextAgent).toBe('verifier');
+    }, 5000);
+
+    it('should transition from verifier to gatekeeper', async () => {
+      mockPhaseManager.getCurrentPhase.mockResolvedValue('verify');
+
+      const action = await coordinator.handleAgentDone('verifier', 'run-20260126000000', 'gate');
+
+      expect(mockAgentLifecycle.completeAgent).toHaveBeenCalledWith('verifier');
+      expect(mockAgentLifecycle.clearAgent).toHaveBeenCalledWith('verifier');
+      expect(mockPhaseManager.transition).toHaveBeenCalledWith('gate');
+      expect(action.type).toBe('transition');
+      expect((action as any).nextPhase).toBe('gate');
+      expect((action as any).nextAgent).toBe('gatekeeper');
+    }, 5000);
+
+    it('should emit all required events during transition', async () => {
+      const events: any[] = [];
+      coordinator.on('coordinator_event', (event) => events.push(event));
+
+      await coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build');
+
+      // Check for completing event
+      const completingEvent = events.find(e => e.type === 'agent_completing');
+      expect(completingEvent).toBeDefined();
+      expect(completingEvent.agent).toBe('refiner');
+      expect(completingEvent.runId).toBe('run-20260126000000');
+
+      // Check for completed event
+      const completedEvent = events.find(e => e.type === 'agent_completed');
+      expect(completedEvent).toBeDefined();
+      expect(completedEvent.agent).toBe('refiner');
+
+      // Check for phase transitioning and transitioned events
+      const transitioningEvent = events.find(e => e.type === 'phase_transitioning');
+      expect(transitioningEvent).toBeDefined();
+      expect(transitioningEvent.to).toBe('build');
+
+      const transitionedEvent = events.find(e => e.type === 'phase_transitioned');
+      expect(transitionedEvent).toBeDefined();
+      expect(transitionedEvent.phase).toBe('build');
+    }, 5000);
+
+    it('should start next agent after transition', async () => {
+      await coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build');
+
+      expect(mockAgentLifecycle.startAgent).toHaveBeenCalledWith(
+        'builder',
+        '/test/project/.orchestral/runs/run-20260126000000'
+      );
+    }, 5000);
+
+    it('should handle CRP detection from builder', async () => {
+      const mockCRP: CRP = {
+        crp_id: 'crp-002',
+        created_at: new Date().toISOString(),
+        created_by: 'builder',
+        type: 'architecture_decision',
+        status: 'pending',
+      };
+      mockRunManager.listCRPs.mockResolvedValue([mockCRP]);
+      mockRunManager.listVCRs.mockResolvedValue([]);
+
+      const action = await coordinator.handleAgentDone('builder', 'run-20260126000000', 'verify');
+
+      expect(action.type).toBe('wait_crp');
+      expect((action as any).crpId).toBe('crp-002');
+    }, 5000);
   });
 
   describe('handleCRPCreated', () => {
@@ -189,6 +269,113 @@ describe('AgentCoordinator', () => {
 
       expect(events.some(e => e.type === 'crp_created')).toBe(true);
       expect(events.some(e => e.type === 'waiting_human')).toBe(true);
+    });
+
+    it('should handle CRP from builder', async () => {
+      await coordinator.handleCRPCreated(
+        { crp_id: 'crp-002', created_by: 'builder' },
+        'run-20260126000000'
+      );
+
+      expect(mockAgentLifecycle.stopAgent).toHaveBeenCalledWith('builder');
+      expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('builder', 'pending');
+      expect(mockStateManager.setPendingCRP).toHaveBeenCalledWith('crp-002');
+    });
+
+    it('should handle CRP from gatekeeper', async () => {
+      await coordinator.handleCRPCreated(
+        { crp_id: 'crp-003', created_by: 'gatekeeper' },
+        'run-20260126000000'
+      );
+
+      expect(mockAgentLifecycle.stopAgent).toHaveBeenCalledWith('gatekeeper');
+      expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('gatekeeper', 'pending');
+      expect(mockStateManager.setPendingCRP).toHaveBeenCalledWith('crp-003');
+    });
+
+    it('should include correct event data in crp_created event', async () => {
+      const events: any[] = [];
+      coordinator.on('coordinator_event', (event) => events.push(event));
+
+      await coordinator.handleCRPCreated(
+        { crp_id: 'crp-001', created_by: 'refiner' },
+        'run-20260126000000'
+      );
+
+      const crpCreatedEvent = events.find(e => e.type === 'crp_created');
+      expect(crpCreatedEvent).toBeDefined();
+      expect(crpCreatedEvent.crpId).toBe('crp-001');
+      expect(crpCreatedEvent.agent).toBe('refiner');
+      expect(crpCreatedEvent.runId).toBe('run-20260126000000');
+    });
+
+    it('should include correct event data in waiting_human event', async () => {
+      const events: any[] = [];
+      coordinator.on('coordinator_event', (event) => events.push(event));
+
+      await coordinator.handleCRPCreated(
+        { crp_id: 'crp-001', created_by: 'refiner' },
+        'run-20260126000000'
+      );
+
+      const waitingHumanEvent = events.find(e => e.type === 'waiting_human');
+      expect(waitingHumanEvent).toBeDefined();
+      expect(waitingHumanEvent.crpId).toBe('crp-001');
+      expect(waitingHumanEvent.runId).toBe('run-20260126000000');
+    });
+  });
+
+  describe('error handling', () => {
+    it('should propagate error when stateManager.updateAgentStatus fails', async () => {
+      const error = new Error('State update failed');
+      mockStateManager.updateAgentStatus.mockRejectedValue(error);
+
+      await expect(coordinator.handleCRPCreated(
+        { crp_id: 'crp-001', created_by: 'refiner' },
+        'run-20260126000000'
+      )).rejects.toThrow('State update failed');
+    });
+
+    it('should propagate error when stateManager.setPendingCRP fails', async () => {
+      const error = new Error('CRP update failed');
+      mockStateManager.setPendingCRP.mockRejectedValue(error);
+
+      await expect(coordinator.handleCRPCreated(
+        { crp_id: 'crp-001', created_by: 'refiner' },
+        'run-20260126000000'
+      )).rejects.toThrow('CRP update failed');
+    });
+
+    it('should propagate error when phaseManager.transition fails', async () => {
+      const error = new Error('Phase transition failed');
+      mockPhaseManager.transition.mockRejectedValue(error);
+
+      await expect(coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build'))
+        .rejects.toThrow('Phase transition failed');
+    }, 5000);
+
+    it('should propagate error when agentLifecycle.completeAgent fails', async () => {
+      const error = new Error('Agent completion failed');
+      mockAgentLifecycle.completeAgent.mockRejectedValue(error);
+
+      await expect(coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build'))
+        .rejects.toThrow('Agent completion failed');
+    }, 5000);
+
+    it('should propagate error when agentLifecycle.clearAgent fails', async () => {
+      const error = new Error('Agent clear failed');
+      mockAgentLifecycle.clearAgent.mockRejectedValue(error);
+
+      await expect(coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build'))
+        .rejects.toThrow('Agent clear failed');
+    }, 5000);
+
+    it('should propagate error when stateManager.loadState fails', async () => {
+      const error = new Error('Load state failed');
+      mockStateManager.loadState.mockRejectedValue(error);
+
+      await expect(coordinator.determineNextAction('refiner', 'run-20260126000000', 'build'))
+        .rejects.toThrow('Load state failed');
     });
   });
 

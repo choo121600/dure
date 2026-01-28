@@ -112,9 +112,10 @@ export class RunManager {
 
   /**
    * Check if run exists (sync, for backward compatibility)
-   * @deprecated Use runExists() instead
+   * @deprecated Use runExists() instead. Will be removed in v1.0
    */
   runExistsSync(runId: string): boolean {
+    console.warn('[DEPRECATED] runExistsSync() is deprecated. Use runExists() instead. Will be removed in v1.0');
     // Validate run ID format to prevent path traversal
     if (!isValidRunId(runId)) {
       return false;
@@ -370,9 +371,10 @@ export class RunManager {
 
   /**
    * Check if done.flag exists for an agent (sync, for backward compatibility)
-   * @deprecated Use hasAgentCompleted() instead
+   * @deprecated Use hasAgentCompleted() instead. Will be removed in v1.0
    */
   hasAgentCompletedSync(runId: string, agent: 'builder' | 'verifier'): boolean {
+    console.warn('[DEPRECATED] hasAgentCompletedSync() is deprecated. Use hasAgentCompleted() instead. Will be removed in v1.0');
     const flagPath = join(this.getRunDir(runId), agent, 'done.flag');
     return existsSync(flagPath);
   }

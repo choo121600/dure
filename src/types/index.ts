@@ -1,3 +1,149 @@
+// Re-export Result types
+export {
+  type Result,
+  type AsyncResult,
+  type Ok,
+  type Err,
+  ok,
+  err,
+  isOk,
+  isErr,
+  unwrap,
+  unwrapOr,
+  unwrapErr,
+  map,
+  mapErr,
+  andThen,
+  fromPromise,
+  tryCatch,
+  collect,
+} from './result.js';
+
+// Re-export Error types
+export {
+  OrchestraError,
+  ValidationError,
+  StateError,
+  AgentError,
+  RecoveryError,
+  TimeoutError,
+  FileSystemError,
+  TmuxError,
+  ErrorCodes,
+  type ErrorCode,
+  // Type guards
+  isOrchestraError,
+  isValidationError,
+  isStateError,
+  isAgentError,
+  isRecoveryError,
+  isTimeoutError,
+  hasErrorCode,
+  // Factory functions
+  createPathValidationError,
+  createPathTraversalError,
+  createNullBytesError,
+  createMaxLengthError,
+  createSessionNameError,
+  createStateNotFoundError,
+  createStateLoadError,
+  createStateSaveError,
+  createAgentError,
+  createAgentStartError,
+  createRecoveryExhaustedError,
+  createAgentTimeoutError,
+  createInactivityTimeoutError,
+} from './errors.js';
+
+// Re-export Branded types
+export {
+  type Brand,
+  type RunId,
+  type CrpId,
+  type VcrId,
+  type SessionName,
+  // Validation functions
+  isValidRunId,
+  isValidCrpId,
+  isValidVcrId,
+  isValidSessionName,
+  // Type guards
+  isRunId,
+  isCrpId,
+  isVcrId,
+  isSessionName,
+  // Creation functions (with validation)
+  createRunId,
+  createCrpId,
+  createVcrId,
+  createSessionName,
+  // Unsafe creation functions (for trusted sources)
+  unsafeCreateRunId,
+  unsafeCreateCrpId,
+  unsafeCreateVcrId,
+  unsafeCreateSessionName,
+  // Utility functions
+  unwrapBrand,
+  generateRunId,
+  generateCrpId,
+  generateVcrId,
+} from './branded.js';
+
+// Re-export Event types
+export {
+  type BaseOrchestratorEvent,
+  type RunStartedEvent,
+  type PhaseChangedEvent,
+  type AgentStartedEvent,
+  type AgentCompletedEvent,
+  type AgentTimeoutEvent,
+  type AgentStaleEvent,
+  type OrchestratorAgentOutputEvent,
+  type AgentFailedEvent,
+  type AgentRetryEvent,
+  type AgentRetrySuccessEvent,
+  type AgentRetryExhaustedEvent,
+  type CrpCreatedEvent,
+  type VcrReceivedEvent,
+  type MrpReadyEvent,
+  type RunCompletedEvent,
+  type IterationStartedEvent,
+  type UsageUpdatedEvent,
+  type ModelsSelectedEvent,
+  type ErrorEvent,
+  type OrchestratorEventTyped,
+  type OrchestratorEventType,
+  type ExtractEvent,
+  type OrchestratorEventHandler,
+  type AsyncOrchestratorEventHandler,
+  type GenericOrchestratorEventHandler,
+  type OrchestratorEventHandlerMap,
+  // Factory functions
+  createRunStartedEvent,
+  createPhaseChangedEvent,
+  createAgentStartedEvent,
+  createAgentCompletedEvent,
+  createAgentTimeoutEvent,
+  createAgentStaleEvent,
+  createOrchestratorAgentOutputEvent,
+  createAgentFailedEvent,
+  createAgentRetryEvent,
+  createAgentRetrySuccessEvent,
+  createAgentRetryExhaustedEvent,
+  createCrpCreatedEvent,
+  createVcrReceivedEvent,
+  createMrpReadyEvent,
+  createRunCompletedEvent,
+  createIterationStartedEvent,
+  createUsageUpdatedEvent,
+  createModelsSelectedEvent,
+  createErrorEvent,
+  // Type guards
+  isEventType,
+  isAgentEvent,
+  isRunEvent,
+} from './events.js';
+
 // Agent Types
 export type AgentName = 'refiner' | 'builder' | 'verifier' | 'gatekeeper';
 export type AgentModel = 'haiku' | 'sonnet' | 'opus';
@@ -344,12 +490,75 @@ export interface BuilderOutputManifest {
 }
 
 // Event Types for Socket.io
-export interface RunEvent {
-  type: 'state_change' | 'agent_start' | 'agent_complete' | 'crp_created' | 'vcr_created' | 'mrp_created' | 'error';
-  run_id: string;
-  timestamp: string;
-  data: unknown;
+
+/**
+ * Event data types for different Socket.io events
+ */
+export interface StateChangeEventData {
+  state: RunState;
 }
+
+export interface AgentStartEventData {
+  agent: AgentName;
+}
+
+export interface AgentCompleteEventData {
+  agent: AgentName;
+}
+
+export interface CrpCreatedEventData {
+  crp_id: string;
+  crp: CRP;
+}
+
+export interface VcrCreatedEventData {
+  vcr_id: string;
+  vcr: VCR;
+}
+
+export interface MrpCreatedEventData {
+  mrp_path: string;
+}
+
+export interface ErrorEventData {
+  error: string;
+  agent?: AgentName;
+}
+
+/**
+ * Union of all possible event data types
+ */
+export type RunEventData =
+  | StateChangeEventData
+  | AgentStartEventData
+  | AgentCompleteEventData
+  | CrpCreatedEventData
+  | VcrCreatedEventData
+  | MrpCreatedEventData
+  | ErrorEventData;
+
+/**
+ * Run event type for Socket.io
+ * Uses discriminated union for type-safe event handling
+ */
+export type RunEvent =
+  | { type: 'state_change'; run_id: string; timestamp: string; data: StateChangeEventData }
+  | { type: 'agent_start'; run_id: string; timestamp: string; data: AgentStartEventData }
+  | { type: 'agent_complete'; run_id: string; timestamp: string; data: AgentCompleteEventData }
+  | { type: 'crp_created'; run_id: string; timestamp: string; data: CrpCreatedEventData }
+  | { type: 'vcr_created'; run_id: string; timestamp: string; data: VcrCreatedEventData }
+  | { type: 'mrp_created'; run_id: string; timestamp: string; data: MrpCreatedEventData }
+  | { type: 'error'; run_id: string; timestamp: string; data: ErrorEventData };
+
+/**
+ * Helper type to extract event data by type
+ */
+export type RunEventByType<T extends RunEvent['type']> = Extract<RunEvent, { type: T }>;
+
+/**
+ * Helper type to extract event data type by event type
+ */
+export type RunEventDataByType<T extends RunEvent['type']> = RunEventByType<T>['data'];
 
 // Agent Timeout Configuration
 export interface AgentTimeoutConfig {
@@ -440,4 +649,202 @@ export interface ModelSelectionResult {
   };
   analysis: ComplexityAnalysis;
   selection_method: 'dynamic' | 'static';  // 동적 선택 vs 설정값 사용
+}
+
+// ============================================================================
+// Typed versions with branded types (for gradual migration)
+// ============================================================================
+
+import type { RunId, CrpId, VcrId } from './branded.js';
+import type { Result, Err } from './result.js';
+import { ok, err, isErr } from './result.js';
+import { ValidationError } from './errors.js';
+import { createRunId, createCrpId, createVcrId, unsafeCreateRunId, unsafeCreateCrpId, unsafeCreateVcrId, unwrapBrand } from './branded.js';
+
+/**
+ * RunState with branded types for type-safe ID handling
+ * Use this for new code; gradually migrate from RunState
+ */
+export interface RunStateTyped {
+  run_id: RunId;
+  phase: Phase;
+  iteration: number;
+  max_iterations: number;
+  started_at: string;
+  updated_at: string;
+  agents: {
+    refiner: AgentState;
+    builder: AgentState;
+    verifier: AgentState;
+    gatekeeper: AgentState;
+  };
+  pending_crp: CrpId | null;
+  last_event?: LastEvent;
+  errors: string[];
+  history: HistoryEntry[];
+  usage?: TotalUsage;
+  model_selection?: ModelSelectionResult;
+}
+
+/**
+ * CRP with branded types
+ */
+export interface CRPTyped {
+  crp_id: CrpId;
+  created_at: string;
+  created_by: AgentName;
+  type: 'clarification' | 'architecture' | 'security' | 'dependency' | 'architecture_decision';
+  question?: string;
+  context?: string;
+  options?: CRPOption[];
+  recommendation?: string;
+  questions?: CRPQuestion[];
+  status: 'pending' | 'resolved';
+  additional_context?: string;
+}
+
+/**
+ * VCR with branded types
+ */
+export interface VCRTyped {
+  vcr_id: VcrId;
+  crp_id: CrpId;
+  created_at: string;
+  decision: string | Record<string, string>;
+  decisions?: Record<string, string>;
+  rationale: string;
+  additional_notes?: string;
+  applies_to_future: boolean;
+}
+
+// ============================================================================
+// Conversion functions
+// ============================================================================
+
+/**
+ * Convert RunState to RunStateTyped with validation
+ * Returns Result to handle potential validation errors
+ */
+export function toTypedRunState(state: RunState): Result<RunStateTyped, ValidationError> {
+  const runIdResult = createRunId(state.run_id);
+  if (isErr(runIdResult)) {
+    return runIdResult;
+  }
+
+  let pendingCrp: CrpId | null = null;
+  if (state.pending_crp) {
+    const crpIdResult = createCrpId(state.pending_crp);
+    if (isErr(crpIdResult)) {
+      return crpIdResult;
+    }
+    pendingCrp = crpIdResult.data;
+  }
+
+  return ok({
+    ...state,
+    run_id: runIdResult.data,
+    pending_crp: pendingCrp,
+  });
+}
+
+/**
+ * Convert RunStateTyped back to RunState
+ * Safe conversion - no validation needed
+ */
+export function fromTypedRunState(state: RunStateTyped): RunState {
+  return {
+    ...state,
+    run_id: unwrapBrand(state.run_id),
+    pending_crp: state.pending_crp ? unwrapBrand(state.pending_crp) : null,
+  };
+}
+
+/**
+ * Convert CRP to CRPTyped with validation
+ */
+export function toTypedCRP(crp: CRP): Result<CRPTyped, ValidationError> {
+  const crpIdResult = createCrpId(crp.crp_id);
+  if (isErr(crpIdResult)) {
+    return crpIdResult;
+  }
+
+  return ok({
+    ...crp,
+    crp_id: crpIdResult.data,
+  });
+}
+
+/**
+ * Convert CRPTyped back to CRP
+ */
+export function fromTypedCRP(crp: CRPTyped): CRP {
+  return {
+    ...crp,
+    crp_id: unwrapBrand(crp.crp_id),
+  };
+}
+
+/**
+ * Convert VCR to VCRTyped with validation
+ */
+export function toTypedVCR(vcr: VCR): Result<VCRTyped, ValidationError> {
+  const vcrIdResult = createVcrId(vcr.vcr_id);
+  if (isErr(vcrIdResult)) {
+    return vcrIdResult;
+  }
+
+  const crpIdResult = createCrpId(vcr.crp_id);
+  if (isErr(crpIdResult)) {
+    return crpIdResult;
+  }
+
+  return ok({
+    ...vcr,
+    vcr_id: vcrIdResult.data,
+    crp_id: crpIdResult.data,
+  });
+}
+
+/**
+ * Convert VCRTyped back to VCR
+ */
+export function fromTypedVCR(vcr: VCRTyped): VCR {
+  return {
+    ...vcr,
+    vcr_id: unwrapBrand(vcr.vcr_id),
+    crp_id: unwrapBrand(vcr.crp_id),
+  };
+}
+
+/**
+ * Unsafe conversion from RunState to RunStateTyped
+ * Use only when the data is known to be valid (e.g., from trusted sources)
+ */
+export function unsafeToTypedRunState(state: RunState): RunStateTyped {
+  return {
+    ...state,
+    run_id: unsafeCreateRunId(state.run_id),
+    pending_crp: state.pending_crp ? unsafeCreateCrpId(state.pending_crp) : null,
+  };
+}
+
+/**
+ * Unsafe conversion from CRP to CRPTyped
+ */
+export function unsafeToTypedCRP(crp: CRP): CRPTyped {
+  return {
+    ...crp,
+    crp_id: unsafeCreateCrpId(crp.crp_id),
+  };
+}
+
+/**
+ * Unsafe conversion from VCR to VCRTyped
+ */
+export function unsafeToTypedVCR(vcr: VCR): VCRTyped {
+  return {
+    ...vcr,
+    vcr_id: unsafeCreateVcrId(vcr.vcr_id),
+    crp_id: unsafeCreateCrpId(vcr.crp_id),
+  };
 }

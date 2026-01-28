@@ -1,7 +1,10 @@
 import { access, readFile, writeFile, rename, mkdir, constants } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import type { RunState, Phase, AgentName, AgentStatus, HistoryEntry, UsageInfo, TotalUsage } from '../types/index.js';
+import type { RunState, Phase, AgentName, AgentStatus, HistoryEntry, UsageInfo, TotalUsage, AsyncResult } from '../types/index.js';
+import type { Result } from '../types/index.js';
+import { ok, err } from '../types/index.js';
+import { StateError, ErrorCodes, createStateNotFoundError, createStateLoadError, createStateSaveError } from '../types/index.js';
 import { CACHE, PRECISION } from '../config/constants.js';
 
 export class StateManager {
@@ -89,10 +92,45 @@ export class StateManager {
   }
 
   /**
+   * Load state with Result pattern (safe version)
+   * Returns Result<RunState, StateError> instead of throwing
+   */
+  async loadStateSafe(): AsyncResult<RunState, StateError> {
+    // Check cache first
+    const now = Date.now();
+    if (this.cachedState && (now - this.lastReadTime) < this.cacheTTL) {
+      return ok(this.cachedState);
+    }
+
+    // Check if file exists
+    try {
+      await access(this.statePath, constants.F_OK);
+    } catch {
+      this.cachedState = null;
+      return err(createStateNotFoundError());
+    }
+
+    try {
+      const content = await readFile(this.statePath, 'utf-8');
+      this.cachedState = JSON.parse(content) as RunState;
+      this.lastReadTime = Date.now();
+      return ok(this.cachedState);
+    } catch (error) {
+      this.cachedState = null;
+      return err(createStateLoadError(
+        this.statePath,
+        error instanceof Error ? error : new Error(String(error))
+      ));
+    }
+  }
+
+  /**
    * Load state synchronously (for backward compatibility during transition)
-   * @deprecated Use loadState() instead
+   * @deprecated Use loadState() instead. Will be removed in v1.0
    */
   loadStateSync(): RunState | null {
+    console.warn('[DEPRECATED] loadStateSync() is deprecated. Use loadState() instead. Will be removed in v1.0');
+
     if (!existsSync(this.statePath)) {
       return null;
     }
@@ -126,6 +164,34 @@ export class StateManager {
   }
 
   /**
+   * Save state with Result pattern (safe version)
+   * Returns Result<void, StateError> instead of throwing
+   */
+  async saveStateSafe(state: RunState): AsyncResult<void, StateError> {
+    state.updated_at = new Date().toISOString();
+
+    try {
+      // Ensure directory exists
+      await mkdir(this.runDir, { recursive: true });
+
+      const tempPath = `${this.statePath}.tmp`;
+      await writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
+      await rename(tempPath, this.statePath);
+
+      // Update cache
+      this.cachedState = state;
+      this.lastReadTime = Date.now();
+
+      return ok(undefined);
+    } catch (error) {
+      return err(createStateSaveError(
+        this.statePath,
+        error instanceof Error ? error : new Error(String(error))
+      ));
+    }
+  }
+
+  /**
    * Update the phase
    */
   async updatePhase(phase: Phase): Promise<RunState> {
@@ -144,6 +210,34 @@ export class StateManager {
     state.phase = phase;
     await this.saveState(state);
     return state;
+  }
+
+  /**
+   * Update phase with Result pattern (safe version)
+   */
+  async updatePhaseSafe(phase: Phase): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+
+    // Add to history
+    state.history.push({
+      phase: state.phase,
+      result: 'completed',
+      timestamp: new Date().toISOString(),
+    });
+
+    state.phase = phase;
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
   }
 
   /**
@@ -173,6 +267,37 @@ export class StateManager {
   }
 
   /**
+   * Update agent status with Result pattern (safe version)
+   */
+  async updateAgentStatusSafe(agent: AgentName, status: AgentStatus, errorMsg?: string): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+    const now = new Date().toISOString();
+    state.agents[agent].status = status;
+
+    if (status === 'running') {
+      state.agents[agent].started_at = now;
+    } else if (status === 'completed' || status === 'failed') {
+      state.agents[agent].completed_at = now;
+    }
+
+    if (errorMsg) {
+      state.agents[agent].error = errorMsg;
+    }
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
+  }
+
+  /**
    * Set pending CRP
    */
   async setPendingCRP(crpId: string | null): Promise<RunState> {
@@ -188,6 +313,29 @@ export class StateManager {
 
     await this.saveState(state);
     return state;
+  }
+
+  /**
+   * Set pending CRP with Result pattern (safe version)
+   */
+  async setPendingCRPSafe(crpId: string | null): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+    state.pending_crp = crpId;
+    if (crpId) {
+      state.phase = 'waiting_human';
+    }
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
   }
 
   /**
@@ -222,6 +370,42 @@ export class StateManager {
   }
 
   /**
+   * Increment iteration with Result pattern (safe version)
+   */
+  async incrementIterationSafe(): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+    state.iteration += 1;
+
+    // Reset agent statuses for retry
+    state.agents.builder.status = 'pending';
+    state.agents.builder.started_at = undefined;
+    state.agents.builder.completed_at = undefined;
+    state.agents.builder.error = undefined;
+
+    state.agents.verifier.status = 'pending';
+    state.agents.verifier.started_at = undefined;
+    state.agents.verifier.completed_at = undefined;
+    state.agents.verifier.error = undefined;
+
+    state.agents.gatekeeper.status = 'pending';
+    state.agents.gatekeeper.started_at = undefined;
+    state.agents.gatekeeper.completed_at = undefined;
+    state.agents.gatekeeper.error = undefined;
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
+  }
+
+  /**
    * Add history entry
    */
   async addHistory(entry: HistoryEntry): Promise<RunState> {
@@ -233,6 +417,26 @@ export class StateManager {
     state.history.push(entry);
     await this.saveState(state);
     return state;
+  }
+
+  /**
+   * Add history entry with Result pattern (safe version)
+   */
+  async addHistorySafe(entry: HistoryEntry): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+    state.history.push(entry);
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
   }
 
   /**
@@ -267,9 +471,10 @@ export class StateManager {
 
   /**
    * Check if state exists (sync, for backward compatibility)
-   * @deprecated Use stateExists() instead
+   * @deprecated Use stateExists() instead. Will be removed in v1.0
    */
   stateExistsSync(): boolean {
+    console.warn('[DEPRECATED] stateExistsSync() is deprecated. Use stateExists() instead. Will be removed in v1.0');
     return existsSync(this.statePath);
   }
 
@@ -304,6 +509,26 @@ export class StateManager {
     state.errors.push(error);
     await this.saveState(state);
     return state;
+  }
+
+  /**
+   * Add error to errors array with Result pattern (safe version)
+   */
+  async addErrorSafe(errorMsg: string): AsyncResult<RunState, StateError> {
+    const stateResult = await this.loadStateSafe();
+    if (!stateResult.success) {
+      return stateResult;
+    }
+
+    const state = stateResult.data;
+    state.errors.push(errorMsg);
+
+    const saveResult = await this.saveStateSafe(state);
+    if (!saveResult.success) {
+      return saveResult as Result<RunState, StateError>;
+    }
+
+    return ok(state);
   }
 
   /**

@@ -8,6 +8,9 @@ import type {
   VerifierConfig,
   GatekeeperConfig,
 } from '../types/index.js';
+import type { Result } from '../types/result.js';
+import { isErr } from '../types/result.js';
+import { ValidationError } from '../types/errors.js';
 import {
   defaultConfig,
   defaultGlobalConfig,
@@ -16,6 +19,7 @@ import {
   defaultVerifierConfig,
   defaultGatekeeperConfig,
 } from './defaults.js';
+import { validateConfig, validateGlobalConfig } from './validation.js';
 
 export class ConfigManager {
   private projectRoot: string;
@@ -46,13 +50,37 @@ export class ConfigManager {
    * Load the complete configuration
    */
   loadConfig(): OrchestraConfig {
-    return {
+    const config = {
       global: this.loadGlobalConfig(),
       refiner: this.loadRefinerConfig(),
       builder: this.loadBuilderConfig(),
       verifier: this.loadVerifierConfig(),
       gatekeeper: this.loadGatekeeperConfig(),
     };
+
+    // Validate the loaded configuration
+    const validationResult = validateConfig(config);
+    if (isErr(validationResult)) {
+      console.warn(`Configuration validation warning: ${validationResult.error.message}`);
+      console.warn('Using default configuration values where validation failed.');
+    }
+
+    return config;
+  }
+
+  /**
+   * Load and validate configuration, returning Result type
+   */
+  loadConfigSafe(): Result<OrchestraConfig, ValidationError> {
+    const config = {
+      global: this.loadGlobalConfig(),
+      refiner: this.loadRefinerConfig(),
+      builder: this.loadBuilderConfig(),
+      verifier: this.loadVerifierConfig(),
+      gatekeeper: this.loadGatekeeperConfig(),
+    };
+
+    return validateConfig(config);
   }
 
   /**
