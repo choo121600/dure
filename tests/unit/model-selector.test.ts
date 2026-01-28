@@ -33,7 +33,7 @@ describe('ModelSelector', () => {
 
       expect(result.analysis.overall_score).toBe(50);
       expect(result.analysis.level).toBe('medium');
-      expect(result.analysis.reasoning).toContain('비활성화');
+      expect(result.analysis.reasoning).toContain('disabled');
       expect(result.analysis.estimated_cost_savings).toBe(0);
     });
   });

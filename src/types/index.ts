@@ -616,14 +616,14 @@ export type ModelSelectionStrategy = 'cost_optimized' | 'balanced' | 'quality_fi
 export interface ModelSelectionConfig {
   enabled: boolean;
   strategy: ModelSelectionStrategy;
-  planner_model: AgentModel;  // ModelSelector 자체가 사용할 모델
+  planner_model: AgentModel;  // Model used by ModelSelector itself
 }
 
 export interface ComplexityFactors {
-  briefing_length: number;       // 0-100: 문자 수 기반
-  technical_depth: number;       // 0-100: 기술 키워드 밀도
-  scope_estimate: number;        // 0-100: 변경 범위 추정
-  risk_level: number;            // 0-100: 보안/성능 요구사항
+  briefing_length: number;       // 0-100: based on character count
+  technical_depth: number;       // 0-100: technical keyword density
+  scope_estimate: number;        // 0-100: estimated change scope
+  risk_level: number;            // 0-100: security/performance requirements
 }
 
 export interface ComplexityAnalysis {
@@ -637,7 +637,7 @@ export interface ComplexityAnalysis {
     gatekeeper: AgentModel;
   };
   reasoning: string;
-  estimated_cost_savings?: number;  // 예상 비용 절감률 (%)
+  estimated_cost_savings?: number;  // Estimated cost savings (%)
 }
 
 export interface ModelSelectionResult {
@@ -648,7 +648,7 @@ export interface ModelSelectionResult {
     gatekeeper: AgentModel;
   };
   analysis: ComplexityAnalysis;
-  selection_method: 'dynamic' | 'static';  // 동적 선택 vs 설정값 사용
+  selection_method: 'dynamic' | 'static';  // Dynamic selection vs static config
 }
 
 // ============================================================================

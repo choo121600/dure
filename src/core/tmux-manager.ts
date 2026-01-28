@@ -493,28 +493,28 @@ export class TmuxManager {
     let message: string;
     if (vcrInfo) {
       const parts = [
-        `인간의 결정이 도착했습니다.`,
+        `Human decision has arrived.`,
         ``,
-        `## 인간의 결정`,
-        `선택: ${vcrInfo.decisionLabel || vcrInfo.decision}`,
+        `## Human Decision`,
+        `Selection: ${vcrInfo.decisionLabel || vcrInfo.decision}`,
       ];
 
       if (vcrInfo.rationale) {
-        parts.push(`이유: ${vcrInfo.rationale}`);
+        parts.push(`Rationale: ${vcrInfo.rationale}`);
       }
 
       if (vcrInfo.additionalNotes) {
-        parts.push(`추가 노트: ${vcrInfo.additionalNotes}`);
+        parts.push(`Additional notes: ${vcrInfo.additionalNotes}`);
       }
 
       parts.push(
         ``,
-        `위 결정을 반영하여 작업을 계속 진행하세요.`
+        `Please continue with your work reflecting the above decision.`
       );
 
       message = parts.join('\n');
     } else {
-      message = `VCR 응답이 도착했습니다. 작업을 계속 진행하세요.`;
+      message = `VCR response has arrived. Please continue with your work.`;
     }
 
     // Use spawn with array arguments and -l flag for literal text

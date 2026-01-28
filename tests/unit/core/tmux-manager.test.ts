@@ -524,7 +524,7 @@ describe('TmuxManager', () => {
         '/project/root/prompts/builder.md'
       );
 
-      expect(capturedCommand).toContain('VCR 응답이 도착했습니다');
+      expect(capturedCommand).toContain('VCR response has arrived');
     });
 
     it('should throw error for invalid agent name', () => {

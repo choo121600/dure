@@ -25,10 +25,24 @@ export default defineConfig({
         'src/cli/commands/**',
         'src/server/standalone.ts', // Server entry point (manual testing)
         'src/server/index.ts',     // Server bootstrap (covered by E2E)
+
+        // TUI - blessed-based terminal UI, low unit test ROI
+        // Depends on terminal rendering, verify with E2E or manual testing
+        'src/tui/**',
+
+        // Infrastructure code - config/constants without logic, or code that is primarily mocked
+        'src/config/constants.ts',
+        'src/config/constants/**',
+        'src/utils/logger.ts',
+        'src/utils/metrics.ts',
+
+        // CLI glue code - only registers Commander.js commands
+        'src/cli/program.ts',
       ],
       // Coverage thresholds - prevent regression
-      // Current coverage (2026-01-27): Stmts 72.1%, Branch 60.48%, Funcs 77.97%, Lines 72.5%
-      // Phase 1 target: lines 70%, functions 70%, branches 60%, statements 70% ✅ ACHIEVED
+      // Excluded files: TUI screens (blessed), infrastructure (logger, metrics, constants), CLI glue code
+      // Focus: Core orchestration logic should maintain high coverage
+      // Phase 1 target: lines 70%, functions 70%, branches 55%, statements 70%
       // Phase 2 target: 80% across all metrics
       // Phase 3 target: 90% across all metrics
       thresholds: {

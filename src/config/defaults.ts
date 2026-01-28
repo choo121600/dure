@@ -10,7 +10,7 @@ import type {
 } from '../types/index.js';
 
 export const defaultModelSelectionConfig: ModelSelectionConfig = {
-  enabled: false,  // 기본은 비활성화 (기존 동작 유지)
+  enabled: false,  // Disabled by default (preserves existing behavior)
   strategy: 'balanced',
   planner_model: 'haiku',
 };

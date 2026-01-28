@@ -8,38 +8,38 @@ import type {
   ModelSelectionResult,
 } from '../types/index.js';
 
-// 기술 키워드 카테고리
+// Technical keyword categories
 const TECHNICAL_KEYWORDS = {
   architecture: [
     'architecture', 'design pattern', 'microservice', 'monolith',
     'database', 'schema', 'api', 'rest', 'graphql', 'grpc',
-    '아키텍처', '설계', '구조', '패턴',
+    '아키텍처', '설계', '구조', '패턴',  // Korean: architecture, design, structure, pattern
   ],
   complexity: [
     'refactor', 'migration', 'integration', 'authentication', 'authorization',
     'caching', 'queue', 'async', 'concurrent', 'parallel',
-    '리팩토링', '마이그레이션', '통합', '인증', '캐싱',
+    '리팩토링', '마이그레이션', '통합', '인증', '캐싱',  // Korean: refactoring, migration, integration, auth, caching
   ],
   risk: [
     'security', 'encryption', 'vulnerability', 'performance', 'optimization',
     'scalability', 'reliability', 'critical', 'production',
-    '보안', '암호화', '취약점', '성능', '최적화', '확장성',
+    '보안', '암호화', '취약점', '성능', '최적화', '확장성',  // Korean: security, encryption, vulnerability, performance, optimization, scalability
   ],
   scope: [
     'multiple files', 'across', 'entire', 'all', 'whole', 'system-wide',
     'full rewrite', 'complete', 'comprehensive',
-    '여러 파일', '전체', '모든', '시스템', '완전히',
+    '여러 파일', '전체', '모든', '시스템', '완전히',  // Korean: multiple files, entire, all, system, completely
   ],
 };
 
-// 모델별 비용 (per 1M tokens, input/output)
+// Model costs (per 1M tokens, input/output)
 const MODEL_COSTS = {
   haiku: { input: 0.25, output: 1.25 },
   sonnet: { input: 3.0, output: 15.0 },
   opus: { input: 15.0, output: 75.0 },
 };
 
-// 전략별 모델 매핑
+// Strategy-to-model mapping
 const STRATEGY_MODEL_MAP: Record<ModelSelectionStrategy, Record<'simple' | 'medium' | 'complex', Record<AgentName, AgentModel>>> = {
   cost_optimized: {
     simple: { refiner: 'haiku', builder: 'haiku', verifier: 'haiku', gatekeeper: 'haiku' },
@@ -63,7 +63,7 @@ const STRATEGY_MODEL_MAP: Record<ModelSelectionStrategy, Record<'simple' | 'medi
   },
 };
 
-// 기본 모델 (동적 선택 비활성화 시)
+// Default models (when dynamic selection is disabled)
 const DEFAULT_MODELS: Record<AgentName, AgentModel> = {
   refiner: 'haiku',
   builder: 'sonnet',
@@ -79,7 +79,7 @@ export class ModelSelector {
   }
 
   /**
-   * Briefing을 분석하고 최적의 모델을 선택
+   * Analyze briefing and select optimal models
    */
   selectModels(briefing: string): ModelSelectionResult {
     if (!this.config.enabled) {
@@ -101,7 +101,7 @@ export class ModelSelector {
   }
 
   /**
-   * Briefing 복잡도 분석
+   * Analyze briefing complexity
    */
   private analyzeBriefing(briefing: string): ComplexityAnalysis {
     const factors = this.calculateFactors(briefing);
@@ -123,24 +123,24 @@ export class ModelSelector {
   }
 
   /**
-   * 복잡도 요소 계산
+   * Calculate complexity factors
    */
   private calculateFactors(briefing: string): ComplexityFactors {
     const lowerBriefing = briefing.toLowerCase();
 
-    // 1. Briefing 길이 점수 (0-100)
+    // 1. Briefing length score (0-100)
     const lengthScore = this.calculateLengthScore(briefing);
 
-    // 2. 기술 키워드 밀도 점수 (0-100)
+    // 2. Technical keyword density score (0-100)
     const technicalScore = this.calculateKeywordScore(lowerBriefing, [
       ...TECHNICAL_KEYWORDS.architecture,
       ...TECHNICAL_KEYWORDS.complexity,
     ]);
 
-    // 3. 범위 추정 점수 (0-100)
+    // 3. Scope estimate score (0-100)
     const scopeScore = this.calculateKeywordScore(lowerBriefing, TECHNICAL_KEYWORDS.scope);
 
-    // 4. 리스크 레벨 점수 (0-100)
+    // 4. Risk level score (0-100)
     const riskScore = this.calculateKeywordScore(lowerBriefing, TECHNICAL_KEYWORDS.risk);
 
     return {
@@ -152,16 +152,16 @@ export class ModelSelector {
   }
 
   /**
-   * 길이 기반 점수 계산
+   * Calculate length-based score
    */
   private calculateLengthScore(text: string): number {
     const charCount = text.length;
     const lineCount = text.split('\n').length;
 
-    // 500자 이하: 단순, 2000자 이상: 복잡
+    // Under 500 chars: simple, over 2000 chars: complex
     let score = 0;
     if (charCount < 500) {
-      // 상한을 30 → 50으로 상향하여 짧은 briefing도 적절한 점수 획득 가능
+      // Raised upper limit from 30 to 50 so short briefings can also get adequate scores
       score = (charCount / 500) * 50;
     } else if (charCount < 2000) {
       score = 50 + ((charCount - 500) / 1500) * 30;
@@ -169,7 +169,7 @@ export class ModelSelector {
       score = 80 + Math.min(20, ((charCount - 2000) / 3000) * 20);
     }
 
-    // 라인 수 보정
+    // Line count adjustment
     if (lineCount > 20) {
       score = Math.min(100, score + 10);
     }
@@ -178,7 +178,7 @@ export class ModelSelector {
   }
 
   /**
-   * 키워드 기반 점수 계산
+   * Calculate keyword-based score
    */
   private calculateKeywordScore(text: string, keywords: string[]): number {
     let matchCount = 0;
@@ -191,23 +191,23 @@ export class ModelSelector {
       }
     }
 
-    // 키워드 밀도 기반 점수 (매칭된 키워드 / 전체 키워드 * 100)
-    // 최소 20% 매칭 시 적절한 점수 획득 가능하도록 조정
+    // Keyword density-based score (matched keywords / total keywords * 100)
+    // Adjusted so that 20% matching can achieve an adequate score
     const matchRatio = uniqueMatches.size / keywords.length;
     const score = Math.min(100, matchRatio * 100);
     return Math.round(score);
   }
 
   /**
-   * 전체 점수 계산 (가중 평균)
+   * Calculate overall score (weighted average)
    */
   private calculateOverallScore(factors: ComplexityFactors): number {
-    // 가중치 재조정: 기술적 복잡도와 위험도에 더 높은 가중치 부여
+    // Weight adjustment: higher weights for technical complexity and risk
     const weights = {
-      briefing_length: 0.1,   // 20% → 10% (briefing 길이는 복잡도의 약한 지표)
-      technical_depth: 0.4,   // 35% → 40% (기술적 복잡도가 가장 중요)
-      scope_estimate: 0.2,    // 25% → 20% (범위도 중요하지만 technical_depth와 중복 가능)
-      risk_level: 0.3,        // 20% → 30% (위험도는 모델 선택에 큰 영향)
+      briefing_length: 0.1,   // 20% → 10% (briefing length is a weak indicator of complexity)
+      technical_depth: 0.4,   // 35% → 40% (technical complexity is most important)
+      scope_estimate: 0.2,    // 25% → 20% (scope matters but may overlap with technical_depth)
+      risk_level: 0.3,        // 20% → 30% (risk level has significant impact on model selection)
     };
 
     const score =
@@ -220,7 +220,7 @@ export class ModelSelector {
   }
 
   /**
-   * 복잡도 레벨 결정
+   * Determine complexity level
    */
   private determineLevel(score: number): 'simple' | 'medium' | 'complex' {
     if (score < 30) return 'simple';
@@ -229,41 +229,41 @@ export class ModelSelector {
   }
 
   /**
-   * 분석 근거 생성
+   * Generate analysis reasoning
    */
   private generateReasoning(factors: ComplexityFactors, level: 'simple' | 'medium' | 'complex'): string {
     const reasons: string[] = [];
 
     if (factors.briefing_length >= 70) {
-      reasons.push('긴 briefing');
+      reasons.push('long briefing');
     } else if (factors.briefing_length < 30) {
-      reasons.push('간단한 briefing');
+      reasons.push('simple briefing');
     }
 
     if (factors.technical_depth >= 60) {
-      reasons.push('높은 기술적 복잡도');
+      reasons.push('high technical complexity');
     }
 
     if (factors.scope_estimate >= 50) {
-      reasons.push('넓은 변경 범위');
+      reasons.push('wide change scope');
     }
 
     if (factors.risk_level >= 50) {
-      reasons.push('보안/성능 요구사항 존재');
+      reasons.push('security/performance requirements present');
     }
 
     if (reasons.length === 0) {
-      return `${level} 수준의 작업으로 판단됨`;
+      return `Determined as ${level} level task`;
     }
 
-    return `${reasons.join(', ')} → ${level} 수준`;
+    return `${reasons.join(', ')} → ${level} level`;
   }
 
   /**
-   * 예상 비용 절감률 계산
+   * Calculate estimated cost savings
    */
   private estimateCostSavings(level: 'simple' | 'medium' | 'complex'): number {
-    // 기본 설정 (sonnet 위주) 대비 절감률 추정
+    // Estimate savings compared to default settings (sonnet-focused)
     const defaultCost = this.estimateRunCost(DEFAULT_MODELS);
     const selectedModels = STRATEGY_MODEL_MAP[this.config.strategy][level];
     const selectedCost = this.estimateRunCost(selectedModels);
@@ -273,10 +273,10 @@ export class ModelSelector {
   }
 
   /**
-   * 예상 실행 비용 계산 (상대적 비교용)
+   * Calculate estimated run cost (for relative comparison)
    */
   private estimateRunCost(models: Record<AgentName, AgentModel>): number {
-    // 에이전트별 예상 토큰 사용량 (대략적)
+    // Estimated token usage per agent (approximate)
     const estimatedTokens: Record<AgentName, { input: number; output: number }> = {
       refiner: { input: 3000, output: 1000 },
       builder: { input: 15000, output: 5000 },
@@ -296,7 +296,7 @@ export class ModelSelector {
   }
 
   /**
-   * 기본 분석 결과 생성 (동적 선택 비활성화 시)
+   * Create default analysis (when dynamic selection is disabled)
    */
   private createDefaultAnalysis(): ComplexityAnalysis {
     return {
@@ -309,20 +309,20 @@ export class ModelSelector {
         risk_level: 50,
       },
       recommended_models: { ...DEFAULT_MODELS },
-      reasoning: '동적 모델 선택 비활성화 - 기본 설정 사용',
+      reasoning: 'Dynamic model selection disabled - using default settings',
       estimated_cost_savings: 0,
     };
   }
 
   /**
-   * 설정 업데이트
+   * Update config
    */
   updateConfig(config: Partial<ModelSelectionConfig>): void {
     this.config = { ...this.config, ...config };
   }
 
   /**
-   * 현재 설정 반환
+   * Return current config
    */
   getConfig(): ModelSelectionConfig {
     return { ...this.config };
