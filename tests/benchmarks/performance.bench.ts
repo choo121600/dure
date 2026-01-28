@@ -1,5 +1,5 @@
 /**
- * Performance benchmarks for Orchestral
+ * Performance benchmarks for Dure
  * Measures async I/O, caching, and other performance-critical operations
  *
  * Run with: npx vitest bench tests/benchmarks/performance.bench.ts
@@ -11,7 +11,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 // Test directory for benchmarks
-const BENCH_DIR = join(tmpdir(), `orchestral-bench-${Date.now()}`);
+const BENCH_DIR = join(tmpdir(), `dure-bench-${Date.now()}`);
 const TEST_FILE = join(BENCH_DIR, 'test-state.json');
 const LARGE_FILE = join(BENCH_DIR, 'large-state.json');
 
@@ -176,7 +176,7 @@ describe('Sanitization Benchmarks', () => {
     return trimmed;
   }
 
-  const validName = 'orchestral-run-12345';
+  const validName = 'dure-run-12345';
   const longName = 'a'.repeat(64);
 
   bench('sanitize short name', () => {

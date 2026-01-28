@@ -27,7 +27,7 @@ export class ConfigManager {
 
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
-    this.configDir = join(projectRoot, '.orchestral', 'config');
+    this.configDir = join(projectRoot, '.dure', 'config');
   }
 
   /**

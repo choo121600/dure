@@ -1,5 +1,5 @@
 /**
- * Custom error classes for Orchestral
+ * Custom error classes for Dure
  * Provides structured error handling with error codes and context
  */
 
@@ -65,7 +65,7 @@ export const ErrorCodes = {
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 
 /**
- * Base error class for all Orchestral errors
+ * Base error class for all Dure errors
  */
 export class OrchestraError extends Error {
   readonly code: ErrorCode;

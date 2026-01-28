@@ -1,6 +1,6 @@
 # 문제 해결
 
-Orchestral 사용 중 발생할 수 있는 문제와 해결 방법입니다.
+Dure 사용 중 발생할 수 있는 문제와 해결 방법입니다.
 
 ## 설치 및 실행 문제
 
@@ -74,7 +74,7 @@ Error: Port 3000 is already in use
 다른 포트로 시작:
 
 ```bash
-orchestral start --port 3001
+dure start --port 3001
 ```
 
 또는 3000 포트를 사용 중인 프로세스 종료:
@@ -100,13 +100,13 @@ lsof -ti:3000 | xargs kill -9
 1. tmux 세션 확인:
 
 ```bash
-tmux list-sessions | grep orchestral
+tmux list-sessions | grep dure
 ```
 
 2. tmux 세션에 접속하여 에러 확인:
 
 ```bash
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 ```
 
 3. 에이전트 pane 확인:
@@ -121,10 +121,10 @@ tmux attach-session -t orchestral-run-{timestamp}
 
 ```bash
 # Run 중지
-orchestral stop
+dure stop
 
 # 재시작
-orchestral start
+dure start
 ```
 
 ### 에이전트가 멈춤 (timeout)
@@ -148,7 +148,7 @@ orchestral start
 2. tmux 세션 접속하여 에이전트 출력 확인:
 
 ```bash
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 ```
 
 3. pane 4 (Debug Shell)에서 프로세스 확인:
@@ -165,7 +165,7 @@ ps aux | grep claude
 대시보드에서 "Extend Timeout" 클릭 또는:
 
 ```bash
-# .orchestral/config/global.json 수정
+# .dure/config/global.json 수정
 {
   "timeouts": {
     "builder": 1200000  // 20분
@@ -178,8 +178,8 @@ ps aux | grep claude
 대시보드에서 "Retry Agent" 클릭 또는:
 
 ```bash
-orchestral stop
-orchestral start
+dure stop
+dure start
 ```
 
 ### 에이전트가 크래시
@@ -193,7 +193,7 @@ orchestral start
 1. error.flag 확인:
 
 ```bash
-cat .orchestral/runs/{run_id}/{agent}/error.flag
+cat .dure/runs/{run_id}/{agent}/error.flag
 ```
 
 출력 예시:
@@ -211,7 +211,7 @@ cat .orchestral/runs/{run_id}/{agent}/error.flag
 2. 에이전트 로그 확인:
 
 ```bash
-cat .orchestral/runs/{run_id}/{agent}/log.md
+cat .dure/runs/{run_id}/{agent}/log.md
 ```
 
 **해결:**
@@ -265,13 +265,13 @@ VCR 작성 후 에이전트가 `waiting_human` 상태 유지
 1. VCR 파일 확인:
 
 ```bash
-ls -la .orchestral/runs/{run_id}/vcr/
+ls -la .dure/runs/{run_id}/vcr/
 ```
 
 2. VCR 형식 확인:
 
 ```bash
-cat .orchestral/runs/{run_id}/vcr/vcr-001.json
+cat .dure/runs/{run_id}/vcr/vcr-001.json
 ```
 
 **해결:**
@@ -292,7 +292,7 @@ VCR 파일이 올바른 형식인지 확인:
 
 ```bash
 # 수동으로 에이전트 재시작
-tmux send-keys -t orchestral-run-{timestamp}:main.0 "/clear" Enter
+tmux send-keys -t dure-run-{timestamp}:main.0 "/clear" Enter
 ```
 
 ## MRP 검토 문제
@@ -312,13 +312,13 @@ Gatekeeper가 FAIL 또는 NEEDS_HUMAN 판정
 1. verdict.json 확인:
 
 ```bash
-cat .orchestral/runs/{run_id}/gatekeeper/verdict.json
+cat .dure/runs/{run_id}/gatekeeper/verdict.json
 ```
 
 2. review.md 확인:
 
 ```bash
-cat .orchestral/runs/{run_id}/gatekeeper/review.md
+cat .dure/runs/{run_id}/gatekeeper/review.md
 ```
 
 **해결:**
@@ -340,7 +340,7 @@ MRP를 Approve 했지만 코드가 없음
 
 **원인:**
 
-Orchestral은 자동으로 머지하지 않습니다
+Dure은 자동으로 머지하지 않습니다
 
 **해결:**
 
@@ -348,16 +348,16 @@ MRP의 코드를 수동으로 프로젝트에 적용:
 
 ```bash
 # MRP 코드 확인
-ls .orchestral/runs/{run_id}/mrp/code/
+ls .dure/runs/{run_id}/mrp/code/
 
 # 복사
-cp -r .orchestral/runs/{run_id}/mrp/code/* .
+cp -r .dure/runs/{run_id}/mrp/code/* .
 ```
 
 또는 Git diff 확인:
 
 ```bash
-diff -r .orchestral/runs/{run_id}/mrp/code/ .
+diff -r .dure/runs/{run_id}/mrp/code/ .
 ```
 
 ?> 향후 버전에서 자동 머지 기능 추가 예정
@@ -381,7 +381,7 @@ diff -r .orchestral/runs/{run_id}/mrp/code/ .
 **1. 모델 다운그레이드**
 
 ```bash
-# .orchestral/config/builder.json
+# .dure/config/builder.json
 {
   "model": "haiku"  # sonnet에서 변경
 }
@@ -400,7 +400,7 @@ diff -r .orchestral/runs/{run_id}/mrp/code/ .
 **3. 타임아웃 단축**
 
 ```json
-// .orchestral/config/global.json
+// .dure/config/global.json
 {
   "timeouts": {
     "refiner": 180000,  // 3분
@@ -454,12 +454,12 @@ Builder만 Sonnet, 나머지는 Haiku:
 
 ## 파일 시스템 문제
 
-### ".orchestral 폴더를 찾을 수 없음"
+### ".dure 폴더를 찾을 수 없음"
 
 **증상:**
 
 ```bash
-Error: .orchestral directory not found
+Error: .dure directory not found
 ```
 
 **원인:**
@@ -472,7 +472,7 @@ Error: .orchestral directory not found
 
 ```bash
 cd /path/to/your-project
-orchestral start
+dure start
 ```
 
 ### "Permission denied"
@@ -480,7 +480,7 @@ orchestral start
 **증상:**
 
 ```bash
-Error: EACCES: permission denied, mkdir '.orchestral'
+Error: EACCES: permission denied, mkdir '.dure'
 ```
 
 **해결:**
@@ -508,10 +508,10 @@ Error: ENOSPC: no space left on device
 
 ```bash
 # 30일 이전 Run 삭제
-find .orchestral/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
+find .dure/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
 
 # 또는 수동으로
-rm -rf .orchestral/runs/run-20240101-*
+rm -rf .dure/runs/run-20240101-*
 ```
 
 ## tmux 문제
@@ -521,7 +521,7 @@ rm -rf .orchestral/runs/run-20240101-*
 **증상:**
 
 ```bash
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 # error: no sessions
 ```
 
@@ -536,10 +536,10 @@ tmux list-sessions
 2. 정확한 세션 이름 사용:
 
 ```bash
-tmux list-sessions | grep orchestral
-# orchestral-run-20240126-143022: 6 windows
+tmux list-sessions | grep dure
+# dure-run-20240126-143022: 6 windows
 
-tmux attach-session -t orchestral-run-20240126-143022
+tmux attach-session -t dure-run-20240126-143022
 ```
 
 ### tmux pane 간 이동
@@ -560,17 +560,17 @@ Ctrl-b + d            # 세션에서 빠져나오기 (detach)
 
 **증상:**
 
-`orchestral stop` 후에도 tmux 세션이 남아있음
+`dure stop` 후에도 tmux 세션이 남아있음
 
 **해결:**
 
 수동으로 세션 종료:
 
 ```bash
-tmux kill-session -t orchestral-run-{timestamp}
+tmux kill-session -t dure-run-{timestamp}
 
-# 모든 orchestral 세션 종료
-tmux list-sessions | grep orchestral | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
+# 모든 dure 세션 종료
+tmux list-sessions | grep dure | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
 ```
 
 ## 디버깅 팁
@@ -580,7 +580,7 @@ tmux list-sessions | grep orchestral | cut -d: -f1 | xargs -I {} tmux kill-sessi
 모든 이벤트는 `events.log`에 기록됩니다:
 
 ```bash
-tail -f .orchestral/runs/{run_id}/events.log
+tail -f .dure/runs/{run_id}/events.log
 ```
 
 출력 예시:
@@ -599,16 +599,16 @@ tmux pane 4는 Debug Shell입니다:
 
 ```bash
 # tmux 세션 접속
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 
 # pane 4로 이동 (Ctrl-b + q + 4)
 
 # 상태 확인
-cat .orchestral/runs/{run_id}/state.json
+cat .dure/runs/{run_id}/state.json
 
 # 파일 확인
-ls -la .orchestral/runs/{run_id}/builder/
-cat .orchestral/runs/{run_id}/builder/log.md
+ls -la .dure/runs/{run_id}/builder/
+cat .dure/runs/{run_id}/builder/log.md
 
 # 프로세스 확인
 ps aux | grep claude
@@ -619,7 +619,7 @@ ps aux | grep claude
 더 상세한 로그가 필요한 경우:
 
 ```json
-// .orchestral/config/global.json
+// .dure/config/global.json
 {
   "log_level": "debug"  // "info"에서 변경
 }
@@ -630,7 +630,7 @@ ps aux | grep claude
 위 방법으로 해결되지 않는 경우:
 
 1. **GitHub Issue 생성**
-   - https://github.com/yourusername/orchestral/issues
+   - https://github.com/yourusername/dure/issues
    - 다음 정보 포함:
      - 에러 메시지
      - `events.log` 내용
@@ -645,15 +645,15 @@ node --version
 tmux -V
 claude --version
 
-# Orchestral 버전
-orchestral --version
+# Dure 버전
+dure --version
 
 # 로그 수집
-tar -czf debug-logs.tar.gz .orchestral/runs/{run_id}/
+tar -czf debug-logs.tar.gz .dure/runs/{run_id}/
 ```
 
 ## 다음 단계
 
 - [고급 디버깅](/advanced/debugging.md) - 상세 디버깅 기법
 - [FAQ](/misc/faq.md) - 자주 묻는 질문
-- [GitHub Issues](https://github.com/yourusername/orchestral/issues) - 알려진 문제
+- [GitHub Issues](https://github.com/yourusername/dure/issues) - 알려진 문제

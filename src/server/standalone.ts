@@ -58,16 +58,16 @@ async function checkInterruptedRuns(): Promise<void> {
       console.log(`    Reason: ${run.reason}`);
     }
 
-    console.log('\nUse `orchestral recover` to manage these runs.');
+    console.log('\nUse `dure recover` to manage these runs.');
     console.log('Or visit /health/interrupted for API access.');
     console.log('========================================\n');
   }
 }
 
 // Security options - rate limiting disabled by default for local development tool
-// Enable with ORCHESTRAL_ENABLE_RATE_LIMIT=true for external deployment
+// Enable with DURE_ENABLE_RATE_LIMIT=true for external deployment
 const securityOptions = {
-  rateLimit: process.env.ORCHESTRAL_ENABLE_RATE_LIMIT === 'true',
+  rateLimit: process.env.DURE_ENABLE_RATE_LIMIT === 'true',
 };
 
 // Start server with graceful shutdown support

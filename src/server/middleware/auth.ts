@@ -4,8 +4,8 @@ import { Request, Response, NextFunction } from 'express';
  * Environment variable names for authentication configuration
  */
 const ENV = {
-  API_KEY: 'ORCHESTRAL_API_KEY',
-  AUTH_ENABLED: 'ORCHESTRAL_AUTH_ENABLED',
+  API_KEY: 'DURE_API_KEY',
+  AUTH_ENABLED: 'DURE_AUTH_ENABLED',
 } as const;
 
 /**
@@ -33,12 +33,12 @@ export function loadAuthConfig(): AuthConfig {
  * API key authentication middleware
  *
  * Checks for a valid API key in the x-api-key header.
- * Only enforces authentication when ORCHESTRAL_AUTH_ENABLED=true and ORCHESTRAL_API_KEY is set.
+ * Only enforces authentication when DURE_AUTH_ENABLED=true and DURE_API_KEY is set.
  *
  * @example
  * // Enable authentication by setting environment variables:
- * // ORCHESTRAL_AUTH_ENABLED=true
- * // ORCHESTRAL_API_KEY=your-secret-key
+ * // DURE_AUTH_ENABLED=true
+ * // DURE_API_KEY=your-secret-key
  *
  * // Then make requests with the header:
  * // x-api-key: your-secret-key
@@ -98,7 +98,7 @@ function constantTimeCompare(a: string, b: string): boolean {
  * WebSocket authentication handler for Socket.io
  *
  * Validates token from socket handshake auth data.
- * Only enforces authentication when ORCHESTRAL_AUTH_ENABLED=true and ORCHESTRAL_API_KEY is set.
+ * Only enforces authentication when DURE_AUTH_ENABLED=true and DURE_API_KEY is set.
  *
  * @example
  * // Client-side connection with authentication:

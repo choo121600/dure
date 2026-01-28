@@ -35,9 +35,9 @@ describe('CRP Routes', () => {
     runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2),
       'utf-8'
     );

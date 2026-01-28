@@ -1,6 +1,6 @@
 # 변경 로그
 
-Orchestral의 모든 주요 변경 사항을 기록합니다.
+Dure의 모든 주요 변경 사항을 기록합니다.
 
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따르며,
 버전 관리는 [Semantic Versioning](https://semver.org/lang/ko/)을 사용합니다.
@@ -26,13 +26,13 @@ Orchestral의 모든 주요 변경 사항을 기록합니다.
 - 🔔 WebSocket 실시간 알림
 
 ### CLI
-- `orchestral start` - Orchestral 시작
-- `orchestral status` - 현재 상태 확인
-- `orchestral stop` - Run 중지
-- `orchestral history` - 과거 Run 목록
-- `orchestral logs` - 로그 조회
-- `orchestral clean` - 오래된 Run 정리
-- `orchestral config` - 설정 관리
+- `dure start` - Dure 시작
+- `dure status` - 현재 상태 확인
+- `dure stop` - Run 중지
+- `dure history` - 과거 Run 목록
+- `dure logs` - 로그 조회
+- `dure clean` - 오래된 Run 정리
+- `dure config` - 설정 관리
 
 ### 문서
 - 빠른 시작 가이드
@@ -101,4 +101,4 @@ Orchestral의 모든 주요 변경 사항을 기록합니다.
 
 ---
 
-전체 변경 이력은 [GitHub Releases](https://github.com/yourusername/orchestral/releases)에서 확인할 수 있습니다.
+전체 변경 이력은 [GitHub Releases](https://github.com/yourusername/dure/releases)에서 확인할 수 있습니다.

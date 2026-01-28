@@ -1,4 +1,4 @@
-// Shared JavaScript utilities for Orchestral frontend
+// Shared JavaScript utilities for Dure frontend
 
 // ============================================
 // Global Error Handling (Task 7.1)

@@ -1,4 +1,4 @@
-# Orchestral - 에이전트 정의
+# Dure - 에이전트 정의
 
 ## Refiner
 

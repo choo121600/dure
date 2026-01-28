@@ -10,11 +10,11 @@ export async function historyCommand(): Promise<void> {
 
   if (runs.length === 0) {
     console.log(chalk.yellow('No runs found.'));
-    console.log(chalk.gray('Use `orchestral start` to create your first run.'));
+    console.log(chalk.gray('Use `dure start` to create your first run.'));
     return;
   }
 
-  console.log(chalk.blue('🎼 Orchestral History'));
+  console.log(chalk.blue('🎼 Dure History'));
   console.log();
   console.log(chalk.gray('Run ID                    Phase              Iteration  Started'));
   console.log(chalk.gray('─'.repeat(75)));

@@ -1,6 +1,6 @@
 # 파일 구조
 
-Orchestral의 폴더 및 파일 구조를 상세히 설명합니다.
+Dure의 폴더 및 파일 구조를 상세히 설명합니다.
 
 ## 전체 구조
 
@@ -10,7 +10,7 @@ your-project/
 ├── package.json
 ├── .gitignore
 │
-└── .orchestral/            # Orchestral 작업 디렉토리
+└── .dure/            # Dure 작업 디렉토리
     ├── config/             # 설정 파일
     │   ├── global.json
     │   ├── refiner.json
@@ -32,9 +32,9 @@ your-project/
             └── prompts/
 ```
 
-## .orchestral/config/
+## .dure/config/
 
-설정 파일들이 저장됩니다. `orchestral start` 시 자동 생성됩니다.
+설정 파일들이 저장됩니다. `dure start` 시 자동 생성됩니다.
 
 ### global.json
 
@@ -43,7 +43,7 @@ your-project/
 ```json
 {
   "max_iterations": 3,
-  "tmux_session_prefix": "orchestral",
+  "tmux_session_prefix": "dure",
   "web_port": 3000,
   "log_level": "info",
   "timeouts": {
@@ -69,7 +69,7 @@ your-project/
 
 각 에이전트별 설정. 자세한 내용은 [설정 파일](/api/configuration.md) 참고.
 
-## .orchestral/runs/
+## .dure/runs/
 
 모든 Run의 실행 기록이 저장됩니다.
 
@@ -147,7 +147,7 @@ run-{timestamp}/
 
 ### state.json
 
-**위치:** `.orchestral/runs/{run_id}/state.json`
+**위치:** `.dure/runs/{run_id}/state.json`
 
 **용도:** Run의 현재 상태를 저장
 
@@ -208,7 +208,7 @@ run-{timestamp}/
 
 ### events.log
 
-**위치:** `.orchestral/runs/{run_id}/events.log`
+**위치:** `.dure/runs/{run_id}/events.log`
 
 **용도:** 모든 이벤트를 시간순으로 기록
 
@@ -231,7 +231,7 @@ run-{timestamp}/
 
 ### briefing/raw.md
 
-**위치:** `.orchestral/runs/{run_id}/briefing/raw.md`
+**위치:** `.dure/runs/{run_id}/briefing/raw.md`
 
 **용도:** 인간이 작성한 원본 Briefing
 
@@ -250,7 +250,7 @@ run-{timestamp}/
 
 ### briefing/refined.md
 
-**위치:** `.orchestral/runs/{run_id}/briefing/refined.md`
+**위치:** `.dure/runs/{run_id}/briefing/refined.md`
 
 **용도:** Refiner가 검토/개선한 Briefing
 
@@ -264,8 +264,8 @@ run-{timestamp}/
 ### done.flag
 
 **위치:**
-- `.orchestral/runs/{run_id}/builder/done.flag`
-- `.orchestral/runs/{run_id}/verifier/done.flag`
+- `.dure/runs/{run_id}/builder/done.flag`
+- `.dure/runs/{run_id}/verifier/done.flag`
 
 **용도:** 에이전트 완료 신호
 
@@ -278,7 +278,7 @@ run-{timestamp}/
 ```typescript
 // File Watcher가 감지
 chokidar
-  .watch('.orchestral/runs/{run_id}/builder/')
+  .watch('.dure/runs/{run_id}/builder/')
   .on('add', (path) => {
     if (path.endsWith('done.flag')) {
       orchestrator.startNextAgent();
@@ -288,7 +288,7 @@ chokidar
 
 ### error.flag
 
-**위치:** `.orchestral/runs/{run_id}/{agent}/error.flag`
+**위치:** `.dure/runs/{run_id}/{agent}/error.flag`
 
 **용도:** 에이전트 에러 정보
 
@@ -309,7 +309,7 @@ chokidar
 
 ### CRP 파일
 
-**위치:** `.orchestral/runs/{run_id}/crp/crp-{n}.json`
+**위치:** `.dure/runs/{run_id}/crp/crp-{n}.json`
 
 **용도:** 인간 판단 요청
 
@@ -319,7 +319,7 @@ chokidar
 
 ### VCR 파일
 
-**위치:** `.orchestral/runs/{run_id}/vcr/vcr-{n}.json`
+**위치:** `.dure/runs/{run_id}/vcr/vcr-{n}.json`
 
 **용도:** 인간 결정 기록
 
@@ -329,7 +329,7 @@ chokidar
 
 ### MRP 디렉토리
 
-**위치:** `.orchestral/runs/{run_id}/mrp/`
+**위치:** `.dure/runs/{run_id}/mrp/`
 
 **용도:** 최종 결과물 패키지
 
@@ -423,13 +423,13 @@ chokidar
 
 ```bash
 # 30일 이전 Run 삭제
-find .orchestral/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
+find .dure/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
 
 # 특정 Run 삭제
-rm -rf .orchestral/runs/run-20240126-143022
+rm -rf .dure/runs/run-20240126-143022
 
 # 모든 실패한 Run 삭제
-for dir in .orchestral/runs/run-*; do
+for dir in .dure/runs/run-*; do
   verdict=$(jq -r '.verdict' "$dir/gatekeeper/verdict.json" 2>/dev/null)
   if [ "$verdict" = "FAIL" ]; then
     rm -rf "$dir"
@@ -442,18 +442,18 @@ done
 ### .gitignore 권장 설정
 
 ```gitignore
-# Orchestral - 실행 기록은 무시
-.orchestral/runs/
+# Dure - 실행 기록은 무시
+.dure/runs/
 
-# Orchestral - 설정은 커밋 (팀과 공유)
-!.orchestral/config/
+# Dure - 설정은 커밋 (팀과 공유)
+!.dure/config/
 ```
 
 또는 모두 무시:
 
 ```gitignore
-# Orchestral
-.orchestral/
+# Dure
+.dure/
 ```
 
 ### 실행 기록 보존
@@ -463,10 +463,10 @@ done
 ```bash
 # 특정 Run 아카이브
 tar -czf run-20240126-143022.tar.gz \
-  .orchestral/runs/run-20240126-143022
+  .dure/runs/run-20240126-143022
 
 # 모든 PASS Run 아카이브
-for dir in .orchestral/runs/run-*; do
+for dir in .dure/runs/run-*; do
   verdict=$(jq -r '.verdict' "$dir/gatekeeper/verdict.json" 2>/dev/null)
   if [ "$verdict" = "PASS" ]; then
     tar -czf "$(basename $dir).tar.gz" "$dir"

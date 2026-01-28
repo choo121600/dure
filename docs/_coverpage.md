@@ -1,4 +1,4 @@
-# Orchestral 🎼
+# Dure 🎼
 
 > 의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고,
 > 인간은 증거를 보고 결정만 하는 엔지니어링 시스템
@@ -8,5 +8,5 @@
 - 🎯 인간 중심 설계
 - 🌐 실시간 웹 대시보드
 
-[GitHub](https://github.com/yourusername/orchestral)
+[GitHub](https://github.com/yourusername/dure)
 [빠른 시작](/guide/getting-started)

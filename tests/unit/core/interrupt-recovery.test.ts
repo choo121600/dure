@@ -80,7 +80,7 @@ describe('InterruptRecovery', () => {
     mockSessionExists = vi.fn().mockReturnValue(false);
 
     mockListRuns.mockResolvedValue([]);
-    mockGetRunDir.mockReturnValue('/test/project/.orchestral/runs/run-20260126000000');
+    mockGetRunDir.mockReturnValue('/test/project/.dure/runs/run-20260126000000');
   });
 
   afterEach(() => {

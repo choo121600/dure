@@ -180,15 +180,15 @@ function checkTmux(sessionPrefix: string): HealthCheckResult {
  */
 function checkFileSystem(projectRoot: string): HealthCheckResult {
   const start = Date.now();
-  const orchestralDir = join(projectRoot, '.orchestral');
-  const testFile = join(orchestralDir, '.health-check-test');
+  const dureDir = join(projectRoot, '.dure');
+  const testFile = join(dureDir, '.health-check-test');
 
   try {
-    // Check if .orchestral directory exists
-    if (!existsSync(orchestralDir)) {
+    // Check if .dure directory exists
+    if (!existsSync(dureDir)) {
       return {
         status: 'fail',
-        message: '.orchestral directory does not exist',
+        message: '.dure directory does not exist',
         latency_ms: Date.now() - start,
       };
     }
@@ -232,12 +232,12 @@ function determineOverallStatus(checks: HealthResponse['checks']): 'healthy' | '
  *
  * @param projectRoot - Project root directory
  * @param orchestrator - Orchestrator instance
- * @param sessionPrefix - tmux session prefix (default: 'orchestral')
+ * @param sessionPrefix - tmux session prefix (default: 'dure')
  */
 export function createHealthRouter(
   projectRoot: string,
   orchestrator: Orchestrator,
-  sessionPrefix = 'orchestral'
+  sessionPrefix = 'dure'
 ): Router {
   const router = Router();
 

@@ -396,13 +396,13 @@ Apply to future: Yes (모든 페이지에 동일한 보안 정책)
 
 ```bash
 # 특정 Run의 모든 VCR
-ls .orchestral/runs/{run_id}/vcr/
+ls .dure/runs/{run_id}/vcr/
 
 # VCR 내용 확인
-cat .orchestral/runs/{run_id}/vcr/vcr-001.json
+cat .dure/runs/{run_id}/vcr/vcr-001.json
 
 # 모든 VCR 검색
-find .orchestral/runs -name "vcr-*.json" -exec cat {} \;
+find .dure/runs -name "vcr-*.json" -exec cat {} \;
 ```
 
 웹 UI에서는 Run 상세 페이지에서 "Decisions" 탭에서 확인 가능합니다.

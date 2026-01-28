@@ -27,7 +27,7 @@ export interface TuiStateManagerOptions {
 
 export class TuiStateManager extends EventEmitter {
   private projectRoot: string;
-  private orchestralDir: string;
+  private dureDir: string;
   private runsDir: string;
   private watcher: FSWatcher | null = null;
   private currentRunId: string | null = null;
@@ -37,8 +37,8 @@ export class TuiStateManager extends EventEmitter {
   constructor(options: TuiStateManagerOptions) {
     super();
     this.projectRoot = options.projectRoot;
-    this.orchestralDir = join(this.projectRoot, '.orchestral');
-    this.runsDir = join(this.orchestralDir, 'runs');
+    this.dureDir = join(this.projectRoot, '.dure');
+    this.runsDir = join(this.dureDir, 'runs');
     this.watchInterval = options.watchInterval ?? 1000;
   }
 

@@ -1,11 +1,11 @@
-# Orchestral - 로드맵
+# Dure - 로드맵
 
 ## 구현 우선순위 (MVP)
 
 ### Phase 1: 핵심 구조
 
-1. **CLI 기본** - `orchestral start` 명령어
-2. **폴더 구조 생성** - `.orchestral/` 초기화
+1. **CLI 기본** - `dure start` 명령어
+2. **폴더 구조 생성** - `.dure/` 초기화
 3. **state.json 관리** - 상태 읽기/쓰기
 4. **tmux 세션 생성** - 기본 레이아웃
 
@@ -51,7 +51,7 @@
 
 ## 성공 기준
 
-1. `orchestral start` → 웹서버 시작
+1. `dure start` → 웹서버 시작
 2. Briefing 입력 → 4개 에이전트 순차 실행
 3. CRP 발생 시 → 웹에서 응답 가능
 4. 최종 MRP 생성 → 인간이 검토 가능

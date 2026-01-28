@@ -9,7 +9,7 @@ export default defineConfig({
       'tests/**/*.test.ts',
     ],
     exclude: [
-      '.orchestral/**',
+      '.dure/**',
       'node_modules/**',
       'tests/benchmarks/**',
     ],

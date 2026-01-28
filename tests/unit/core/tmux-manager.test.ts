@@ -32,13 +32,13 @@ describe('TmuxManager', () => {
 
   describe('constructor', () => {
     it('should create instance with session prefix and project root', () => {
-      const manager = new TmuxManager('orchestral', '/project/root');
-      expect(manager.getSessionName()).toBe('orchestral');
+      const manager = new TmuxManager('dure', '/project/root');
+      expect(manager.getSessionName()).toBe('dure');
     });
 
     it('should include run ID in session name when provided', () => {
-      const manager = new TmuxManager('orchestral', '/project/root', 'run-123');
-      expect(manager.getSessionName()).toBe('orchestral-run-123');
+      const manager = new TmuxManager('dure', '/project/root', 'run-123');
+      expect(manager.getSessionName()).toBe('dure-run-123');
     });
 
     it('should throw error for invalid session name with special characters', () => {
@@ -48,7 +48,7 @@ describe('TmuxManager', () => {
     });
 
     it('should sanitize run ID with special characters', () => {
-      const manager = new TmuxManager('orchestral', '/project/root', 'run@123');
+      const manager = new TmuxManager('dure', '/project/root', 'run@123');
       expect(manager.getSessionName()).not.toContain('@');
     });
   });
@@ -76,13 +76,13 @@ describe('TmuxManager', () => {
   describe('sessionExists', () => {
     it('should return true when session exists', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       expect(manager.sessionExists()).toBe(true);
     });
 
     it('should return false when session does not exist', () => {
       mockSpawnSync.mockReturnValue({ status: 1 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       expect(manager.sessionExists()).toBe(false);
     });
 
@@ -90,7 +90,7 @@ describe('TmuxManager', () => {
       mockSpawnSync.mockImplementation(() => {
         throw new Error('tmux error');
       });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       expect(manager.sessionExists()).toBe(false);
     });
   });
@@ -98,7 +98,7 @@ describe('TmuxManager', () => {
   describe('createSession', () => {
     it('should not create session if it already exists', () => {
       mockSpawnSync.mockReturnValue({ status: 0 }); // sessionExists returns true
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       manager.createSession();
@@ -112,12 +112,12 @@ describe('TmuxManager', () => {
         .mockReturnValueOnce({ status: 1 }) // sessionExists returns false
         .mockReturnValue({ status: 0 }); // subsequent calls succeed
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       manager.createSession();
 
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'tmux',
-        expect.arrayContaining(['new-session', '-d', '-s', 'orchestral']),
+        expect.arrayContaining(['new-session', '-d', '-s', 'dure']),
         expect.anything()
       );
     });
@@ -126,19 +126,19 @@ describe('TmuxManager', () => {
   describe('killSession', () => {
     it('should kill session if it exists', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       manager.killSession();
 
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'tmux',
-        ['kill-session', '-t', 'orchestral'],
+        ['kill-session', '-t', 'dure'],
         expect.anything()
       );
     });
 
     it('should not throw if session does not exist', () => {
       mockSpawnSync.mockReturnValue({ status: 1 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       expect(() => manager.killSession()).not.toThrow();
     });
   });
@@ -171,7 +171,7 @@ describe('TmuxManager', () => {
   describe('capturePane', () => {
     it('should return empty string when session does not exist', () => {
       mockSpawnSync.mockReturnValue({ status: 1 }); // sessionExists returns false
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const output = manager.capturePane('builder');
 
@@ -182,7 +182,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockReturnValueOnce({ status: 0, stdout: 'captured output' }); // capture-pane
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const output = manager.capturePane('builder');
 
@@ -193,7 +193,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockImplementationOnce(() => { throw new Error('capture failed'); });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const output = manager.capturePane('builder');
 
@@ -204,7 +204,7 @@ describe('TmuxManager', () => {
   describe('isPaneActive', () => {
     it('should return false when session does not exist', () => {
       mockSpawnSync.mockReturnValue({ status: 1 }); // sessionExists returns false
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const active = manager.isPaneActive('builder');
 
@@ -215,7 +215,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockReturnValueOnce({ status: 0, stdout: '0:bash\n1:node\n2:bash\n3:bash' }); // list-panes
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const active = manager.isPaneActive('builder'); // pane 1
 
@@ -226,7 +226,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockReturnValueOnce({ status: 0, stdout: '0:bash\n1:bash\n2:bash\n3:bash' }); // list-panes
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const active = manager.isPaneActive('builder'); // pane 1
 
@@ -237,7 +237,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockImplementationOnce(() => { throw new Error('check failed'); }); // list-panes throws
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       const active = manager.isPaneActive('builder');
 
@@ -265,7 +265,7 @@ describe('TmuxManager', () => {
 
     it('should not update if session does not exist', () => {
       mockSpawnSync.mockReturnValue({ status: 1 }); // sessionExists returns false
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.updatePaneBordersWithModels(modelSelection);
 
@@ -275,7 +275,7 @@ describe('TmuxManager', () => {
 
     it('should update pane borders when session exists', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.updatePaneBordersWithModels(modelSelection);
 
@@ -291,7 +291,7 @@ describe('TmuxManager', () => {
       mockSpawnSync
         .mockReturnValueOnce({ status: 0 }) // sessionExists
         .mockImplementationOnce(() => { throw new Error('tmux error'); }); // set-option throws
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       // Should not throw
       expect(() => manager.updatePaneBordersWithModels(modelSelection)).not.toThrow();
@@ -299,7 +299,7 @@ describe('TmuxManager', () => {
 
     it('should include all agents in pane border format', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.updatePaneBordersWithModels(modelSelection);
 
@@ -325,7 +325,7 @@ describe('TmuxManager', () => {
         .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
         .mockReturnValueOnce({ status: 0, stdout: '> Type /help or ...\nTips:' }); // capture-pane output
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       const result = await manager.waitForClaudeReady('refiner', 1000, 100);
 
       expect(result).toBe(true);
@@ -337,7 +337,7 @@ describe('TmuxManager', () => {
         .mockReturnValueOnce({ status: 0, stdout: '0:bash\n1:bash' }) // list-panes - no process running
         .mockReturnValue({ status: 0 }); // subsequent calls
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       const result = await manager.waitForClaudeReady('refiner', 200, 100);
 
       expect(result).toBe(false);
@@ -350,7 +350,7 @@ describe('TmuxManager', () => {
         .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
         .mockReturnValueOnce({ status: 0, stdout: '╭────────────────────╮' }); // UI element
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       const result = await manager.waitForClaudeReady('refiner', 1000, 100);
 
       expect(result).toBe(true);
@@ -363,7 +363,7 @@ describe('TmuxManager', () => {
         .mockReturnValueOnce({ status: 0 }) // sessionExists for capturePane
         .mockReturnValueOnce({ status: 0, stdout: 'Welcome\n> ' }); // prompt
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
       const result = await manager.waitForClaudeReady('refiner', 1000, 100);
 
       expect(result).toBe(true);
@@ -373,7 +373,7 @@ describe('TmuxManager', () => {
   describe('sendPendingPrompt', () => {
     it('should do nothing when no pending prompt exists', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       await manager.sendPendingPrompt('refiner');
 
@@ -386,7 +386,7 @@ describe('TmuxManager', () => {
 
     it('should send prompt when pending prompt exists', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       // First start agent to create pending prompt
       manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
@@ -412,7 +412,7 @@ describe('TmuxManager', () => {
 
     it('should clear pending prompt after sending', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
       await manager.sendPendingPrompt('refiner');
@@ -434,7 +434,7 @@ describe('TmuxManager', () => {
   describe('startAgentAndWaitReady', () => {
     it('should start agent and wait for ready', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       // Use short delay for test
       const result = await manager.startAgentAndWaitReady('refiner', 'haiku', '/project/root/prompts/refiner.md', 100);
@@ -450,7 +450,7 @@ describe('TmuxManager', () => {
 
     it('should use default delay when not provided', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       // Don't await - just check it starts
       const promise = manager.startAgentAndWaitReady('refiner', 'haiku', '/project/root/prompts/refiner.md');
@@ -468,7 +468,7 @@ describe('TmuxManager', () => {
     it('should send VCR response to agent pane', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.restartAgentWithVCR(
         'refiner',
@@ -487,7 +487,7 @@ describe('TmuxManager', () => {
         return { unref: vi.fn() };
       });
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.restartAgentWithVCR(
         'refiner',
@@ -516,7 +516,7 @@ describe('TmuxManager', () => {
         return { unref: vi.fn() };
       });
 
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.restartAgentWithVCR(
         'builder',
@@ -529,7 +529,7 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid agent name', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.restartAgentWithVCR(
         'invalid' as any,
@@ -542,7 +542,7 @@ describe('TmuxManager', () => {
   describe('clearAgent', () => {
     it('should send /clear command to agent pane', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.clearAgent('refiner');
 
@@ -556,7 +556,7 @@ describe('TmuxManager', () => {
 
     it('should send C-j after /clear', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.clearAgent('builder');
 
@@ -569,14 +569,14 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid agent name', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.clearAgent('invalid' as any)).toThrow('Invalid agent name');
     });
 
     it('should clear different agents correctly', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       // Clear each agent and verify pane targeting
       const agents = ['refiner', 'builder', 'verifier', 'gatekeeper'] as const;
@@ -599,7 +599,7 @@ describe('TmuxManager', () => {
   describe('sendKeys', () => {
     it('should send keys to correct pane', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.sendKeys('builder', 'echo hello');
 
@@ -617,7 +617,7 @@ describe('TmuxManager', () => {
 
     it('should target debug pane correctly', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.sendKeys('debug', 'ls -la');
 
@@ -632,7 +632,7 @@ describe('TmuxManager', () => {
 
     it('should target server pane correctly', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.sendKeys('server', 'npm start');
 
@@ -649,7 +649,7 @@ describe('TmuxManager', () => {
   describe('startAgent', () => {
     it('should start Claude with correct model', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.startAgent('refiner', 'haiku', '/project/root/prompts/refiner.md');
 
@@ -663,7 +663,7 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid agent name', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.startAgent('invalid' as any, 'haiku', '/project/root/prompts/invalid.md'))
         .toThrow('Invalid agent name');
@@ -671,7 +671,7 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid model', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.startAgent('refiner', 'invalid' as any, '/project/root/prompts/refiner.md'))
         .toThrow('Invalid model');
@@ -679,7 +679,7 @@ describe('TmuxManager', () => {
 
     it('should store pending prompt for later sending', async () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.startAgent('builder', 'sonnet', '/project/root/prompts/builder.md');
 
@@ -700,7 +700,7 @@ describe('TmuxManager', () => {
   describe('startServer', () => {
     it('should start server on specified port', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.startServer(3000);
 
@@ -714,7 +714,7 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid port', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.startServer(0)).toThrow('Invalid port');
       expect(() => manager.startServer(-1)).toThrow('Invalid port');
@@ -726,7 +726,7 @@ describe('TmuxManager', () => {
   describe('showServerInfo', () => {
     it('should display server URLs in debug shell', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       manager.showServerInfo(3000);
 
@@ -743,7 +743,7 @@ describe('TmuxManager', () => {
 
     it('should throw error for invalid port', () => {
       mockSpawnSync.mockReturnValue({ status: 0 });
-      const manager = new TmuxManager('orchestral', '/project/root');
+      const manager = new TmuxManager('dure', '/project/root');
 
       expect(() => manager.showServerInfo(0)).toThrow('Invalid port');
       expect(() => manager.showServerInfo(-1)).toThrow('Invalid port');
@@ -756,20 +756,20 @@ describe('TmuxManager', () => {
     it('should return sessions with matching prefix', () => {
       mockSpawnSync.mockReturnValue({
         status: 0,
-        stdout: 'orchestral-run-001\norchestral-run-002\nother-session',
+        stdout: 'dure-run-001\ndure-run-002\nother-session',
       });
 
-      const sessions = TmuxManager.listSessions('orchestral');
+      const sessions = TmuxManager.listSessions('dure');
 
-      expect(sessions).toContain('orchestral-run-001');
-      expect(sessions).toContain('orchestral-run-002');
+      expect(sessions).toContain('dure-run-001');
+      expect(sessions).toContain('dure-run-002');
       expect(sessions).not.toContain('other-session');
     });
 
     it('should return empty array when no sessions', () => {
       mockSpawnSync.mockReturnValue({ status: 1 });
 
-      const sessions = TmuxManager.listSessions('orchestral');
+      const sessions = TmuxManager.listSessions('dure');
 
       expect(sessions).toEqual([]);
     });
@@ -781,7 +781,7 @@ describe('TmuxManager', () => {
       });
       mockSpawnSync.mockImplementationOnce(errorMock);
 
-      const sessions = TmuxManager.listSessions('orchestral');
+      const sessions = TmuxManager.listSessions('dure');
 
       expect(sessions).toEqual([]);
     });

@@ -18,7 +18,7 @@ describe('MRPGenerator', () => {
   beforeEach(() => {
     tempDir = createTempDir('mrp-generator');
     projectRoot = tempDir;
-    runDir = join(tempDir, '.orchestral', 'runs', 'run-20260127120000');
+    runDir = join(tempDir, '.dure', 'runs', 'run-20260127120000');
 
     // Create basic directory structure
     mkdirSync(join(runDir, 'builder', 'output'), { recursive: true });

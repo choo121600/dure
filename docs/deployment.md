@@ -22,7 +22,7 @@ git push origin main
 ### 3단계: 배포 확인
 
 1. **Actions** 탭에서 워크플로우 실행 확인
-2. 완료되면 `https://yourusername.github.io/orchestral/` 접속
+2. 완료되면 `https://yourusername.github.io/dure/` 접속
 
 ## 수동 배포
 
@@ -57,13 +57,13 @@ git checkout main
 
 ### 3단계: 접속
 
-`https://yourusername.github.io/orchestral/`
+`https://yourusername.github.io/dure/`
 
 ## 커스텀 도메인 (선택)
 
 ### 1단계: 도메인 구입
 
-예: `orchestral.dev`
+예: `dure.dev`
 
 ### 2단계: DNS 설정
 
@@ -95,18 +95,18 @@ Value: yourusername.github.io
 `docs/CNAME` 파일 수정:
 
 ```
-orchestral.dev
+dure.dev
 ```
 
 ### 4단계: GitHub 설정
 
 1. **Settings** > **Pages**
-2. **Custom domain**: `orchestral.dev` 입력
+2. **Custom domain**: `dure.dev` 입력
 3. **Enforce HTTPS** 체크
 
 ### 5단계: 확인
 
-DNS 전파 대기 (최대 24시간) 후 `https://orchestral.dev` 접속
+DNS 전파 대기 (최대 24시간) 후 `https://dure.dev` 접속
 
 ## 로컬 개발
 
@@ -197,7 +197,7 @@ git checkout main
 1. DNS 전파 대기 (최대 24시간)
 2. DNS 확인:
    ```bash
-   dig orchestral.dev
+   dig dure.dev
    ```
 3. CNAME 파일 확인
 4. GitHub Pages 설정 재확인
@@ -259,13 +259,13 @@ Google Analytics를 추가하려면 `docs/index.html`:
 ```html
 <head>
   <meta charset="UTF-8">
-  <title>Orchestral - Agentic Software Engineering</title>
+  <title>Dure - Agentic Software Engineering</title>
   <meta name="description" content="의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템">
-  <meta name="keywords" content="orchestral, ai, agents, code generation, automation">
-  <meta property="og:title" content="Orchestral">
+  <meta name="keywords" content="dure, ai, agents, code generation, automation">
+  <meta property="og:title" content="Dure">
   <meta property="og:description" content="Agentic Software Engineering System">
-  <meta property="og:image" content="https://yourusername.github.io/orchestral/assets/og-image.png">
-  <meta property="og:url" content="https://yourusername.github.io/orchestral/">
+  <meta property="og:image" content="https://yourusername.github.io/dure/assets/og-image.png">
+  <meta property="og:url" content="https://yourusername.github.io/dure/">
   <meta name="twitter:card" content="summary_large_image">
 </head>
 ```

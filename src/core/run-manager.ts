@@ -18,7 +18,7 @@ export class RunManager {
   constructor(projectRoot: string) {
     // Sanitize project root path
     this.projectRoot = sanitizePath(projectRoot);
-    this.runsDir = join(this.projectRoot, '.orchestral', 'runs');
+    this.runsDir = join(this.projectRoot, '.dure', 'runs');
   }
 
   /**

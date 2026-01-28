@@ -1,5 +1,5 @@
 /**
- * Structured logging utilities for Orchestral
+ * Structured logging utilities for Dure
  * Provides a consistent logging interface with context support
  */
 

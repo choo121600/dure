@@ -1,23 +1,23 @@
 openapi: 3.0.3
 info:
-  title: Orchestral API
+  title: Dure API
   version: 0.1.0
   description: |
     Agentic Software Engineering API
 
-    Orchestral is an MVP validation project for the "Agentic Software Engineering" paradigm.
+    Dure is an MVP validation project for the "Agentic Software Engineering" paradigm.
     It orchestrates four AI agents (Refiner, Builder, Verifier, Gatekeeper) to automatically
     generate and review code based on human intent.
 
     ## Authentication
     API authentication is optional and can be enabled by setting environment variables:
-    - `ORCHESTRAL_AUTH_ENABLED=true`
-    - `ORCHESTRAL_API_KEY=your-secret-key`
+    - `DURE_AUTH_ENABLED=true`
+    - `DURE_API_KEY=your-secret-key`
 
     When enabled, include the API key in the `x-api-key` header.
 
   contact:
-    name: Orchestral
+    name: Dure
   license:
     name: MIT
 
@@ -130,7 +130,7 @@ paths:
     get:
       tags: [Project]
       summary: Get configuration
-      description: Returns the current Orchestral configuration
+      description: Returns the current Dure configuration
       responses:
         '200':
           description: Configuration retrieved successfully
@@ -142,7 +142,7 @@ paths:
     put:
       tags: [Project]
       summary: Update configuration
-      description: Updates the Orchestral configuration
+      description: Updates the Dure configuration
       requestBody:
         required: true
         content:
@@ -767,8 +767,8 @@ components:
       name: x-api-key
       description: |
         API key authentication. Enable by setting:
-        - ORCHESTRAL_AUTH_ENABLED=true
-        - ORCHESTRAL_API_KEY=your-key
+        - DURE_AUTH_ENABLED=true
+        - DURE_API_KEY=your-key
 
   parameters:
     RunId:

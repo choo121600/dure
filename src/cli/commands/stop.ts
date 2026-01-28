@@ -17,7 +17,7 @@ export async function stopCommand(): Promise<void> {
   );
 
   if (!tmuxManager.sessionExists()) {
-    console.log(chalk.yellow('No Orchestral session is running.'));
+    console.log(chalk.yellow('No Dure session is running.'));
     return;
   }
 
@@ -45,5 +45,5 @@ export async function stopCommand(): Promise<void> {
   tmuxManager.killSession();
   console.log(chalk.gray('Tmux session terminated.'));
 
-  console.log(chalk.green('✓ Orchestral stopped.'));
+  console.log(chalk.green('✓ Dure stopped.'));
 }

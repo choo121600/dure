@@ -582,10 +582,10 @@ graph LR
 
 ```bash
 # Builder 완료
-touch .orchestral/runs/{run_id}/builder/done.flag
+touch .dure/runs/{run_id}/builder/done.flag
 
 # Verifier가 이를 감지하고 시작
-inotifywait -e create .orchestral/runs/{run_id}/builder/
+inotifywait -e create .dure/runs/{run_id}/builder/
 ```
 
 이는:

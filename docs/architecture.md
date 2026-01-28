@@ -1,17 +1,17 @@
-# Orchestral - 시스템 아키텍처
+# Dure - 시스템 아키텍처
 
 ## 시스템 개요
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         orchestral                           │
+│                         dure                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│   CLI (orchestral start)                                     │
+│   CLI (dure start)                                     │
 │         │                                                    │
 │         ▼                                                    │
 │   ┌─────────────┐         ┌─────────────────────────────┐   │
-│   │ ACE Web     │◄───────►│ .orchestral/                │   │
+│   │ ACE Web     │◄───────►│ .dure/                │   │
 │   │ Server      │         │   ├─ config/                │   │
 │   │ :3000       │         │   └─ runs/                  │   │
 │   └─────────────┘         └─────────────────────────────┘   │
@@ -112,7 +112,7 @@ T5   [PASS] 인간: MRP 검토 → 승인 또는 피드백
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    orchestral-run-{timestamp}                 │
+│                    dure-run-{timestamp}                 │
 ├──────────────┬──────────────┬──────────────┬─────────────────┤
 │   Refiner    │   Builder    │   Verifier   │   Gatekeeper    │
 │   (pane 0)   │   (pane 1)   │   (pane 2)   │   (pane 3)      │
@@ -127,7 +127,7 @@ T5   [PASS] 인간: MRP 검토 → 승인 또는 피드백
 
 ```bash
 #!/bin/bash
-SESSION="orchestral-run-$1"
+SESSION="dure-run-$1"
 
 tmux new-session -d -s $SESSION -n main
 
@@ -173,41 +173,41 @@ done.flag 생성 → 다음 에이전트 트리거
 ```bash
 cd {project_root} && claude --dangerously-skip-permissions \
   --model {config.refiner.model} \
-  --prompt-file .orchestral/runs/{run_id}/prompts/refiner.md
+  --prompt-file .dure/runs/{run_id}/prompts/refiner.md
 ```
 
 **Pane 1 (Builder):**
 ```bash
 cd {project_root} && claude --dangerously-skip-permissions \
   --model {config.builder.model} \
-  --prompt-file .orchestral/runs/{run_id}/prompts/builder.md
+  --prompt-file .dure/runs/{run_id}/prompts/builder.md
 ```
 
 **Pane 2 (Verifier):**
 ```bash
 cd {project_root} && claude --dangerously-skip-permissions \
   --model {config.verifier.model} \
-  --prompt-file .orchestral/runs/{run_id}/prompts/verifier.md
+  --prompt-file .dure/runs/{run_id}/prompts/verifier.md
 ```
 
 **Pane 3 (Gatekeeper):**
 ```bash
 cd {project_root} && claude --dangerously-skip-permissions \
   --model {config.gatekeeper.model} \
-  --prompt-file .orchestral/runs/{run_id}/prompts/gatekeeper.md
+  --prompt-file .dure/runs/{run_id}/prompts/gatekeeper.md
 ```
 
 **Pane 4 (Debug Shell):** 대기 상태 - 인간 개입용
 
 **Pane 5 (ACE Server):**
 ```bash
-cd {project_root} && node .orchestral/server/index.js --port {config.web_port}
+cd {project_root} && node .dure/server/index.js --port {config.web_port}
 ```
 
 ### 프롬프트 파일 구조
 
 ```
-.orchestral/runs/{run_id}/prompts/
+.dure/runs/{run_id}/prompts/
 ├── refiner.md
 ├── builder.md
 ├── verifier.md
@@ -222,24 +222,24 @@ cd {project_root} && node .orchestral/server/index.js --port {config.web_port}
 
 ```bash
 # 방법 1: 폴링 (단순)
-while [ ! -f ".orchestral/runs/{run_id}/builder/done.flag" ]; do
+while [ ! -f ".dure/runs/{run_id}/builder/done.flag" ]; do
   sleep 2
 done
 
 # 방법 2: inotifywait (효율적)
-inotifywait -e create ".orchestral/runs/{run_id}/builder/"
+inotifywait -e create ".dure/runs/{run_id}/builder/"
 ```
 
 ### tmux send-keys를 통한 명령어 주입
 
 ```bash
 # Refiner 시작
-tmux send-keys -t orchestral-run-{timestamp}:main.0 \
-  "claude --dangerously-skip-permissions --model haiku --prompt-file .orchestral/runs/{run_id}/prompts/refiner.md" Enter
+tmux send-keys -t dure-run-{timestamp}:main.0 \
+  "claude --dangerously-skip-permissions --model haiku --prompt-file .dure/runs/{run_id}/prompts/refiner.md" Enter
 
 # Builder 시작 (Refiner 완료 후)
-tmux send-keys -t orchestral-run-{timestamp}:main.1 \
-  "claude --dangerously-skip-permissions --model sonnet --prompt-file .orchestral/runs/{run_id}/prompts/builder.md" Enter
+tmux send-keys -t dure-run-{timestamp}:main.1 \
+  "claude --dangerously-skip-permissions --model sonnet --prompt-file .dure/runs/{run_id}/prompts/builder.md" Enter
 ```
 
 ### 재시도 시 컨텍스트 초기화
@@ -251,9 +251,9 @@ Gatekeeper가 FAIL 판정 시:
 3. 트리거 메시지로 재시작 유도
 
 ```bash
-tmux send-keys -t orchestral-run-{timestamp}:main.1 "/clear" Enter
+tmux send-keys -t dure-run-{timestamp}:main.1 "/clear" Enter
 sleep 2
-tmux send-keys -t orchestral-run-{timestamp}:main.1 \
+tmux send-keys -t dure-run-{timestamp}:main.1 \
   "iteration 2를 시작합니다. prompts/builder.md를 읽고 작업을 재개하세요." Enter
 ```
 
@@ -343,7 +343,7 @@ src/core/
 │                   InterruptRecovery                          │
 ├─────────────────────────────────────────────────────────────┤
 │ detectInterruptedRuns()                                      │
-│   └─ .orchestral/runs/ 스캔                                  │
+│   └─ .dure/runs/ 스캔                                  │
 │   └─ phase: 'interrupted' 런 식별                            │
 │                                                              │
 │ 복구 전략:                                                   │

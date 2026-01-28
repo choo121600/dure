@@ -137,7 +137,7 @@ describe('RunManager', () => {
   describe('getRunDir', () => {
     it('should return correct run directory path', () => {
       const runId = 'run-20260126120000';
-      const expected = join(tempDir, '.orchestral', 'runs', runId);
+      const expected = join(tempDir, '.dure', 'runs', runId);
 
       expect(runManager.getRunDir(runId)).toBe(expected);
     });

@@ -35,12 +35,12 @@ describe('Health Check Routes', () => {
   beforeEach(() => {
     // Create temp directory for file system tests
     tempDir = join(process.cwd(), '.test-health-' + Date.now());
-    mkdirSync(join(tempDir, '.orchestral'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure'), { recursive: true });
 
     mockOrchestrator = createMockOrchestrator();
 
     app = express();
-    app.use('/health', createHealthRouter(tempDir, mockOrchestrator as any, 'test-orchestral'));
+    app.use('/health', createHealthRouter(tempDir, mockOrchestrator as any, 'test-dure'));
   });
 
   afterEach(() => {
@@ -94,8 +94,8 @@ describe('Health Check Routes', () => {
         throw new Error('tmux not found');
       });
 
-      // Remove .orchestral directory to make file system check fail
-      rmSync(join(tempDir, '.orchestral'), { recursive: true, force: true });
+      // Remove .dure directory to make file system check fail
+      rmSync(join(tempDir, '.dure'), { recursive: true, force: true });
 
       const response = await request(app).get('/health');
 
@@ -179,8 +179,8 @@ describe('Health Check Routes', () => {
     });
 
     it('should return not_ready when file system fails', async () => {
-      // Remove .orchestral directory
-      rmSync(join(tempDir, '.orchestral'), { recursive: true, force: true });
+      // Remove .dure directory
+      rmSync(join(tempDir, '.dure'), { recursive: true, force: true });
 
       const response = await request(app).get('/health/ready');
 

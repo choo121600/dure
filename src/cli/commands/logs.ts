@@ -12,14 +12,14 @@ export async function logsCommand(): Promise<void> {
 
   if (!activeRun) {
     console.log(chalk.yellow('No active run found.'));
-    console.log(chalk.gray('Start a new run with: orchestral start'));
+    console.log(chalk.gray('Start a new run with: dure start'));
     return;
   }
 
   const runDir = runManager.getRunDir(activeRun.run_id);
   const eventsLogPath = join(runDir, 'events.log');
 
-  console.log(chalk.blue('🎼 Orchestral Logs'));
+  console.log(chalk.blue('🎼 Dure Logs'));
   console.log(chalk.gray(`Run: ${activeRun.run_id}`));
   console.log(chalk.gray(`Phase: ${activeRun.phase}`));
   console.log(chalk.gray('---'));

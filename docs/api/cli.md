@@ -1,28 +1,28 @@
 # CLI 명령어
 
-Orchestral CLI의 모든 명령어와 옵션을 설명합니다.
+Dure CLI의 모든 명령어와 옵션을 설명합니다.
 
 ## 설치
 
 ```bash
 # npm으로 전역 설치
-npm install -g orchestral
+npm install -g dure
 
 # 또는 로컬 설치
-npm install orchestral
+npm install dure
 
 # 또는 npx 사용 (설치 없이)
-npx orchestral [command]
+npx dure [command]
 ```
 
-## orchestral start
+## dure start
 
-Orchestral을 시작합니다.
+Dure을 시작합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral start [options]
+dure start [options]
 ```
 
 ### 옵션
@@ -31,31 +31,31 @@ orchestral start [options]
 |------|----------|--------|------|
 | `--port <number>` | `-p` | 3000 | 웹 서버 포트 |
 | `--no-browser` | - | false | 브라우저 자동 열기 비활성화 |
-| `--config <path>` | `-c` | `.orchestral/config` | 설정 파일 경로 |
+| `--config <path>` | `-c` | `.dure/config` | 설정 파일 경로 |
 | `--log-level <level>` | `-l` | `info` | 로그 레벨 (debug/info/warn/error) |
 
 ### 예시
 
 ```bash
 # 기본 실행
-orchestral start
+dure start
 
 # 포트 변경
-orchestral start --port 3001
+dure start --port 3001
 
 # 브라우저 자동 열기 비활성화
-orchestral start --no-browser
+dure start --no-browser
 
 # 디버그 로그
-orchestral start --log-level debug
+dure start --log-level debug
 
 # 복합
-orchestral start -p 3001 --no-browser
+dure start -p 3001 --no-browser
 ```
 
 ### 동작
 
-1. `.orchestral/` 폴더가 없으면 생성
+1. `.dure/` 폴더가 없으면 생성
 2. 설정 파일이 없으면 기본값으로 생성
 3. tmux 세션 생성 (pane 구조)
 4. 웹 서버 시작 (포트 3000)
@@ -64,10 +64,10 @@ orchestral start -p 3001 --no-browser
 ### 출력
 
 ```
-🎼 Orchestral starting...
+🎼 Dure starting...
 
 ✓ Configuration initialized
-✓ Tmux session created (orchestral-run-20240126-143022)
+✓ Tmux session created (dure-run-20240126-143022)
 ✓ Web server started at http://localhost:3000
 
 Opening browser...
@@ -75,14 +75,14 @@ Opening browser...
 Press Ctrl+C to stop
 ```
 
-## orchestral status
+## dure status
 
 현재 실행 중인 Run의 상태를 확인합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral status [options]
+dure status [options]
 ```
 
 ### 옵션
@@ -96,13 +96,13 @@ orchestral status [options]
 
 ```bash
 # 현재 상태 확인
-orchestral status
+dure status
 
 # JSON 형식
-orchestral status --json
+dure status --json
 
 # 실시간 모니터링
-orchestral status --watch
+dure status --watch
 ```
 
 ### 출력 (일반)
@@ -170,17 +170,17 @@ Pending CRP: None
 ```
 No active run
 
-Use 'orchestral start' to begin
+Use 'dure start' to begin
 ```
 
-## orchestral stop
+## dure stop
 
 현재 실행 중인 Run을 중지합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral stop [options]
+dure stop [options]
 ```
 
 ### 옵션
@@ -193,10 +193,10 @@ orchestral stop [options]
 
 ```bash
 # 정상 종료
-orchestral stop
+dure stop
 
 # 강제 종료
-orchestral stop --force
+dure stop --force
 ```
 
 ### 동작
@@ -218,14 +218,14 @@ Stopping run-20240126-143022...
 Run stopped successfully
 ```
 
-## orchestral history
+## dure history
 
 과거 Run 목록을 조회합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral history [options]
+dure history [options]
 ```
 
 ### 옵션
@@ -240,19 +240,19 @@ orchestral history [options]
 
 ```bash
 # 최근 10개 Run
-orchestral history
+dure history
 
 # 최근 20개 Run
-orchestral history --limit 20
+dure history --limit 20
 
 # PASS만 보기
-orchestral history --filter pass
+dure history --filter pass
 
 # FAIL만 보기
-orchestral history --filter fail
+dure history --filter fail
 
 # JSON 형식
-orchestral history --json
+dure history --json
 ```
 
 ### 출력
@@ -290,14 +290,14 @@ Total: 5 runs
 }
 ```
 
-## orchestral logs
+## dure logs
 
 Run의 로그를 실시간으로 확인합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral logs [run_id] [options]
+dure logs [run_id] [options]
 ```
 
 ### 옵션
@@ -312,19 +312,19 @@ orchestral logs [run_id] [options]
 
 ```bash
 # 현재 Run 로그
-orchestral logs
+dure logs
 
 # 특정 Run 로그
-orchestral logs run-20240126-143022
+dure logs run-20240126-143022
 
 # 실시간 팔로우
-orchestral logs --follow
+dure logs --follow
 
 # Builder 로그만
-orchestral logs --agent builder
+dure logs --agent builder
 
 # 최근 50줄
-orchestral logs --lines 50
+dure logs --lines 50
 ```
 
 ### 출력
@@ -341,14 +341,14 @@ orchestral logs --lines 50
 ...
 ```
 
-## orchestral clean
+## dure clean
 
 오래된 Run을 정리합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral clean [options]
+dure clean [options]
 ```
 
 ### 옵션
@@ -364,19 +364,19 @@ orchestral clean [options]
 
 ```bash
 # 30일 이전 Run 삭제 (대화형)
-orchestral clean
+dure clean
 
 # 7일 이전 Run 삭제
-orchestral clean --days 7
+dure clean --days 7
 
 # FAIL Run만 삭제
-orchestral clean --status fail
+dure clean --status fail
 
 # Dry run (실제 삭제 안 함)
-orchestral clean --dry-run
+dure clean --dry-run
 
 # 확인 없이 삭제
-orchestral clean --force
+dure clean --force
 ```
 
 ### 출력
@@ -393,14 +393,14 @@ Total: 3 runs (3.5 MB)
 Delete these runs? (y/N):
 ```
 
-## orchestral delete
+## dure delete
 
 특정 Run을 삭제합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral delete <run_id> [options]
+dure delete <run_id> [options]
 ```
 
 ### 옵션
@@ -413,10 +413,10 @@ orchestral delete <run_id> [options]
 
 ```bash
 # 특정 Run 삭제
-orchestral delete run-20240126-143022
+dure delete run-20240126-143022
 
 # 확인 없이 삭제
-orchestral delete run-20240126-143022 --force
+dure delete run-20240126-143022 --force
 ```
 
 ### 출력
@@ -429,14 +429,14 @@ Size: 1.2 MB
 Delete this run? (y/N):
 ```
 
-## orchestral config
+## dure config
 
 설정을 확인하거나 수정합니다.
 
 ### 기본 사용
 
 ```bash
-orchestral config [command] [options]
+dure config [command] [options]
 ```
 
 ### 서브 명령어
@@ -447,14 +447,14 @@ orchestral config [command] [options]
 
 ```bash
 # 전체 설정
-orchestral config show
+dure config show
 
 # 특정 에이전트 설정
-orchestral config show refiner
-orchestral config show builder
+dure config show refiner
+dure config show builder
 
 # JSON 형식
-orchestral config show --json
+dure config show --json
 ```
 
 #### set
@@ -463,13 +463,13 @@ orchestral config show --json
 
 ```bash
 # 전역 설정
-orchestral config set global.max_iterations 5
+dure config set global.max_iterations 5
 
 # 에이전트 모델 변경
-orchestral config set builder.model opus
+dure config set builder.model opus
 
 # 타임아웃 변경
-orchestral config set global.timeouts.builder 900000
+dure config set global.timeouts.builder 900000
 ```
 
 #### reset
@@ -478,55 +478,55 @@ orchestral config set global.timeouts.builder 900000
 
 ```bash
 # 전체 초기화
-orchestral config reset
+dure config reset
 
 # 특정 에이전트만
-orchestral config reset builder
+dure config reset builder
 ```
 
-## orchestral version
+## dure version
 
 버전 정보 확인:
 
 ```bash
-orchestral version
-# orchestral v0.1.0
+dure version
+# dure v0.1.0
 ```
 
 또는:
 
 ```bash
-orchestral --version
-# orchestral v0.1.0
+dure --version
+# dure v0.1.0
 ```
 
-## orchestral help
+## dure help
 
 도움말 확인:
 
 ```bash
 # 전체 명령어 목록
-orchestral help
+dure help
 
 # 특정 명령어 도움말
-orchestral help start
-orchestral help status
+dure help start
+dure help status
 ```
 
 ## 환경 변수
 
-Orchestral은 다음 환경 변수를 지원합니다:
+Dure은 다음 환경 변수를 지원합니다:
 
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
-| `ORCHESTRAL_PORT` | 웹 서버 포트 | 3000 |
-| `ORCHESTRAL_LOG_LEVEL` | 로그 레벨 | info |
-| `ORCHESTRAL_CONFIG_DIR` | 설정 디렉토리 | .orchestral/config |
+| `DURE_PORT` | 웹 서버 포트 | 3000 |
+| `DURE_LOG_LEVEL` | 로그 레벨 | info |
+| `DURE_CONFIG_DIR` | 설정 디렉토리 | .dure/config |
 
 예시:
 
 ```bash
-ORCHESTRAL_PORT=3001 orchestral start
+DURE_PORT=3001 dure start
 ```
 
 ## 종료 코드

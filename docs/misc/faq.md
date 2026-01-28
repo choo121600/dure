@@ -1,20 +1,20 @@
 # 자주 묻는 질문 (FAQ)
 
-Orchestral 사용 시 자주 묻는 질문과 답변입니다.
+Dure 사용 시 자주 묻는 질문과 답변입니다.
 
 ## 일반
 
-### Orchestral이 무엇인가요?
+### Dure이 무엇인가요?
 
-Orchestral은 AI 에이전트를 활용한 소프트웨어 엔지니어링 시스템입니다. 4개의 전문화된 에이전트(Refiner, Builder, Verifier, Gatekeeper)가 순차적으로 협력하여 코드를 생성하고, 인간은 중요한 판단 시점에만 개입합니다.
+Dure은 AI 에이전트를 활용한 소프트웨어 엔지니어링 시스템입니다. 4개의 전문화된 에이전트(Refiner, Builder, Verifier, Gatekeeper)가 순차적으로 협력하여 코드를 생성하고, 인간은 중요한 판단 시점에만 개입합니다.
 
-### 왜 "Orchestral"인가요?
+### 왜 "Dure"인가요?
 
 오케스트라처럼 여러 에이전트가 조화롭게 협력한다는 의미입니다. 🎼
 
 ### 완성된 제품인가요?
 
-아니오, Orchestral은 **MVP(Minimum Viable Product)**입니다. "Agentic Software Engineering" 패러다임이 실제로 동작함을 증명하는 것이 목표입니다.
+아니오, Dure은 **MVP(Minimum Viable Product)**입니다. "Agentic Software Engineering" 패러다임이 실제로 동작함을 증명하는 것이 목표입니다.
 
 ### 상업적으로 사용할 수 있나요?
 
@@ -24,7 +24,7 @@ Orchestral은 AI 에이전트를 활용한 소프트웨어 엔지니어링 시�
 
 ### Node.js 버전이 맞지 않습니다
 
-Orchestral은 Node.js 18.0.0 이상이 필요합니다:
+Dure은 Node.js 18.0.0 이상이 필요합니다:
 
 ```bash
 node --version
@@ -96,7 +96,7 @@ Briefing에 모호한 표현("적당히", "알아서", "합리적으로")이 포
 현재 MVP 버전에서는 수동으로 코드를 적용해야 합니다:
 
 ```bash
-cp -r .orchestral/runs/{run_id}/mrp/code/* .
+cp -r .dure/runs/{run_id}/mrp/code/* .
 git add .
 git commit -m "..."
 ```
@@ -112,7 +112,7 @@ git commit -m "..."
 tmux list-sessions
 
 # 특정 세션 접속
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 
 # 세션에서 나오기
 Ctrl-b + d
@@ -126,18 +126,18 @@ Ctrl-b + d
 
 ### 여러 프로젝트를 동시에 실행할 수 있나요?
 
-현재는 한 번에 하나의 프로젝트만 지원합니다. 각 프로젝트 폴더에서 별도로 `orchestral start`를 실행하면 포트 충돌이 발생합니다.
+현재는 한 번에 하나의 프로젝트만 지원합니다. 각 프로젝트 폴더에서 별도로 `dure start`를 실행하면 포트 충돌이 발생합니다.
 
 해결 방법:
 ```bash
 cd project1
-orchestral start --port 3000
+dure start --port 3000
 
 cd project2
-orchestral start --port 3001
+dure start --port 3001
 ```
 
-### .orchestral 폴더를 Git에 커밋해야 하나요?
+### .dure 폴더를 Git에 커밋해야 하나요?
 
 선택사항입니다:
 
@@ -150,17 +150,17 @@ orchestral start --port 3001
 - ✅ 저장소 크기 절약
 - ❌ 설정을 매번 재구성
 
-권장: `.orchestral/config/`만 커밋
+권장: `.dure/config/`만 커밋
 
 ```gitignore
 # .gitignore
-.orchestral/runs/
-!.orchestral/config/
+.dure/runs/
+!.dure/config/
 ```
 
 ### 사용량 추적은 어떻게 동작하나요?
 
-Orchestral은 [ccusage](https://ccusage.com/)를 활용하여 Claude Code의 로컬 JSONL 파일에서 사용량을 수집합니다:
+Dure은 [ccusage](https://ccusage.com/)를 활용하여 Claude Code의 로컬 JSONL 파일에서 사용량을 수집합니다:
 
 1. Claude Code가 `~/.claude/projects/`에 JSONL 기록
 2. UsageTracker가 파일 변경 감지 (chokidar)
@@ -180,7 +180,7 @@ npm install -g ccusage
 
 ```bash
 # 다른 포트 사용
-orchestral start --port 3001
+dure start --port 3001
 
 # 또는 3000 포트 프로세스 종료
 lsof -ti:3000 | xargs kill
@@ -191,7 +191,7 @@ lsof -ti:3000 | xargs kill
 error.flag 파일을 확인하세요:
 
 ```bash
-cat .orchestral/runs/{run_id}/{agent}/error.flag
+cat .dure/runs/{run_id}/{agent}/error.flag
 ```
 
 대부분의 경우 자동으로 재시도됩니다. 계속 실패하면:
@@ -205,10 +205,10 @@ cat .orchestral/runs/{run_id}/{agent}/error.flag
 수동으로 종료하세요:
 
 ```bash
-tmux kill-session -t orchestral-run-{timestamp}
+tmux kill-session -t dure-run-{timestamp}
 
-# 모든 orchestral 세션 종료
-tmux list-sessions | grep orchestral | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
+# 모든 dure 세션 종료
+tmux list-sessions | grep dure | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
 ```
 
 ### 디스크 공간이 부족합니다
@@ -217,10 +217,10 @@ tmux list-sessions | grep orchestral | cut -d: -f1 | xargs -I {} tmux kill-sessi
 
 ```bash
 # 30일 이전 Run 삭제
-orchestral clean
+dure clean
 
 # 7일 이전 Run 삭제
-orchestral clean --days 7
+dure clean --days 7
 ```
 
 ## 고급 사용
@@ -289,7 +289,7 @@ GitHub Issues에 다음 정보와 함께 리포트해주세요:
 
 - GitHub Discussions: 질문, 토론
 - GitHub Issues: 버그 리포트
-- Twitter: [@orchestral_dev](https://twitter.com/orchestral_dev) (가상)
+- Twitter: [@dure_dev](https://twitter.com/dure_dev) (가상)
 
 ### 뉴스레터가 있나요?
 
@@ -303,7 +303,7 @@ AI 에이전트가 소프트웨어 엔지니어링 작업을 주도적으로 수
 
 ### 이름이 비슷한 다른 프로젝트와 차이점은?
 
-Orchestral의 차이점:
+Dure의 차이점:
 
 - ✅ 파일 기반 조율 (명확한 인터페이스)
 - ✅ 완전한 추적성 (모든 과정 기록)
@@ -317,7 +317,7 @@ Orchestral의 차이점:
 ## 문제가 해결되지 않았나요?
 
 1. [문제 해결 가이드](/guide/troubleshooting.md) 확인
-2. [GitHub Discussions](https://github.com/yourusername/orchestral/discussions) 검색
+2. [GitHub Discussions](https://github.com/yourusername/dure/discussions) 검색
 3. 새 질문 작성
 
 도움을 드리겠습니다! 🎼

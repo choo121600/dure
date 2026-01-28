@@ -1,5 +1,5 @@
 /**
- * Metrics collection utilities for Orchestral
+ * Metrics collection utilities for Dure
  * Provides interfaces and implementations for collecting operational metrics
  */
 
@@ -9,26 +9,26 @@
 
 export const MetricNames = {
   // Run metrics
-  RUN_TOTAL: 'orchestral_runs_total',
-  RUN_DURATION: 'orchestral_run_duration_seconds',
-  RUN_ITERATIONS: 'orchestral_run_iterations_total',
+  RUN_TOTAL: 'dure_runs_total',
+  RUN_DURATION: 'dure_run_duration_seconds',
+  RUN_ITERATIONS: 'dure_run_iterations_total',
 
   // Agent metrics
-  AGENT_DURATION: 'orchestral_agent_duration_seconds',
-  AGENT_ERRORS: 'orchestral_agent_errors_total',
-  AGENT_RETRIES: 'orchestral_agent_retries_total',
+  AGENT_DURATION: 'dure_agent_duration_seconds',
+  AGENT_ERRORS: 'dure_agent_errors_total',
+  AGENT_RETRIES: 'dure_agent_retries_total',
 
   // Token and cost metrics
-  TOKEN_USAGE: 'orchestral_token_usage_total',
-  COST_USD: 'orchestral_cost_usd_total',
+  TOKEN_USAGE: 'dure_token_usage_total',
+  COST_USD: 'dure_cost_usd_total',
 
   // CRP/VCR metrics
-  CRP_CREATED: 'orchestral_crp_created_total',
-  VCR_RECEIVED: 'orchestral_vcr_received_total',
-  HUMAN_WAIT_DURATION: 'orchestral_human_wait_duration_seconds',
+  CRP_CREATED: 'dure_crp_created_total',
+  VCR_RECEIVED: 'dure_vcr_received_total',
+  HUMAN_WAIT_DURATION: 'dure_human_wait_duration_seconds',
 
   // System metrics
-  ACTIVE_RUNS: 'orchestral_active_runs',
+  ACTIVE_RUNS: 'dure_active_runs',
 } as const;
 
 export type MetricName = (typeof MetricNames)[keyof typeof MetricNames];

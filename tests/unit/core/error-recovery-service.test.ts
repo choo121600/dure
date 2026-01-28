@@ -33,7 +33,7 @@ describe('ErrorRecoveryService', () => {
     mockConfig = {
       global: {
         max_iterations: 3,
-        tmux_session_prefix: 'orchestral-test',
+        tmux_session_prefix: 'dure-test',
         web_port: 3001,
         log_level: 'info',
         timeouts: {
@@ -80,7 +80,7 @@ describe('ErrorRecoveryService', () => {
     mockContext = {
       runId: 'run-20260126000000',
       runManager: {
-        getRunDir: vi.fn().mockReturnValue('/test/project/.orchestral/runs/run-20260126000000'),
+        getRunDir: vi.fn().mockReturnValue('/test/project/.dure/runs/run-20260126000000'),
       },
       tmuxManager: {
         clearAgent: vi.fn(),

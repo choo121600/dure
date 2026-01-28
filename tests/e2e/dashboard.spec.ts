@@ -6,7 +6,7 @@ test.describe('Dashboard', () => {
       await page.goto('/');
 
       // Check for dashboard elements
-      await expect(page).toHaveTitle(/Orchestral/);
+      await expect(page).toHaveTitle(/Dure/);
     });
 
     test('should display navigation elements', async ({ page }) => {

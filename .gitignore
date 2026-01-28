@@ -8,8 +8,8 @@ build/
 # Test coverage
 coverage/
 
-# Orchestral runtime data
-.orchestral/runs/
+# Dure runtime data
+.dure/runs/
 
 # Logs
 *.log

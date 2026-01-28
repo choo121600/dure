@@ -9,7 +9,7 @@ import { CleanupManager } from '../../core/cleanup-manager.js';
  * Clear Run Command
  *
  * Terminates all Claude processes in agent panes while preserving run artifacts.
- * Usage: orchestral clear-run [run_id]
+ * Usage: dure clear-run [run_id]
  */
 export async function clearCommand(runId?: string): Promise<void> {
   const projectRoot = process.cwd();
@@ -25,7 +25,7 @@ export async function clearCommand(runId?: string): Promise<void> {
     const activeRun = await runManager.getActiveRun();
     if (!activeRun) {
       console.log(chalk.yellow('No active run found.'));
-      console.log(chalk.gray('Specify a run ID or use "orchestral status" to check for active runs.'));
+      console.log(chalk.gray('Specify a run ID or use "dure status" to check for active runs.'));
       process.exit(1);
     }
     targetRunId = activeRun.run_id;
@@ -34,7 +34,7 @@ export async function clearCommand(runId?: string): Promise<void> {
   // Check if run exists
   if (!(await runManager.runExists(targetRunId))) {
     console.log(chalk.red(`Error: Run "${targetRunId}" not found.`));
-    console.log(chalk.gray('Use "orchestral history" to see available runs.'));
+    console.log(chalk.gray('Use "dure history" to see available runs.'));
     process.exit(1);
   }
 

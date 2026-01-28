@@ -1,6 +1,6 @@
-# Orchestral Documentation
+# Dure Documentation
 
-이 문서는 Orchestral 프로젝트의 공식 문서입니다.
+이 문서는 Dure 프로젝트의 공식 문서입니다.
 
 ## 로컬에서 확인하기
 

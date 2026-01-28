@@ -1,4 +1,4 @@
-# Orchestral 개선 계획
+# Dure 개선 계획
 
 > 이 문서는 시니어 개발자 리뷰에서 도출된 개선사항을 실행 가능한 단위로 분해하여 Phase별로 정리한 것입니다.
 
@@ -267,7 +267,7 @@ export default defineConfig({
       'tests/**/*.test.ts',  // 프로젝트 테스트
     ],
     exclude: [
-      '.orchestral/**',  // 런타임 생성 테스트 제외
+      '.dure/**',  // 런타임 생성 테스트 제외
     ],
     coverage: {
       provider: 'v8',
@@ -706,7 +706,7 @@ app.use(rateLimit({
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
   const apiKey = req.headers['x-api-key'];
 
-  if (!apiKey || apiKey !== process.env.ORCHESTRAL_API_KEY) {
+  if (!apiKey || apiKey !== process.env.DURE_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -742,7 +742,7 @@ io.use((socket, next) => {
 ```yaml
 openapi: 3.0.3
 info:
-  title: Orchestral API
+  title: Dure API
   version: 0.1.0
   description: Agentic Software Engineering API
 
@@ -997,7 +997,7 @@ window.addEventListener('offline', () => {
 
 2. **Task 6.2: API 키 인증 (`src/server/middleware/auth.ts`)**
    - 선택적 API 키 인증 (환경 변수로 활성화)
-   - `ORCHESTRAL_AUTH_ENABLED=true` + `ORCHESTRAL_API_KEY=secret`
+   - `DURE_AUTH_ENABLED=true` + `DURE_API_KEY=secret`
    - `x-api-key` 헤더로 인증
    - Timing attack 방지를 위한 constant-time 비교
 
@@ -1037,8 +1037,8 @@ window.addEventListener('offline', () => {
 **사용법:**
 ```bash
 # API 인증 활성화
-export ORCHESTRAL_AUTH_ENABLED=true
-export ORCHESTRAL_API_KEY=your-secret-key
+export DURE_AUTH_ENABLED=true
+export DURE_API_KEY=your-secret-key
 
 # CORS 원본 설정
 export ALLOWED_ORIGINS=http://localhost:3000,https://example.com
@@ -1365,7 +1365,7 @@ After:
 8. **Task 2.8: vitest.config.ts 업데이트**
    - 커버리지 임계값 설정
    - lcov 리포터 추가
-   - .orchestral/** 제외
+   - .dure/** 제외
 
 **테스트 결과:**
 - 전체 225개 테스트 통과

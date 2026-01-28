@@ -1,4 +1,7 @@
-# Orchestral
+# Dure
+
+> Named after the Korean tradition of "두레" (cooperative farming),
+> where villagers work together with distinct roles toward a shared goal.
 
 > **의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고,
 > 인간은 증거를 보고 결정만 하는 엔지니어링 시스템**
@@ -42,7 +45,7 @@ REFINE → BUILD → VERIFY → GATE
 ## 폴더 구조
 
 ```
-.orchestral/
+.dure/
 ├── config/          # 에이전트별 설정
 └── runs/
     └── run-{timestamp}/

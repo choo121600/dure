@@ -1,6 +1,6 @@
 {
   "max_iterations": 1,
-  "tmux_session_prefix": "orchestral",
+  "tmux_session_prefix": "dure",
   "web_port": 3000,
   "log_level": "info",
   "model_selection": {

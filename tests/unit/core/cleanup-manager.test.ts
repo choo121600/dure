@@ -40,7 +40,7 @@ describe('CleanupManager', () => {
     mockTmuxManager = {
       sessionExists: vi.fn().mockReturnValue(true),
       isPaneActive: vi.fn().mockReturnValue(true),
-      getSessionName: vi.fn().mockReturnValue('orchestral-test'),
+      getSessionName: vi.fn().mockReturnValue('dure-test'),
     } as unknown as TmuxManager;
 
     mockStateManager = {

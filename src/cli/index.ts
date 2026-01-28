@@ -14,13 +14,13 @@ import { recoverCommand } from './commands/recover.js';
 const program = new Command();
 
 program
-  .name('orchestral')
-  .description('Agentic Software Engineering - 4 agents orchestrate code generation with human oversight')
+  .name('dure')
+  .description('Agentic Software Engineering - 4 agents work cooperatively with human oversight')
   .version('0.1.0');
 
 program
   .command('start')
-  .description('Start Orchestral in the current project')
+  .description('Start Dure in the current project')
   .option('-p, --port <number>', 'Web server port', '3000')
   .option('--no-browser', 'Do not open browser automatically')
   .option('--tui', 'Use TUI mode (Terminal User Interface) instead of web server')

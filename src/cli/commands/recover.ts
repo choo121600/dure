@@ -69,8 +69,8 @@ async function listInterruptedRuns(
     return;
   }
 
-  console.log(chalk.gray('Use `orchestral recover <run-id>` to recover a specific run.'));
-  console.log(chalk.gray('Use `orchestral recover --auto` to auto-recover all recoverable runs.'));
+  console.log(chalk.gray('Use `dure recover <run-id>` to recover a specific run.'));
+  console.log(chalk.gray('Use `dure recover --auto` to auto-recover all recoverable runs.'));
 }
 
 async function recoverRun(
@@ -113,7 +113,7 @@ async function recoverRun(
   if (run.resumeStrategy === 'wait_human') {
     console.log(chalk.yellow('This run is waiting for human input.'));
     console.log(chalk.gray('Please respond to the pending CRP via the web dashboard.'));
-    console.log(chalk.gray('Use `orchestral start` to open the dashboard.'));
+    console.log(chalk.gray('Use `dure start` to open the dashboard.'));
     return;
   }
 
@@ -138,7 +138,7 @@ async function recoverRun(
     console.log(chalk.white(result.message));
     console.log();
     console.log(chalk.yellow('Next steps:'));
-    console.log(chalk.gray('  1. Run `orchestral start` to resume the run'));
+    console.log(chalk.gray('  1. Run `dure start` to resume the run'));
     console.log(chalk.gray('  2. The agent will automatically restart'));
   } else {
     console.log(chalk.red('Recovery failed.'));

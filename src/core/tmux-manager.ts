@@ -141,7 +141,7 @@ export class TmuxManager {
     const debugCommands = [
       'clear',
       'echo "Commands:"',
-      'echo "  stop      - Stop Orchestral and exit tmux"',
+      'echo "  stop      - Stop Dure and exit tmux"',
       'echo "  detach    - Detach from tmux (Ctrl+B, D)"',
       'echo "  logs      - Show recent run logs"',
       'echo ""',
@@ -149,7 +149,7 @@ export class TmuxManager {
       'echo ""',
       `stop() { tmux kill-session -t ${this.sessionName}; }`,
       'detach() { tmux detach; }',
-      'logs() { ls -la .orchestral/runs/ 2>/dev/null || echo "No runs yet"; }',
+      'logs() { ls -la .dure/runs/ 2>/dev/null || echo "No runs yet"; }',
     ];
     this.sendKeys('debug', debugCommands.join(' && '));
   }
@@ -354,7 +354,7 @@ export class TmuxManager {
   }
 
   /**
-   * List all orchestral sessions
+   * List all dure sessions
    */
   static listSessions(sessionPrefix: string): string[] {
     try {

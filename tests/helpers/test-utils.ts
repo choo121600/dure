@@ -1,5 +1,5 @@
 /**
- * Common test utilities for Orchestral tests
+ * Common test utilities for Dure tests
  */
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -9,7 +9,7 @@ import type { RunState, CRP, VCR, GatekeeperVerdict, OrchestraConfig, UsageInfo,
 /**
  * Create a unique temporary directory for tests
  */
-export function createTempDir(prefix: string = 'orchestral-test'): string {
+export function createTempDir(prefix: string = 'dure-test'): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   const tempDir = join(tmpdir(), `${prefix}-${timestamp}-${random}`);
@@ -39,7 +39,7 @@ export function generateTestRunId(): string {
  * Create a mock run directory structure
  */
 export function createMockRunDir(baseDir: string, runId: string): string {
-  const runDir = join(baseDir, '.orchestral', 'runs', runId);
+  const runDir = join(baseDir, '.dure', 'runs', runId);
   const dirs = [
     runDir,
     join(runDir, 'briefing'),
@@ -191,10 +191,10 @@ export function createMockMRPEvidence(
     iterations: 2,
     max_iterations: 3,
     logs: {
-      refiner: '.orchestral/runs/' + runId + '/refiner.log',
-      builder: '.orchestral/runs/' + runId + '/builder.log',
-      verifier: '.orchestral/runs/' + runId + '/verifier.log',
-      gatekeeper: '.orchestral/runs/' + runId + '/gatekeeper.log',
+      refiner: '.dure/runs/' + runId + '/refiner.log',
+      builder: '.dure/runs/' + runId + '/builder.log',
+      verifier: '.dure/runs/' + runId + '/verifier.log',
+      gatekeeper: '.dure/runs/' + runId + '/gatekeeper.log',
     },
     edge_cases_tested: ['null input', 'empty string', 'unicode characters'],
     adversarial_findings: verdict === 'FAIL' ? ['Potential XSS vulnerability'] : [],
@@ -284,7 +284,7 @@ export function getDefaultTestConfig(): OrchestraConfig {
   return {
     global: {
       max_iterations: 3,
-      tmux_session_prefix: 'orchestral-test',
+      tmux_session_prefix: 'dure-test',
       web_port: 3001,
       log_level: 'info',
       timeouts: {

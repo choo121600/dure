@@ -49,9 +49,9 @@ describe('API Authentication', () => {
     runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2),
       'utf-8'
     );
@@ -66,14 +66,14 @@ describe('API Authentication', () => {
   afterEach(() => {
     cleanupTempDir(tempDir);
     // Reset environment variables
-    delete process.env.ORCHESTRAL_AUTH_ENABLED;
-    delete process.env.ORCHESTRAL_API_KEY;
+    delete process.env.DURE_AUTH_ENABLED;
+    delete process.env.DURE_API_KEY;
   });
 
   describe('when authentication is disabled', () => {
     beforeEach(() => {
-      delete process.env.ORCHESTRAL_AUTH_ENABLED;
-      delete process.env.ORCHESTRAL_API_KEY;
+      delete process.env.DURE_AUTH_ENABLED;
+      delete process.env.DURE_API_KEY;
 
       app = express();
       app.use(express.json());
@@ -97,8 +97,8 @@ describe('API Authentication', () => {
     const API_KEY = 'test-secret-api-key-12345';
 
     beforeEach(() => {
-      process.env.ORCHESTRAL_AUTH_ENABLED = 'true';
-      process.env.ORCHESTRAL_API_KEY = API_KEY;
+      process.env.DURE_AUTH_ENABLED = 'true';
+      process.env.DURE_API_KEY = API_KEY;
 
       app = express();
       app.use(express.json());
@@ -161,10 +161,10 @@ describe('API Authentication', () => {
     });
   });
 
-  describe('when ORCHESTRAL_AUTH_ENABLED is true but no API key is set', () => {
+  describe('when DURE_AUTH_ENABLED is true but no API key is set', () => {
     beforeEach(() => {
-      process.env.ORCHESTRAL_AUTH_ENABLED = 'true';
-      delete process.env.ORCHESTRAL_API_KEY;
+      process.env.DURE_AUTH_ENABLED = 'true';
+      delete process.env.DURE_API_KEY;
 
       app = express();
       app.use(express.json());
@@ -186,14 +186,14 @@ describe('API Authentication', () => {
 
 describe('WebSocket Authentication', () => {
   afterEach(() => {
-    delete process.env.ORCHESTRAL_AUTH_ENABLED;
-    delete process.env.ORCHESTRAL_API_KEY;
+    delete process.env.DURE_AUTH_ENABLED;
+    delete process.env.DURE_API_KEY;
   });
 
   describe('when authentication is disabled', () => {
     beforeEach(() => {
-      delete process.env.ORCHESTRAL_AUTH_ENABLED;
-      delete process.env.ORCHESTRAL_API_KEY;
+      delete process.env.DURE_AUTH_ENABLED;
+      delete process.env.DURE_API_KEY;
     });
 
     it('should allow connections without token', () => {
@@ -210,8 +210,8 @@ describe('WebSocket Authentication', () => {
     const API_KEY = 'test-secret-key';
 
     beforeEach(() => {
-      process.env.ORCHESTRAL_AUTH_ENABLED = 'true';
-      process.env.ORCHESTRAL_API_KEY = API_KEY;
+      process.env.DURE_AUTH_ENABLED = 'true';
+      process.env.DURE_API_KEY = API_KEY;
     });
 
     it('should reject connections without token', () => {
@@ -256,9 +256,9 @@ describe('Input Sanitization', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2),
       'utf-8'
     );

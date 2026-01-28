@@ -49,9 +49,9 @@ describe('Pipeline Integration - Full Flow', () => {
     await runManager.initialize();
 
     // Create config directory
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -228,9 +228,9 @@ describe('Pipeline Integration - CRP/VCR Flow', () => {
     runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -470,9 +470,9 @@ describe('Pipeline Integration - Error Scenarios', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
   });
@@ -531,9 +531,9 @@ describe('Pipeline Integration - Run State Persistence', () => {
     runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 

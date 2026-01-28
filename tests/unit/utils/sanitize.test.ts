@@ -80,15 +80,15 @@ describe('sanitizePath', () => {
 describe('sanitizeSessionName', () => {
   describe('valid names', () => {
     it('should accept alphanumeric names', () => {
-      expect(sanitizeSessionName('orchestral123')).toBe('orchestral123');
+      expect(sanitizeSessionName('dure123')).toBe('dure123');
     });
 
     it('should accept names with dashes', () => {
-      expect(sanitizeSessionName('orchestral-run-123')).toBe('orchestral-run-123');
+      expect(sanitizeSessionName('dure-run-123')).toBe('dure-run-123');
     });
 
     it('should accept names with underscores', () => {
-      expect(sanitizeSessionName('orchestral_test')).toBe('orchestral_test');
+      expect(sanitizeSessionName('dure_test')).toBe('dure_test');
     });
 
     it('should trim whitespace', () => {

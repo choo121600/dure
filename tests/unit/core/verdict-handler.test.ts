@@ -31,7 +31,7 @@ describe('VerdictHandler', () => {
     };
 
     mockRunManager = {
-      getRunDir: vi.fn().mockReturnValue('/test/project/.orchestral/runs/run-20260126000000'),
+      getRunDir: vi.fn().mockReturnValue('/test/project/.dure/runs/run-20260126000000'),
     };
 
     mockStateManager = {
@@ -46,7 +46,7 @@ describe('VerdictHandler', () => {
     mockConfig = {
       global: {
         max_iterations: 3,
-        tmux_session_prefix: 'orchestral-test',
+        tmux_session_prefix: 'dure-test',
         web_port: 3001,
         log_level: 'info',
         timeouts: {

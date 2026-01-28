@@ -74,7 +74,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
   // Create blessed screen
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'Orchestral TUI',
+    title: 'Dure TUI',
     fullUnicode: true,
   });
 
@@ -95,7 +95,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
     left: 0,
     width: '100%',
     height: 3,
-    content: '{center}{bold}Orchestral TUI{/bold}{/center}',
+    content: '{center}{bold}Dure TUI{/bold}{/center}',
     tags: true,
     style: {
       fg: 'white',
@@ -136,10 +136,10 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
 
     if (runState) {
       header.setContent(
-        `{center}{bold}Orchestral TUI{/bold} | {gray-fg}${projectRoot}{/gray-fg}{/center}`
+        `{center}{bold}Dure TUI{/bold} | {gray-fg}${projectRoot}{/gray-fg}{/center}`
       );
     } else {
-      header.setContent('{center}{bold}Orchestral TUI{/bold} | {yellow-fg}No active run{/yellow-fg}{/center}');
+      header.setContent('{center}{bold}Dure TUI{/bold} | {yellow-fg}No active run{/yellow-fg}{/center}');
     }
 
     screen.render();

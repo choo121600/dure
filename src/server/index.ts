@@ -208,7 +208,7 @@ export function createServer(
       swaggerUi.serve,
       swaggerUi.setup(swaggerDocument, {
         customCss: '.swagger-ui .topbar { display: none }',
-        customSiteTitle: 'Orchestral API Documentation',
+        customSiteTitle: 'Dure API Documentation',
       })
     );
     logger.info('Swagger UI available at /api-docs');

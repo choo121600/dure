@@ -59,7 +59,7 @@ export type InterruptRecoveryEvent =
 const DEFAULT_OPTIONS: InterruptRecoveryOptions = {
   autoRecover: false,
   maxAgeMs: 24 * 60 * 60 * 1000, // 24 hours
-  tmuxSessionPrefix: 'orchestral',
+  tmuxSessionPrefix: 'dure',
 };
 
 /**

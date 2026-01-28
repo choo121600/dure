@@ -1,11 +1,11 @@
 {
-  "name": "orchestral",
+  "name": "dure",
   "version": "0.1.0",
-  "description": "Agentic Software Engineering MVP - 4 agents orchestrate code generation with human oversight",
+  "description": "Agentic Software Engineering MVP - 4 agents work cooperatively with human oversight, named after the Korean tradition of collaborative farming (두레)",
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {
-    "orchestral": "dist/cli/index.js"
+    "dure": "dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc && npm run copy-assets",

@@ -68,28 +68,28 @@ export class PromptGenerator {
     return `# Refiner Agent
 
 ## 역할
-당신은 Orchestral 시스템의 Refiner 에이전트입니다.
+당신은 Dure 시스템의 Refiner 에이전트입니다.
 인간이 작성한 briefing을 검토하고 개선하는 역할을 합니다.
 
 ## 작업 디렉토리
 - 프로젝트 루트: ${project_root}
-- Run 디렉토리: .orchestral/runs/${run_id}/
+- Run 디렉토리: .dure/runs/${run_id}/
 
 ## 입력
-- 원본 briefing: .orchestral/runs/${run_id}/briefing/raw.md
+- 원본 briefing: .dure/runs/${run_id}/briefing/raw.md
 
 ## 출력
 
 ### 충분/개선 가능한 경우 (CRP 없이 진행):
 다음 파일들을 **모두** 생성해야 합니다:
-1. .orchestral/runs/${run_id}/briefing/refined.md
-2. .orchestral/runs/${run_id}/briefing/clarifications.json
-3. .orchestral/runs/${run_id}/briefing/log.md
+1. .dure/runs/${run_id}/briefing/refined.md
+2. .dure/runs/${run_id}/briefing/clarifications.json
+3. .dure/runs/${run_id}/briefing/log.md
 
 ### CRP 생성이 필요한 경우:
 다음 파일**만** 생성하세요 (refined.md는 생성하지 마세요!):
-1. .orchestral/runs/${run_id}/crp/crp-{timestamp}.json
-2. .orchestral/runs/${run_id}/briefing/log.md (CRP 생성 이유 기록)
+1. .dure/runs/${run_id}/crp/crp-{timestamp}.json
+2. .dure/runs/${run_id}/briefing/log.md (CRP 생성 이유 기록)
 
 **중요: CRP를 생성할 때는 반드시 refined.md를 생성하지 마세요. 인간의 응답을 받은 후에 refined.md를 생성합니다.**
 
@@ -115,8 +115,8 @@ ${JSON.stringify(config.refiner, null, 2)}
 ### 3. Briefing이 모호한 경우 (인간 판단 필요)
 **⚠️ 중요: CRP를 생성할 때는 refined.md를 생성하지 마세요!**
 
-1. .orchestral/runs/${run_id}/crp/ 디렉토리에 CRP 파일 생성
-2. .orchestral/runs/${run_id}/briefing/log.md 에 CRP 생성 이유 기록
+1. .dure/runs/${run_id}/crp/ 디렉토리에 CRP 파일 생성
+2. .dure/runs/${run_id}/briefing/log.md 에 CRP 생성 이유 기록
 3. **refined.md, clarifications.json은 생성하지 않음** (인간 응답 후 생성)
 
 CRP 파일명: crp-{timestamp}.json
@@ -162,7 +162,7 @@ raw.md 파일을 읽고 작업을 시작하세요.
       reviewSection = `
 ## 이전 리뷰 피드백
 이번은 ${iteration}차 시도입니다.
-- 리뷰 피드백: .orchestral/runs/${run_id}/gatekeeper/review.md
+- 리뷰 피드백: .dure/runs/${run_id}/gatekeeper/review.md
 위 피드백을 반드시 반영하여 구현하세요.
 `;
     }
@@ -170,23 +170,23 @@ raw.md 파일을 읽고 작업을 시작하세요.
     return `# Builder Agent
 
 ## 역할
-당신은 Orchestral 시스템의 Builder 에이전트입니다.
+당신은 Dure 시스템의 Builder 에이전트입니다.
 refined briefing을 기반으로 코드를 구현합니다.
 
 ## 작업 디렉토리
 - 프로젝트 루트: ${project_root}
-- Run 디렉토리: .orchestral/runs/${run_id}/
+- Run 디렉토리: .dure/runs/${run_id}/
 
 ## 입력
-- Refined briefing: .orchestral/runs/${run_id}/briefing/refined.md
-- 해석 내용: .orchestral/runs/${run_id}/briefing/clarifications.json
-${has_review ? `- (재시도) 리뷰 피드백: .orchestral/runs/${run_id}/gatekeeper/review.md` : ''}
-- (있는 경우) VCR: .orchestral/runs/${run_id}/vcr/
+- Refined briefing: .dure/runs/${run_id}/briefing/refined.md
+- 해석 내용: .dure/runs/${run_id}/briefing/clarifications.json
+${has_review ? `- (재시도) 리뷰 피드백: .dure/runs/${run_id}/gatekeeper/review.md` : ''}
+- (있는 경우) VCR: .dure/runs/${run_id}/vcr/
 ${reviewSection}
 
 ## 출력 (반드시 생성해야 함)
 1. 프로젝트 루트에 코드 파일들 생성/수정
-2. .orchestral/runs/${run_id}/builder/output/manifest.json 에 변경된 파일 목록:
+2. .dure/runs/${run_id}/builder/output/manifest.json 에 변경된 파일 목록:
    \`\`\`json
    {
      "files_created": ["path/to/file1.ts"],
@@ -194,8 +194,8 @@ ${reviewSection}
      "timestamp": "ISO timestamp"
    }
    \`\`\`
-3. .orchestral/runs/${run_id}/builder/log.md 에 설계 근거
-4. .orchestral/runs/${run_id}/builder/done.flag 생성 (완료 신호)
+3. .dure/runs/${run_id}/builder/log.md 에 설계 근거
+4. .dure/runs/${run_id}/builder/done.flag 생성 (완료 신호)
 
 ## 설정
 \`\`\`json
@@ -232,26 +232,26 @@ refined.md 파일을 읽고 구현을 시작하세요.
     return `# Verifier Agent
 
 ## 역할
-당신은 Orchestral 시스템의 Verifier 에이전트입니다.
+당신은 Dure 시스템의 Verifier 에이전트입니다.
 Builder가 생성한 코드를 검증하고 테스트합니다.
 
 ## 작업 디렉토리
 - 프로젝트 루트: ${project_root}
-- Run 디렉토리: .orchestral/runs/${run_id}/
+- Run 디렉토리: .dure/runs/${run_id}/
 
 ## 사전 조건
 builder/done.flag 파일이 존재할 때까지 대기하세요.
 
 ## 입력
-- Refined briefing: .orchestral/runs/${run_id}/briefing/refined.md
-- Builder 로그: .orchestral/runs/${run_id}/builder/log.md
-- Builder 출력: .orchestral/runs/${run_id}/builder/output/manifest.json
+- Refined briefing: .dure/runs/${run_id}/briefing/refined.md
+- Builder 로그: .dure/runs/${run_id}/builder/log.md
+- Builder 출력: .dure/runs/${run_id}/builder/output/manifest.json
 
 ## 출력 (반드시 생성해야 함)
-1. .orchestral/runs/${run_id}/verifier/tests/ 에 테스트 파일들
-2. .orchestral/runs/${run_id}/verifier/results.json (테스트 결과)
-3. .orchestral/runs/${run_id}/verifier/log.md (검증 로그)
-4. .orchestral/runs/${run_id}/verifier/done.flag (완료 신호)
+1. .dure/runs/${run_id}/verifier/tests/ 에 테스트 파일들
+2. .dure/runs/${run_id}/verifier/results.json (테스트 결과)
+3. .dure/runs/${run_id}/verifier/log.md (검증 로그)
+4. .dure/runs/${run_id}/verifier/done.flag (완료 신호)
 
 ## 설정
 \`\`\`json
@@ -305,12 +305,12 @@ builder/done.flag 확인 후, briefing과 코드를 읽고 테스트를 시작�
     return `# Gatekeeper Agent
 
 ## 역할
-당신은 Orchestral 시스템의 Gatekeeper 에이전트입니다.
+당신은 Dure 시스템의 Gatekeeper 에이전트입니다.
 전체 결과물을 검토하고 최종 판정을 내립니다.
 
 ## 작업 디렉토리
 - 프로젝트 루트: ${project_root}
-- Run 디렉토리: .orchestral/runs/${run_id}/
+- Run 디렉토리: .dure/runs/${run_id}/
 
 ## 사전 조건
 verifier/done.flag 파일이 존재할 때까지 대기하세요.
@@ -319,17 +319,17 @@ verifier/done.flag 파일이 존재할 때까지 대기하세요.
 - Iteration: ${iteration} / ${config.gatekeeper.max_iterations}
 
 ## 입력
-- Briefing: .orchestral/runs/${run_id}/briefing/
-- Builder 결과: .orchestral/runs/${run_id}/builder/
-- Verifier 결과: .orchestral/runs/${run_id}/verifier/
-- VCR (있는 경우): .orchestral/runs/${run_id}/vcr/
-- 현재 상태: .orchestral/runs/${run_id}/state.json
+- Briefing: .dure/runs/${run_id}/briefing/
+- Builder 결과: .dure/runs/${run_id}/builder/
+- Verifier 결과: .dure/runs/${run_id}/verifier/
+- VCR (있는 경우): .dure/runs/${run_id}/vcr/
+- 현재 상태: .dure/runs/${run_id}/state.json
 
 ## 출력 (반드시 생성해야 함)
-1. .orchestral/runs/${run_id}/gatekeeper/review.md (리뷰 코멘트)
-2. .orchestral/runs/${run_id}/gatekeeper/verdict.json (판정 결과)
-3. .orchestral/runs/${run_id}/gatekeeper/log.md (검토 로그)
-4. (PASS인 경우) .orchestral/runs/${run_id}/mrp/ 내용 생성
+1. .dure/runs/${run_id}/gatekeeper/review.md (리뷰 코멘트)
+2. .dure/runs/${run_id}/gatekeeper/verdict.json (판정 결과)
+3. .dure/runs/${run_id}/gatekeeper/log.md (검토 로그)
+4. (PASS인 경우) .dure/runs/${run_id}/mrp/ 내용 생성
 
 ## 설정
 \`\`\`json
@@ -384,7 +384,7 @@ ${config.gatekeeper.auto_crp_triggers.map(t => `- ${t}`).join('\n')}
 
 다음 파일들을 생성하세요:
 
-### .orchestral/runs/${run_id}/mrp/summary.md
+### .dure/runs/${run_id}/mrp/summary.md
 \`\`\`markdown
 # Merge-Readiness Pack
 
@@ -408,7 +408,7 @@ ${config.gatekeeper.auto_crp_triggers.map(t => `- ${t}`).join('\n')}
 {판정 근거}
 \`\`\`
 
-### .orchestral/runs/${run_id}/mrp/evidence.json
+### .dure/runs/${run_id}/mrp/evidence.json
 \`\`\`json
 {
   "tests": {

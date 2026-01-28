@@ -97,8 +97,8 @@ vi.mock('../../../src/core/run-manager.js', () => ({
   RunManager: class MockRunManager {
     initialize = vi.fn().mockResolvedValue(undefined);
     generateRunId = vi.fn().mockReturnValue('run-20260126000000');
-    createRun = vi.fn().mockResolvedValue('/test/.orchestral/runs/run-20260126000000');
-    getRunDir = vi.fn().mockReturnValue('/test/.orchestral/runs/run-20260126000000');
+    createRun = vi.fn().mockResolvedValue('/test/.dure/runs/run-20260126000000');
+    getRunDir = vi.fn().mockReturnValue('/test/.dure/runs/run-20260126000000');
     readModelSelection = vi.fn().mockResolvedValue(null);
     saveModelSelection = vi.fn().mockResolvedValue(undefined);
     readRawBriefing = vi.fn().mockResolvedValue('# Test Briefing');
@@ -152,7 +152,7 @@ vi.mock('../../../src/core/run-lifecycle-manager.js', () => {
     RunLifecycleManager: class MockRunLifecycleManager extends EventEmitter {
       initializeRun = vi.fn().mockImplementation(async () => ({
         runId: 'run-20260126000000',
-        runDir: '/test/.orchestral/runs/run-20260126000000',
+        runDir: '/test/.dure/runs/run-20260126000000',
         stateManager: stateManagerMock,
         tmuxManager: tmuxManagerMock,
         eventLogger: eventLoggerMock,

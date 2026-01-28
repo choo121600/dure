@@ -33,7 +33,7 @@ describe('AgentCoordinator', () => {
     };
 
     mockRunManager = {
-      getRunDir: vi.fn().mockReturnValue('/test/project/.orchestral/runs/run-20260126000000'),
+      getRunDir: vi.fn().mockReturnValue('/test/project/.dure/runs/run-20260126000000'),
       listCRPs: vi.fn().mockResolvedValue([]),
       listVCRs: vi.fn().mockResolvedValue([]),
     };
@@ -224,7 +224,7 @@ describe('AgentCoordinator', () => {
 
       expect(mockAgentLifecycle.startAgent).toHaveBeenCalledWith(
         'builder',
-        '/test/project/.orchestral/runs/run-20260126000000'
+        '/test/project/.dure/runs/run-20260126000000'
       );
     }, 5000);
 
@@ -497,7 +497,7 @@ describe('AgentCoordinator', () => {
 
       expect(mockAgentLifecycle.startAgent).toHaveBeenCalledWith(
         'builder',
-        '/test/project/.orchestral/runs/run-20260126000000'
+        '/test/project/.dure/runs/run-20260126000000'
       );
     });
   });

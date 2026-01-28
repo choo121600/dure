@@ -1,7 +1,10 @@
-# Orchestral 🎼
+# Dure
 
-[![CI](https://github.com/choo121600/orchestral/actions/workflows/ci.yml/badge.svg)](https://github.com/choo121600/orchestral/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/choo121600/orchestral/branch/main/graph/badge.svg)](https://codecov.io/gh/choo121600/orchestral)
+> Named after the Korean tradition of "두레" (cooperative farming),
+> where villagers work together with distinct roles toward a shared goal.
+
+[![CI](https://github.com/choo121600/dure/actions/workflows/ci.yml/badge.svg)](https://github.com/choo121600/dure/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/choo121600/dure/branch/main/graph/badge.svg)](https://codecov.io/gh/choo121600/dure)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > 의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템
@@ -32,7 +35,7 @@ sudo yum install tmux
 ```bash
 # 저장소 클론
 git clone <repository-url>
-cd orchestral
+cd dure
 
 # 의존성 설치
 npm install
@@ -52,11 +55,11 @@ npm link
 # 프로젝트 폴더로 이동
 cd /path/to/your-project
 
-# Orchestral 시작
-npx orchestral start
+# Dure 시작
+npx dure start
 
 # 또는 전역 설치했다면
-orchestral start
+dure start
 ```
 
 브라우저가 자동으로 열리고 대시보드(http://localhost:3000)가 표시됩니다.
@@ -65,25 +68,25 @@ orchestral start
 
 ```bash
 # 포트 지정
-orchestral start --port 3001
+dure start --port 3001
 
 # 브라우저 자동 열기 비활성화
-orchestral start --no-browser
+dure start --no-browser
 
 # 현재 실행 상태 확인
-orchestral status
+dure status
 
 # 실행 중인 run 중지
-orchestral stop
+dure stop
 
 # 과거 run 목록
-orchestral history
+dure history
 
 # 중단된 run 복구
-orchestral recover [run-id]
+dure recover [run-id]
 
 # 중단된 run 목록 확인
-orchestral recover --list
+dure recover --list
 ```
 
 ## 워크플로우
@@ -157,10 +160,10 @@ Gatekeeper가 PASS 판정을 내리면 **MRP(Merge-Readiness Pack)**가 생성�
 
 ## 폴더 구조
 
-Orchestral 실행 시 프로젝트에 `.orchestral/` 폴더가 생성됩니다:
+Dure 실행 시 프로젝트에 `.dure/` 폴더가 생성됩니다:
 
 ```
-.orchestral/
+.dure/
 ├── config/           # 에이전트 설정
 │   ├── global.json
 │   ├── refiner.json
@@ -182,7 +185,7 @@ Orchestral 실행 시 프로젝트에 `.orchestral/` 폴더가 생성됩니다:
 
 ## 설정
 
-Settings 페이지 또는 `.orchestral/config/` 파일을 직접 수정하여 설정을 변경할 수 있습니다.
+Settings 페이지 또는 `.dure/config/` 파일을 직접 수정하여 설정을 변경할 수 있습니다.
 
 ### 주요 설정
 
@@ -203,7 +206,7 @@ Settings 페이지 또는 `.orchestral/config/` 파일을 직접 수정하여 �
 
 ## tmux 세션
 
-Orchestral은 tmux를 사용하여 에이전트를 병렬 실행합니다:
+Dure는 tmux를 사용하여 에이전트를 병렬 실행합니다:
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
@@ -219,7 +222,7 @@ Orchestral은 tmux를 사용하여 에이전트를 병렬 실행합니다:
 tmux 세션에 직접 접속하려면:
 
 ```bash
-tmux attach-session -t orchestral-run-{timestamp}
+tmux attach-session -t dure-run-{timestamp}
 ```
 
 ## 문제 해결
@@ -238,23 +241,23 @@ Claude CLI가 설치되어 있고 PATH에 포함되어 있는지 확인하세요
 ### 에이전트가 멈춤
 
 1. tmux 세션에 접속하여 에이전트 상태 확인
-2. `orchestral stop`으로 중지 후 재시작
+2. `dure stop`으로 중지 후 재시작
 3. Debug Shell (pane 4)에서 직접 디버깅
 
 ### 포트 충돌
 
 ```bash
-orchestral start --port 3001
+dure start --port 3001
 ```
 
-## 📚 문서
+## 문서
 
-상세한 문서는 [공식 문서 사이트](https://choo121600.github.io/orchestral/)를 참고하세요.
+상세한 문서는 [공식 문서 사이트](https://choo121600.github.io/dure/)를 참고하세요.
 
-- [빠른 시작](https://choo121600.github.io/orchestral/#/guide/getting-started)
-- [Briefing 작성 가이드](https://choo121600.github.io/orchestral/#/guide/writing-briefings)
-- [아키텍처](https://choo121600.github.io/orchestral/#/architecture/overview)
-- [API 레퍼런스](https://choo121600.github.io/orchestral/#/api/cli)
+- [빠른 시작](https://choo121600.github.io/dure/#/guide/getting-started)
+- [Briefing 작성 가이드](https://choo121600.github.io/dure/#/guide/writing-briefings)
+- [아키텍처](https://choo121600.github.io/dure/#/architecture/overview)
+- [API 레퍼런스](https://choo121600.github.io/dure/#/api/cli)
 
 ### 로컬에서 문서 확인
 
@@ -274,4 +277,4 @@ MIT
 
 ## 기여
 
-이슈와 PR을 환영합니다. 자세한 내용은 [기여 가이드](https://yourusername.github.io/orchestral/#/misc/contributing)를 참고하세요.
+이슈와 PR을 환영합니다. 자세한 내용은 [기여 가이드](https://yourusername.github.io/dure/#/misc/contributing)를 참고하세요.

@@ -1,6 +1,6 @@
 # 기여 가이드
 
-Orchestral에 기여해주셔서 감사합니다! 🎼
+Dure에 기여해주셔서 감사합니다! 🎼
 
 ## 기여 방법
 
@@ -18,7 +18,7 @@ Orchestral에 기여해주셔서 감사합니다! 🎼
   - Node.js 버전
   - tmux 버전
   - Claude CLI 버전
-  - Orchestral 버전
+  - Dure 버전
 - 로그 파일:
   - `events.log`
   - `state.json`
@@ -31,7 +31,7 @@ Orchestral에 기여해주셔서 감사합니다! 🎼
 Builder가 JSON 파싱 중 크래시합니다.
 
 ## 재현 단계
-1. orchestral start 실행
+1. dure start 실행
 2. 다음 Briefing 작성: [내용]
 3. Run 시작
 4. Builder Phase에서 크래시
@@ -47,7 +47,7 @@ error.flag가 생성되고 "Unexpected token" 에러 발생
 - Node.js: v20.0.0
 - tmux: 3.3a
 - Claude CLI: 1.2.0
-- Orchestral: 0.1.0
+- Dure: 0.1.0
 
 ## 로그
 [첨부 파일 또는 내용]
@@ -76,11 +76,11 @@ Pull Request는 언제나 환영합니다!
 # Fork: GitHub에서 "Fork" 버튼 클릭
 
 # Clone
-git clone https://github.com/your-username/orchestral.git
-cd orchestral
+git clone https://github.com/your-username/dure.git
+cd dure
 
 # Upstream 추가
-git remote add upstream https://github.com/yourusername/orchestral.git
+git remote add upstream https://github.com/yourusername/dure.git
 ```
 
 2. **개발 환경 설정**
@@ -258,7 +258,7 @@ npx docsify serve docs
 ### 프로젝트 구조
 
 ```
-orchestral/
+dure/
 ├── src/
 │   ├── cli/              # CLI 명령어
 │   ├── core/             # 핵심 로직
@@ -314,7 +314,7 @@ describe('Orchestrator', () => {
 **로그 레벨 조정:**
 
 ```bash
-orchestral start --log-level debug
+dure start --log-level debug
 ```
 
 **브레이크포인트:**
@@ -336,7 +336,7 @@ debugger; // Node.js 디버거 사용
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Orchestral",
+      "name": "Debug Dure",
       "program": "${workspaceFolder}/src/cli/index.ts",
       "args": ["start"],
       "runtimeArgs": ["-r", "tsx"],
@@ -392,6 +392,6 @@ debugger; // Node.js 디버거 사용
 ## 질문이 있으신가요?
 
 - GitHub Discussions에 질문 작성
-- 이메일: orchestral@example.com (가상)
+- 이메일: dure@example.com (가상)
 
 감사합니다! 🎼

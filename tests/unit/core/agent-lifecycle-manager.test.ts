@@ -170,14 +170,14 @@ describe('AgentLifecycleManager', () => {
 
   describe('startAgent', () => {
     it('should start an agent successfully', async () => {
-      await manager.startAgent('refiner', '/test/project/.orchestral/runs/run-20260126000000');
+      await manager.startAgent('refiner', '/test/project/.dure/runs/run-20260126000000');
 
       expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('refiner', 'running');
       expect(mockAgentMonitor.watchAgent).toHaveBeenCalledWith('refiner');
       expect(mockTmuxManager.startAgentAndWaitReady).toHaveBeenCalledWith(
         'refiner',
         'haiku',
-        '/test/project/.orchestral/runs/run-20260126000000/prompts/refiner.md'
+        '/test/project/.dure/runs/run-20260126000000/prompts/refiner.md'
       );
     });
 
@@ -190,7 +190,7 @@ describe('AgentLifecycleManager', () => {
       const events: any[] = [];
       manager.on('lifecycle_event', (event) => events.push(event));
 
-      await manager.startAgent('builder', '/test/project/.orchestral/runs/run-20260126000000');
+      await manager.startAgent('builder', '/test/project/.dure/runs/run-20260126000000');
 
       expect(events).toContainEqual({ type: 'agent_starting', agent: 'builder' });
       expect(events).toContainEqual({ type: 'agent_started', agent: 'builder' });

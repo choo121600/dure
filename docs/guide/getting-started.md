@@ -1,6 +1,6 @@
 # 빠른 시작
 
-이 가이드는 Orchestral을 처음 사용하는 분들을 위한 단계별 튜토리얼입니다.
+이 가이드는 Dure을 처음 사용하는 분들을 위한 단계별 튜토리얼입니다.
 
 ## 사전 준비
 
@@ -8,7 +8,7 @@
 
 #### tmux
 
-Orchestral은 여러 에이전트를 병렬로 실행하기 위해 tmux를 사용합니다.
+Dure은 여러 에이전트를 병렬로 실행하기 위해 tmux를 사용합니다.
 
 <!-- tabs:start -->
 
@@ -61,8 +61,8 @@ node --version
 ### 1. 저장소 클론
 
 ```bash
-git clone https://github.com/yourusername/orchestral.git
-cd orchestral
+git clone https://github.com/yourusername/dure.git
+cd dure
 ```
 
 ### 2. 의존성 설치
@@ -84,7 +84,7 @@ npm run build
 
 ### 4. 전역 설치 (선택사항)
 
-전역으로 설치하면 어디서든 `orchestral` 명령어를 사용할 수 있습니다:
+전역으로 설치하면 어디서든 `dure` 명령어를 사용할 수 있습니다:
 
 ```bash
 npm link
@@ -94,22 +94,22 @@ npm link
 
 ### 1. 프로젝트 폴더 준비
 
-Orchestral을 실행할 프로젝트 폴더로 이동합니다:
+Dure을 실행할 프로젝트 폴더로 이동합니다:
 
 ```bash
 cd /path/to/your-project
 ```
 
-!> Orchestral은 현재 디렉토리에 `.orchestral/` 폴더를 생성합니다. Git 저장소에서 실행하는 것을 권장합니다.
+!> Dure은 현재 디렉토리에 `.dure/` 폴더를 생성합니다. Git 저장소에서 실행하는 것을 권장합니다.
 
-### 2. Orchestral 시작
+### 2. Dure 시작
 
 ```bash
 # npx 사용 (전역 설치 안 한 경우)
-npx orchestral start
+npx dure start
 
 # 또는 전역 설치한 경우
-orchestral start
+dure start
 ```
 
 ### 3. 웹 대시보드 열기
@@ -176,19 +176,19 @@ sayHello("Alice") → "Hello, Alice!"
 ### 포트 변경
 
 ```bash
-orchestral start --port 3001
+dure start --port 3001
 ```
 
 ### 브라우저 자동 열기 비활성화
 
 ```bash
-orchestral start --no-browser
+dure start --no-browser
 ```
 
 ### 현재 상태 확인
 
 ```bash
-orchestral status
+dure status
 ```
 
 출력 예시:
@@ -210,13 +210,13 @@ Usage: $0.058
 ### Run 중지
 
 ```bash
-orchestral stop
+dure stop
 ```
 
 ### 히스토리 조회
 
 ```bash
-orchestral history
+dure history
 ```
 
 출력 예시:
@@ -230,13 +230,13 @@ Recent Runs:
 
 ## 폴더 구조
 
-Orchestral 시작 시 프로젝트에 `.orchestral/` 폴더가 생성됩니다:
+Dure 시작 시 프로젝트에 `.dure/` 폴더가 생성됩니다:
 
 ```
 your-project/
 ├── src/
 ├── package.json
-└── .orchestral/
+└── .dure/
     ├── config/              # 설정 파일
     │   ├── global.json
     │   ├── refiner.json
@@ -256,11 +256,11 @@ your-project/
             └── mrp/
 ```
 
-?> `.orchestral/` 폴더를 `.gitignore`에 추가할 수 있지만, 실행 기록을 유지하려면 커밋하는 것도 좋습니다.
+?> `.dure/` 폴더를 `.gitignore`에 추가할 수 있지만, 실행 기록을 유지하려면 커밋하는 것도 좋습니다.
 
 ## tmux 세션
 
-Orchestral은 각 Run마다 tmux 세션을 생성합니다:
+Dure은 각 Run마다 tmux 세션을 생성합니다:
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
@@ -276,7 +276,7 @@ Orchestral은 각 Run마다 tmux 세션을 생성합니다:
 tmux 세션에 접속하여 에이전트 출력을 직접 확인할 수 있습니다:
 
 ```bash
-tmux attach-session -t orchestral-run-20240126-143022
+tmux attach-session -t dure-run-20240126-143022
 ```
 
 세션에서 나오기: `Ctrl-b` + `d` (detach)

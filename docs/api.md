@@ -1,18 +1,18 @@
-# Orchestral - API 및 이벤트 명세
+# Dure - API 및 이벤트 명세
 
 ## CLI 명령어
 
 ```bash
-orchestral start                    # 프로젝트 시작
-orchestral start --port 3001        # 포트 지정
-orchestral start --no-browser       # 브라우저 자동 열기 비활성화
-orchestral status                   # 현재 run 상태
-orchestral logs                     # 실시간 로그
-orchestral stop                     # run 중지
-orchestral history                  # 과거 run 목록
-orchestral recover                  # 중단된 run 목록 확인
-orchestral recover [run-id]         # 특정 run 복구
-orchestral recover --auto           # 자동 복구 모드
+dure start                    # 프로젝트 시작
+dure start --port 3001        # 포트 지정
+dure start --no-browser       # 브라우저 자동 열기 비활성화
+dure status                   # 현재 run 상태
+dure logs                     # 실시간 로그
+dure stop                     # run 중지
+dure history                  # 과거 run 목록
+dure recover                  # 중단된 run 목록 확인
+dure recover [run-id]         # 특정 run 복구
+dure recover --auto           # 자동 복구 모드
 ```
 
 ## ACE 웹서버 페이지 구조

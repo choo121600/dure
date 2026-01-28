@@ -1,4 +1,4 @@
-# Orchestral - 데이터 포맷
+# Dure - 데이터 포맷
 
 ## 폴더 구조
 
@@ -9,7 +9,7 @@
 ├── src/                        # 기존 코드
 ├── package.json
 │
-└── .orchestral/                # orchestral start 시 생성
+└── .dure/                # dure start 시 생성
     ├── config/
     │   ├── global.json
     │   ├── refiner.json
@@ -149,7 +149,7 @@ run-{timestamp}/
 ```json
 {
   "max_iterations": 3,
-  "tmux_session_prefix": "orchestral",
+  "tmux_session_prefix": "dure",
   "web_port": 3000,
   "log_level": "info",
   "timeouts": {

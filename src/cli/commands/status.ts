@@ -11,7 +11,7 @@ export async function statusCommand(): Promise<void> {
 
   if (!activeRun) {
     console.log(chalk.yellow('No active run found.'));
-    console.log(chalk.gray('Use `orchestral start` to begin.'));
+    console.log(chalk.gray('Use `dure start` to begin.'));
     return;
   }
 
@@ -24,7 +24,7 @@ export async function statusCommand(): Promise<void> {
     return;
   }
 
-  console.log(chalk.blue('🎼 Orchestral Status'));
+  console.log(chalk.blue('🎼 Dure Status'));
   console.log();
   console.log(chalk.white(`Run ID:    ${state.run_id}`));
   console.log(chalk.white(`Phase:     ${formatPhase(state.phase)}`));

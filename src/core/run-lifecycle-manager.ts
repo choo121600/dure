@@ -99,7 +99,7 @@ export class RunLifecycleManager extends EventEmitter {
   async initializeRun(rawBriefing: string): Promise<RunInitResult> {
     // Check tmux availability
     if (!TmuxManager.isTmuxAvailable()) {
-      throw new Error('tmux is not installed. Please install tmux to use Orchestral.');
+      throw new Error('tmux is not installed. Please install tmux to use Dure.');
     }
 
     // Select models based on briefing complexity

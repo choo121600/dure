@@ -1,19 +1,19 @@
 # 시스템 개요
 
-Orchestral의 전체 아키텍처를 설명합니다.
+Dure의 전체 아키텍처를 설명합니다.
 
 ## 아키텍처 다이어그램
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         orchestral                           │
+│                         dure                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│   CLI (orchestral start)                                     │
+│   CLI (dure start)                                     │
 │         │                                                    │
 │         ▼                                                    │
 │   ┌─────────────┐         ┌─────────────────────────────┐   │
-│   │ ACE Web     │◄───────►│ .orchestral/                │   │
+│   │ ACE Web     │◄───────►│ .dure/                │   │
 │   │ Server      │         │   ├─ config/                │   │
 │   │ :3000       │         │   └─ runs/                  │   │
 │   └─────────────┘         └─────────────────────────────┘   │
@@ -41,7 +41,7 @@ Orchestral의 전체 아키텍처를 설명합니다.
 **역할:** 사용자 진입점
 
 **책임:**
-- Orchestral 초기화
+- Dure 초기화
 - tmux 세션 생성
 - 웹 서버 시작
 - 상태 조회 (`status`, `history`)
@@ -91,7 +91,7 @@ Orchestral의 전체 아키텍처를 설명합니다.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                orchestral-run-{timestamp}                 │
+│                dure-run-{timestamp}                 │
 ├──────────────┬──────────────┬──────────────┬─────────────┤
 │   Refiner    │   Builder    │   Verifier   │Gatekeeper   │
 │              │              │              │             │
@@ -215,7 +215,7 @@ sequenceDiagram
     participant Gatekeeper
     participant FileWatcher
 
-    User->>CLI: orchestral start
+    User->>CLI: dure start
     CLI->>WebServer: 시작
     CLI->>Tmux: 세션 생성
 
@@ -355,7 +355,7 @@ claude --dangerously-skip-permissions --prompt-file ...
 각 Run은 독립된 폴더:
 
 ```
-.orchestral/runs/
+.dure/runs/
 ├── run-20240126-143022/  # Run 1
 └── run-20240126-150000/  # Run 2
 ```

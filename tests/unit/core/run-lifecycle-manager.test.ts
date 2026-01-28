@@ -60,8 +60,8 @@ vi.mock('../../../src/core/event-logger.js', () => ({
 // Mock dependencies passed to constructor
 const mockRunManager = {
   generateRunId: vi.fn().mockReturnValue('run-20260126000000'),
-  createRun: vi.fn().mockResolvedValue('/test/project/.orchestral/runs/run-20260126000000'),
-  getRunDir: vi.fn().mockReturnValue('/test/project/.orchestral/runs/run-20260126000000'),
+  createRun: vi.fn().mockResolvedValue('/test/project/.dure/runs/run-20260126000000'),
+  getRunDir: vi.fn().mockReturnValue('/test/project/.dure/runs/run-20260126000000'),
   saveModelSelection: vi.fn().mockResolvedValue(undefined),
   readModelSelection: vi.fn().mockResolvedValue(null),
   readRawBriefing: vi.fn().mockResolvedValue('Test briefing content'),
@@ -110,7 +110,7 @@ describe('RunLifecycleManager', () => {
   const mockConfig: OrchestraConfig = {
     global: {
       max_iterations: 3,
-      tmux_session_prefix: 'orchestral-test',
+      tmux_session_prefix: 'dure-test',
       web_port: 3001,
       log_level: 'info',
       timeouts: {

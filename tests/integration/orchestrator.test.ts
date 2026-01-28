@@ -48,9 +48,9 @@ describe('Orchestrator Integration', () => {
     await runManager.initialize();
 
     // Create config directory
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -315,9 +315,9 @@ describe('Orchestrator Cleanup Behavior', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -378,9 +378,9 @@ describe('Orchestrator Timeout Configuration', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -425,9 +425,9 @@ describe('Orchestrator Resume Flow', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -475,9 +475,9 @@ describe('Orchestrator Concurrent Protection', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -538,9 +538,9 @@ describe('Orchestrator forceCapture', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -585,9 +585,9 @@ describe('Orchestrator Getter Methods', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
@@ -721,9 +721,9 @@ describe('Orchestrator Event Handling', () => {
     const runManager = new RunManager(tempDir);
     await runManager.initialize();
 
-    mkdirSync(join(tempDir, '.orchestral', 'config'), { recursive: true });
+    mkdirSync(join(tempDir, '.dure', 'config'), { recursive: true });
     writeFileSync(
-      join(tempDir, '.orchestral', 'config', 'global.json'),
+      join(tempDir, '.dure', 'config', 'global.json'),
       JSON.stringify(config.global, null, 2)
     );
 
