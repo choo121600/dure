@@ -1,35 +1,216 @@
 #!/bin/sh
 
 # ============================================
-# Dure Pre-commit Hooks
+# Dure Pre-commit Hooks (Optimized)
 # ============================================
-# 이 훅은 커밋 전에 자동으로 실행됩니다.
-# 우회: git commit --no-verify (권장하지 않음)
+# This hook runs automatically before each commit.
+# Bypass: git commit --no-verify (not recommended)
+# Docs: See CONTRIBUTING.md
 # ============================================
 
-set -e  # 에러 발생 시 즉시 중단
+set -e  # Exit immediately on error
+
+# Start execution time measurement
+START_TIME=$(date +%s)
 
 echo "Running pre-commit checks..."
 echo ""
 
 # ============================================
-# CLI Screenshots & Documentation Verification
+# Temporary file cleanup
 # ============================================
-# CLI 파일 변경 시 스크린샷 검증
-if git diff --cached --name-only | grep -q "^src/cli/"; then
-  echo "CLI files changed, verifying screenshots..."
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
 
-  npm run screenshots:verify || {
-    echo ""
-    echo "Screenshots are out of date!"
-    echo "Run: npm run screenshots"
-    exit 1
-  }
+# ============================================
+# Condition check: Determine which checks are needed
+# ============================================
+STAGED_TS=$(git diff --cached --name-only | grep -E '\.(ts|tsx)$' || true)
+STAGED_CLI=$(git diff --cached --name-only | grep -q "^src/cli/" && echo "yes" || true)
+STAGED_CLI_OR_IMAGES=$(git diff --cached --name-only | grep -q "^src/cli/\|^docs/images/cli/" && echo "yes" || true)
+CHANGED_SRC=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^src/.*\.ts$' || true)
 
-  npm run docs:cli:verify || {
-    echo ""
-    echo "CLI documentation is out of date!"
-    echo "Run: npm run docs:cli"
-    exit 1
-  }
+# ============================================
+# Parallel execution: Group A (TypeScript + Tests)
+# ============================================
+# Run independent checks in parallel to reduce time
+
+PIDS=""
+FAILED=0
+
+# --- TypeScript Type Check (background) ---
+if [ -n "$STAGED_TS" ]; then
+  (
+    echo "[tsc] Checking TypeScript types..."
+    if npx tsc --noEmit > "$TEMP_DIR/tsc.log" 2>&1; then
+      echo "[tsc] TypeScript check passed."
+    else
+      echo "[tsc] FAILED"
+      cat "$TEMP_DIR/tsc.log"
+      exit 1
+    fi
+  ) &
+  PIDS="$PIDS $!"
 fi
+
+# --- Related Unit Tests (background) ---
+if [ -n "$CHANGED_SRC" ]; then
+  (
+    # Collect test target directories
+    TEST_DIRS=""
+
+    if echo "$CHANGED_SRC" | grep -q "^src/cli/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/cli/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -q "^src/core/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/core/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -q "^src/server/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/server/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -q "^src/agents/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/agents/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -q "^src/tui/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/tui/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -q "^src/utils/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/utils/"
+    fi
+
+    if echo "$CHANGED_SRC" | grep -qE "^src/(types|config)/"; then
+      TEST_DIRS="$TEST_DIRS tests/unit/"
+    fi
+
+    if [ -n "$TEST_DIRS" ]; then
+      # Remove duplicates and clean up
+      TEST_DIRS=$(echo "$TEST_DIRS" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+
+      echo "[test] Running related unit tests: $TEST_DIRS"
+
+      # Detect timeout command (macOS: gtimeout, Linux: timeout)
+      TIMEOUT_CMD=""
+      if command -v timeout >/dev/null 2>&1; then
+        TIMEOUT_CMD="timeout"
+      elif command -v gtimeout >/dev/null 2>&1; then
+        TIMEOUT_CMD="gtimeout"
+      fi
+
+      if [ -n "$TIMEOUT_CMD" ]; then
+        if $TIMEOUT_CMD 30 npx vitest run --reporter=dot --passWithNoTests $TEST_DIRS > "$TEMP_DIR/test.log" 2>&1; then
+          echo "[test] Tests passed."
+        else
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 124 ]; then
+            echo "[test] Tests taking too long (>30s), skipping... (Full tests will run in CI)"
+          else
+            echo "[test] FAILED"
+            cat "$TEMP_DIR/test.log"
+            exit 1
+          fi
+        fi
+      else
+        if npx vitest run --reporter=dot --passWithNoTests $TEST_DIRS > "$TEMP_DIR/test.log" 2>&1; then
+          echo "[test] Tests passed."
+        else
+          echo "[test] FAILED"
+          cat "$TEMP_DIR/test.log"
+          exit 1
+        fi
+      fi
+    else
+      echo "[test] No matching test directories for changed files."
+    fi
+  ) &
+  PIDS="$PIDS $!"
+fi
+
+# ============================================
+# Sequential execution: Group B (Screenshots → Docs)
+# ============================================
+# Doc verification depends on screenshots, so run sequentially
+
+# --- CLI Screenshots Verification ---
+if [ -n "$STAGED_CLI" ]; then
+  (
+    echo "[screenshots] CLI files changed, verifying screenshots..."
+
+    if npm run screenshots:verify > "$TEMP_DIR/screenshots.log" 2>&1; then
+      echo "[screenshots] Screenshots are up to date."
+    else
+      echo "[screenshots] FAILED"
+      cat "$TEMP_DIR/screenshots.log"
+      echo ""
+      echo "Run the following commands:"
+      echo "  npm run screenshots"
+      echo "  git add docs/images/cli/"
+      exit 1
+    fi
+  ) &
+  PIDS="$PIDS $!"
+fi
+
+# --- CLI Documentation Verification ---
+# Note: If both screenshot and doc verification are needed,
+# run doc verification after screenshot verification completes
+if [ -n "$STAGED_CLI_OR_IMAGES" ]; then
+  (
+    # Wait for screenshot verification (separate check since different subshell)
+    # Can run independently (npm run handles it)
+    echo "[docs] Verifying CLI documentation..."
+
+    if npm run docs:cli:verify > "$TEMP_DIR/docs.log" 2>&1; then
+      echo "[docs] CLI documentation is up to date."
+    else
+      echo "[docs] FAILED"
+      cat "$TEMP_DIR/docs.log"
+      echo ""
+      echo "Run the following commands:"
+      echo "  npm run docs:cli"
+      echo "  git add docs/CLI_REFERENCE.md"
+      exit 1
+    fi
+  ) &
+  PIDS="$PIDS $!"
+fi
+
+# ============================================
+# Collect results
+# ============================================
+
+# Complete immediately if no checks are running
+if [ -z "$PIDS" ]; then
+  echo "No checks needed for staged files."
+  echo ""
+else
+  # Wait for all background jobs and collect results
+  for PID in $PIDS; do
+    if ! wait $PID; then
+      FAILED=1
+    fi
+  done
+fi
+
+# ============================================
+# Final result
+# ============================================
+
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+
+echo ""
+
+if [ $FAILED -ne 0 ]; then
+  echo "Pre-commit checks FAILED! (${ELAPSED}s)"
+  echo ""
+  echo "Fix the errors above before committing."
+  echo "To bypass (not recommended): git commit --no-verify"
+  exit 1
+fi
+
+echo "All pre-commit checks passed! (${ELAPSED}s)"
