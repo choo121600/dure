@@ -361,7 +361,7 @@ export function createServer(
   if (isAuthEnabled()) {
     logger.info('API authentication is enabled');
   } else {
-    logger.warn('API authentication is disabled. Set ORCHESTRAL_AUTH_ENABLED=true and ORCHESTRAL_API_KEY to enable.');
+    logger.warn('API authentication is disabled. Set DURE_AUTH_ENABLED=true and DURE_API_KEY to enable.');
   }
 
   // Serve frontend pages

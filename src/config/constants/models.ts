@@ -40,13 +40,13 @@ export interface ModelSelectorConfig {
  */
 export const MODEL_SELECTOR: ModelSelectorConfig = {
   /** Simple briefing threshold (characters) */
-  SIMPLE_BRIEFING_CHARS: parseEnvInt(process.env.ORCHESTRAL_SIMPLE_BRIEFING_CHARS, 500),
+  SIMPLE_BRIEFING_CHARS: parseEnvInt(process.env.DURE_SIMPLE_BRIEFING_CHARS, 500),
 
   /** Complex briefing threshold (characters) */
-  COMPLEX_BRIEFING_CHARS: parseEnvInt(process.env.ORCHESTRAL_COMPLEX_BRIEFING_CHARS, 2000),
+  COMPLEX_BRIEFING_CHARS: parseEnvInt(process.env.DURE_COMPLEX_BRIEFING_CHARS, 2000),
 
   /** Very complex briefing threshold (characters) */
-  VERY_COMPLEX_BRIEFING_CHARS: parseEnvInt(process.env.ORCHESTRAL_VERY_COMPLEX_BRIEFING_CHARS, 5000),
+  VERY_COMPLEX_BRIEFING_CHARS: parseEnvInt(process.env.DURE_VERY_COMPLEX_BRIEFING_CHARS, 5000),
 
   /** Estimated tokens per agent */
   ESTIMATED_TOKENS: {

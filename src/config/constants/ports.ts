@@ -26,7 +26,7 @@ export interface PortsConfig {
  */
 export const PORTS: PortsConfig = {
   /** Default web server port */
-  DEFAULT_WEB_PORT: parseEnvInt(process.env.ORCHESTRAL_WEB_PORT, 3000),
+  DEFAULT_WEB_PORT: parseEnvInt(process.env.DURE_WEB_PORT, 3000),
 
   /** Minimum valid port */
   MIN_PORT: 1,
