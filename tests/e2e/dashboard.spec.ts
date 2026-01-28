@@ -126,7 +126,7 @@ test.describe('API Endpoints', () => {
   });
 
   test('should return active run status (or null)', async ({ request }) => {
-    const response = await request.get('/api/runs/current');
+    const response = await request.get('/api/runs/active');
 
     expect(response.ok()).toBeTruthy();
 
