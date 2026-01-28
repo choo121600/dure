@@ -35,7 +35,11 @@ function formatQuestion(crp: CRP): string {
   // Handle multi-question format
   if (crp.questions && crp.questions.length > 0) {
     const firstQuestion = crp.questions[0];
-    return truncateText(firstQuestion.question, 60);
+    // Support both 'question' and 'text' fields for backward compatibility
+    const questionText = firstQuestion.question || (firstQuestion as { text?: string }).text;
+    if (questionText) {
+      return truncateText(questionText, 60);
+    }
   }
   // Handle single-question format
   if (crp.question) {
@@ -149,7 +153,7 @@ export function createCrpNotification(options: CrpNotificationOptions): CrpNotif
     if (opts.length > 0) {
       const optionLabels = opts
         .slice(0, 3)
-        .map((opt, i) => `${i + 1}. ${truncateText(opt.label, 25)}`)
+        .map((opt, i) => `${String.fromCharCode(65 + i)}. ${truncateText(opt.label, 25)}`)
         .join('  ');
       const suffix = opts.length > 3 ? ` (+${opts.length - 3} more)` : '';
       optionsBox.setContent(`{gray-fg}Options: ${optionLabels}${suffix}{/gray-fg}`);

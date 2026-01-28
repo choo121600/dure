@@ -518,11 +518,14 @@ export class TmuxManager {
     }
 
     // Use spawn with array arguments and -l flag for literal text
-    // Note: Claude Code multiline input requires Enter twice to submit
+    // Note: Claude Code multiline input requires Escape to exit multiline mode, then Enter to submit
     const child = spawn('sh', [
       '-c',
       `tmux send-keys -t "${target}" -l '${message.replace(/'/g, "'\\''")}' && ` +
-      `tmux send-keys -t "${target}" C-j`,
+      `sleep 0.3 && ` +
+      `tmux send-keys -t "${target}" Escape && ` +
+      `sleep 0.1 && ` +
+      `tmux send-keys -t "${target}" Enter`,
     ], { detached: true, stdio: 'ignore' });
     child.unref();
   }

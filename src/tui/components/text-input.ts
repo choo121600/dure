@@ -102,20 +102,31 @@ export function createTextInput(options: TextInputOptions): TextInputComponent {
     textarea.setValue(initialValue);
   }
 
-  // Handle Ctrl+Enter (submit)
-  // blessed textarea captures 'enter' for newlines, we need C-enter
-  textarea.key(['C-enter'], () => {
+  // Submit handler
+  const handleSubmit = () => {
     const value = textarea.getValue().trim();
-    if (value && submitCallback) {
+    if (submitCallback) {
       submitCallback(value);
     }
-  });
+  };
 
-  // Also handle Ctrl+S as an alternative submit
-  textarea.key(['C-s'], () => {
-    const value = textarea.getValue().trim();
-    if (value && submitCallback) {
-      submitCallback(value);
+  // Handle Ctrl+Enter (submit)
+  textarea.key(['C-enter'], handleSubmit);
+
+  // Handle Ctrl+S as an alternative submit
+  textarea.key(['C-s'], handleSubmit);
+
+  // Handle raw keypress for terminals that intercept C-s
+  textarea.on('keypress', (_ch: string, key: { ctrl?: boolean; name?: string; full?: string }) => {
+    if (key && key.ctrl && key.name === 's') {
+      handleSubmit();
+    }
+    // Allow Enter to submit when textarea is empty (for optional rationale)
+    if (key && key.name === 'enter' && !key.ctrl) {
+      const value = textarea.getValue().trim();
+      if (value === '') {
+        handleSubmit();
+      }
     }
   });
 

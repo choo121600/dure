@@ -46,7 +46,6 @@ export function createCrpRespondScreen(options: CrpRespondScreenOptions): CrpRes
   let overlay: Widgets.BoxElement | null = null;
   let currentRunId: string | null = null;
   let currentCrp: CRP | null = null;
-  let optionsList: Widgets.ListElement | null = null;
   let rationaleInput: TextInputComponent | null = null;
   let selectedOptionIndex = 0;
   let questionStates: QuestionState[] = [];
@@ -189,63 +188,105 @@ export function createCrpRespondScreen(options: CrpRespondScreenOptions): CrpRes
     contentTop += 1;
 
     if (!inRationaleMode) {
-      // Options list
+      // Options display
       if (questionOptions.length > 0) {
-        const optionItems = questionOptions.map((opt, i) => {
-          const selected = i === selectedOptionIndex;
-          const marker = selected ? '{cyan-fg}>{/cyan-fg}' : ' ';
-          const riskLabel = opt.risk ? ` {red-fg}[${opt.risk}]{/red-fg}` : '';
-          return `${marker} {bold}${opt.label}{/bold}${riskLabel}\n  {gray-fg}${opt.description}{/gray-fg}`;
-        });
-
-        optionsList = blessed.list({
+        // Create scrollable container for options
+        const optionsContainer = blessed.box({
           parent: overlay,
           top: contentTop,
           left: 5,
           width: '90%',
           height: '50%',
-          items: optionItems,
-          tags: true,
+          scrollable: true,
+          alwaysScroll: true,
+          scrollbar: {
+            ch: '│',
+            style: { fg: 'cyan' },
+          },
           keys: true,
           vi: false,
           mouse: true,
-          interactive: true,
-          style: {
-            selected: {
-              bg: 'blue',
-              fg: 'white',
-            },
-            item: {
-              fg: 'white',
-            },
-          },
         });
 
-        optionsList.select(selectedOptionIndex);
-        optionsList.focus();
+        // Render options as individual boxes
+        const renderOptions = () => {
+          // Clear existing children
+          optionsContainer.children.slice().forEach((child) => child.destroy());
+
+          let optionTop = 0;
+          questionOptions.forEach((opt, i) => {
+            const isSelected = i === selectedOptionIndex;
+            const marker = isSelected ? '{cyan-fg}▶{/cyan-fg}' : ' ';
+            const riskLabel = opt.risk ? ` {red-fg}[${opt.risk}]{/red-fg}` : '';
+            const bgStyle = isSelected ? 'blue' : 'black';
+
+            // Calculate height based on description length
+            const descLines = Math.ceil((opt.description?.length || 0) / 70) + 1;
+            const optionHeight = 2 + descLines;
+
+            const optionLetter = String.fromCharCode(65 + i); // A, B, C, ...
+            blessed.box({
+              parent: optionsContainer,
+              top: optionTop,
+              left: 0,
+              width: '100%-2',
+              height: optionHeight,
+              content: `${marker} {cyan-fg}${optionLetter}.{/cyan-fg} {bold}${opt.label}{/bold}${riskLabel}\n  {gray-fg}${opt.description || ''}{/gray-fg}`,
+              tags: true,
+              style: {
+                fg: 'white',
+                bg: bgStyle,
+              },
+            });
+
+            optionTop += optionHeight + 1;
+          });
+
+          // Scroll to selected option
+          const scrollTo = questionOptions.slice(0, selectedOptionIndex).reduce((acc, opt, _i) => {
+            const descLines = Math.ceil((opt.description?.length || 0) / 70) + 1;
+            return acc + 2 + descLines + 1;
+          }, 0);
+          optionsContainer.scrollTo(scrollTo);
+
+          screen.render();
+        };
+
+        renderOptions();
+        optionsContainer.focus();
 
         // Handle option selection with arrow keys
-        optionsList.key(['up', 'k'], () => {
+        optionsContainer.key(['up', 'k'], () => {
           selectedOptionIndex = Math.max(0, selectedOptionIndex - 1);
-          optionsList?.select(selectedOptionIndex);
-          screen.render();
+          renderOptions();
         });
 
-        optionsList.key(['down', 'j'], () => {
+        optionsContainer.key(['down', 'j'], () => {
           selectedOptionIndex = Math.min(questionOptions.length - 1, selectedOptionIndex + 1);
-          optionsList?.select(selectedOptionIndex);
-          screen.render();
+          renderOptions();
         });
 
         // Handle Enter to select
-        optionsList.key(['enter'], () => {
+        optionsContainer.key(['enter'], () => {
           handleOptionSelected(questionOptions[selectedOptionIndex]);
         });
 
         // Handle Escape to cancel
-        optionsList.key(['escape'], () => {
+        optionsContainer.key(['escape'], () => {
           hide();
           onCancel();
+        });
+
+        // Handle A, B, C... keys for direct option selection
+        const optionKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+        optionKeys.forEach((key, i) => {
+          if (i < questionOptions.length) {
+            optionsContainer.key([key], () => {
+              selectedOptionIndex = i;
+              renderOptions();
+              handleOptionSelected(questionOptions[i]);
+            });
+          }
         });
       } else {
         // No options - show text input for free-form response
@@ -258,8 +299,8 @@ export function createCrpRespondScreen(options: CrpRespondScreenOptions): CrpRes
 
     // Instructions
     const instructions = inRationaleMode
-      ? '{gray-fg}Ctrl+Enter: Submit | Esc: Back{/gray-fg}'
-      : '{gray-fg}Up/Down: Navigate | Enter: Select | Esc: Cancel{/gray-fg}';
+      ? '{gray-fg}Enter (empty) or Ctrl+S: Submit | Esc: Back{/gray-fg}'
+      : '{gray-fg}Up/Down: Navigate | A-J or Enter: Select | Esc: Cancel{/gray-fg}';
 
     blessed.box({
       parent: overlay,
@@ -505,7 +546,6 @@ export function createCrpRespondScreen(options: CrpRespondScreenOptions): CrpRes
 
     currentRunId = null;
     currentCrp = null;
-    optionsList = null;
     questionStates = [];
     currentQuestionIndex = 0;
     selectedOptionIndex = 0;

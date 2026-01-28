@@ -231,36 +231,49 @@ export class TuiStateManager extends EventEmitter {
       return;
     }
 
-    const crpPath = join(
-      this.runsDir,
-      this.currentRunId,
-      'crp',
-      `${this.currentState.pending_crp}.json`
-    );
-
-    try {
-      const content = await readFile(crpPath, 'utf-8');
-      const crp = JSON.parse(content) as CRP;
-      this.emit('crpPending', crp);
-    } catch {
-      this.emit('crpPending', null);
-    }
+    const crp = await this.getCrp(this.currentState.pending_crp);
+    this.emit('crpPending', crp);
   }
 
   /**
    * Get CRP by ID for the current run
+   * CRP files may be named with timestamps (crp-{timestamp}.json) or by ID
+   * This function searches all CRP files to find the one with matching crp_id
    */
   async getCrp(crpId: string): Promise<CRP | null> {
     if (!this.currentRunId) return null;
 
-    const crpPath = join(this.runsDir, this.currentRunId, 'crp', `${crpId}.json`);
+    const crpDir = join(this.runsDir, this.currentRunId, 'crp');
 
+    // First try direct file lookup (for files named exactly as crpId.json)
+    const directPath = join(crpDir, `${crpId}.json`);
     try {
-      const content = await readFile(crpPath, 'utf-8');
+      const content = await readFile(directPath, 'utf-8');
       return JSON.parse(content) as CRP;
     } catch {
-      return null;
+      // Continue to search other files
     }
+
+    // Search through all CRP files to find matching crp_id
+    try {
+      const files = await readdir(crpDir);
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+        try {
+          const content = await readFile(join(crpDir, file), 'utf-8');
+          const crp = JSON.parse(content) as CRP;
+          if (crp.crp_id === crpId) {
+            return crp;
+          }
+        } catch {
+          // Skip invalid files
+        }
+      }
+    } catch {
+      // CRP directory might not exist
+    }
+
+    return null;
   }
 
   /**

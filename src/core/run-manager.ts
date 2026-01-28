@@ -227,6 +227,44 @@ export class RunManager {
   }
 
   /**
+   * Find the file path for a CRP by its crp_id
+   * Returns the file path if found, null otherwise
+   */
+  private async findCRPFilePath(runId: string, crpId: string): Promise<string | null> {
+    const crpDir = join(this.getRunDir(runId), 'crp');
+
+    // First try direct file lookup (for files named exactly as crpId.json)
+    const directPath = join(crpDir, `${crpId}.json`);
+    try {
+      await access(directPath, constants.F_OK);
+      return directPath;
+    } catch {
+      // Continue to search other files
+    }
+
+    // Search through all CRP files to find matching crp_id
+    try {
+      const files = (await readdir(crpDir)).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        const filePath = join(crpDir, file);
+        try {
+          const content = await readFile(filePath, 'utf-8');
+          const crp = JSON.parse(content) as CRP;
+          if (crp.crp_id === crpId) {
+            return filePath;
+          }
+        } catch {
+          // Skip invalid files
+        }
+      }
+    } catch {
+      // CRP directory might not exist
+    }
+
+    return null;
+  }
+
+  /**
    * Get a specific CRP by its crp_id
    * CRP files may be named with timestamps (crp-{timestamp}.json) or by ID (crp-001.json)
    * This function searches all CRP files to find the one with matching crp_id
@@ -238,19 +276,11 @@ export class RunManager {
     }
 
     try {
-      // First try direct file lookup (for files named exactly as crpId.json)
-      const directPath = join(this.getRunDir(runId), 'crp', `${crpId}.json`);
-      try {
-        const content = await readFile(directPath, 'utf-8');
-        return JSON.parse(content);
-      } catch {
-        // Continue to search other files
-      }
+      const filePath = await this.findCRPFilePath(runId, crpId);
+      if (!filePath) return null;
 
-      // Search through all CRP files to find matching crp_id
-      const crps = await this.listCRPs(runId);
-      const found = crps.find(crp => crp.crp_id === crpId);
-      return found || null;
+      const content = await readFile(filePath, 'utf-8');
+      return JSON.parse(content);
     } catch {
       return null;
     }
@@ -294,14 +324,16 @@ export class RunManager {
     await writeFile(filePath, JSON.stringify(vcr, null, 2), 'utf-8');
 
     // Update CRP status to resolved
-    const crpPath = join(this.getRunDir(runId), 'crp', `${vcr.crp_id}.json`);
+    const crpPath = await this.findCRPFilePath(runId, vcr.crp_id);
+    if (!crpPath) return;
+
     try {
       const crpContent = await readFile(crpPath, 'utf-8');
       const crp = JSON.parse(crpContent) as CRP;
       crp.status = 'resolved';
       await writeFile(crpPath, JSON.stringify(crp, null, 2), 'utf-8');
     } catch {
-      // CRP file not found, ignore
+      // CRP file read/write failed, ignore
     }
   }
 
@@ -335,12 +367,20 @@ export class RunManager {
    * Read MRP evidence
    */
   async readMRPEvidence(runId: string): Promise<MRPEvidence | null> {
+    const mrpDir = join(this.getRunDir(runId), 'mrp');
+
+    // Try evidence.json first (standard location)
     try {
-      const filePath = join(this.getRunDir(runId), 'mrp', 'evidence.json');
-      const content = await readFile(filePath, 'utf-8');
+      const content = await readFile(join(mrpDir, 'evidence.json'), 'utf-8');
       return JSON.parse(content);
     } catch {
-      return null;
+      // Fallback to mrp.json for backward compatibility
+      try {
+        const content = await readFile(join(mrpDir, 'mrp.json'), 'utf-8');
+        return JSON.parse(content);
+      } catch {
+        return null;
+      }
     }
   }
 
