@@ -56,6 +56,11 @@ const STRATEGY_MODEL_MAP: Record<ModelSelectionStrategy, Record<'simple' | 'medi
     medium: { refiner: 'sonnet', builder: 'sonnet', verifier: 'sonnet', gatekeeper: 'sonnet' },
     complex: { refiner: 'sonnet', builder: 'opus', verifier: 'sonnet', gatekeeper: 'opus' },
   },
+  performance_first: {
+    simple: { refiner: 'sonnet', builder: 'sonnet', verifier: 'sonnet', gatekeeper: 'sonnet' },
+    medium: { refiner: 'sonnet', builder: 'sonnet', verifier: 'sonnet', gatekeeper: 'sonnet' },
+    complex: { refiner: 'sonnet', builder: 'opus', verifier: 'sonnet', gatekeeper: 'opus' },
+  },
 };
 
 // 기본 모델 (동적 선택 비활성화 시)

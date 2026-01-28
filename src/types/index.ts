@@ -611,7 +611,7 @@ export interface PromptContext {
 }
 
 // Model Selection Types
-export type ModelSelectionStrategy = 'cost_optimized' | 'quality_first' | 'balanced';
+export type ModelSelectionStrategy = 'cost_optimized' | 'balanced' | 'quality_first' | 'performance_first';
 
 export interface ModelSelectionConfig {
   enabled: boolean;

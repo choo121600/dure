@@ -64,8 +64,14 @@ async function checkInterruptedRuns(): Promise<void> {
   }
 }
 
+// Security options - rate limiting disabled by default for local development tool
+// Enable with ORCHESTRAL_ENABLE_RATE_LIMIT=true for external deployment
+const securityOptions = {
+  rateLimit: process.env.ORCHESTRAL_ENABLE_RATE_LIMIT === 'true',
+};
+
 // Start server with graceful shutdown support
-const server = createServer(projectRoot, config, {}, {
+const server = createServer(projectRoot, config, securityOptions, {
   timeoutMs: 30000,
   signals: ['SIGTERM', 'SIGINT'],
   preserveTmux: true,

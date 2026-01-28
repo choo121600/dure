@@ -43,7 +43,8 @@
     "socket.io": "^4.7.0",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "blessed": "^0.1.81"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
@@ -60,7 +61,8 @@
     "supertest": "^7.2.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@types/blessed": "^0.1.25"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -310,6 +310,25 @@ export class TmuxManager {
   }
 
   /**
+   * Display server info in debug shell
+   * Shows the web server URL and API documentation URL
+   */
+  showServerInfo(port: number): void {
+    // Validate port
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(`Invalid port: ${port}`);
+    }
+
+    const commands = [
+      'echo ""',
+      `echo "Server:   http://localhost:${port}"`,
+      `echo "API Docs: http://localhost:${port}/api-docs"`,
+      'echo ""',
+    ];
+    this.sendKeys('debug', commands.join(' && '));
+  }
+
+  /**
    * Kill the tmux session
    */
   killSession(): void {

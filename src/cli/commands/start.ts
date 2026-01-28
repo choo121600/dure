@@ -13,6 +13,7 @@ const __dirname = dirname(__filename);
 interface StartOptions {
   port: string;
   browser: boolean;
+  tui?: boolean;
 }
 
 export async function startCommand(options: StartOptions): Promise<void> {
@@ -67,39 +68,65 @@ export async function startCommand(options: StartOptions): Promise<void> {
   console.log(chalk.gray('Creating tmux session...'));
   tmuxManager.createSession();
 
-  // Find the standalone server script path
-  // Go up from dist/cli/commands to dist/server
+  // Find the dist root path
+  // Go up from dist/cli/commands to dist/
   const distRoot = join(__dirname, '..', '..');
-  const serverScript = join(distRoot, 'server', 'standalone.js');
 
-  // Start ACE Server in pane 5
-  console.log(chalk.gray(`Starting ACE Server on port ${port}...`));
-  const serverCommand = `node "${serverScript}" --port ${port} --project-root "${projectRoot}"`;
-  tmuxManager.sendKeys('server', serverCommand);
+  if (options.tui) {
+    // TUI mode: Start TUI instead of web server in pane 5
+    console.log(chalk.gray('Starting TUI mode...'));
+    const tuiScript = join(distRoot, 'tui', 'index.js');
+    const tuiCommand = `node "${tuiScript}" --project-root "${projectRoot}"`;
+    tmuxManager.sendKeys('server', tuiCommand);
 
-  // Open browser if enabled
-  if (options.browser) {
-    // Wait a moment for server to start, then open browser
-    setTimeout(() => {
-      const url = `http://localhost:${port}`;
-      try {
-        if (process.platform === 'darwin') {
-          execSync(`open "${url}"`, { stdio: 'ignore' });
-        } else if (process.platform === 'linux') {
-          execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
+    // Show TUI info in debug shell
+    const debugCommands = [
+      'echo ""',
+      'echo "TUI Mode: Use pane 5 to interact with Orchestral"',
+      'echo ""',
+    ];
+    tmuxManager.sendKeys('debug', debugCommands.join(' && '));
+
+    console.log();
+    console.log(chalk.green('✓ Orchestral TUI is running'));
+    console.log();
+    console.log(chalk.white('  Mode: TUI (Terminal User Interface)'));
+    console.log(chalk.white('  Pane: Use tmux pane 5 to interact'));
+    console.log();
+  } else {
+    // Web server mode: Start ACE Server in pane 5
+    const serverScript = join(distRoot, 'server', 'standalone.js');
+    console.log(chalk.gray(`Starting ACE Server on port ${port}...`));
+    const serverCommand = `node "${serverScript}" --port ${port} --project-root "${projectRoot}"`;
+    tmuxManager.sendKeys('server', serverCommand);
+
+    // Show server info in debug shell
+    tmuxManager.showServerInfo(port);
+
+    // Open browser if enabled
+    if (options.browser) {
+      // Wait a moment for server to start, then open browser
+      setTimeout(() => {
+        const url = `http://localhost:${port}`;
+        try {
+          if (process.platform === 'darwin') {
+            execSync(`open "${url}"`, { stdio: 'ignore' });
+          } else if (process.platform === 'linux') {
+            execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
+          }
+        } catch {
+          // Ignore browser open errors
         }
-      } catch {
-        // Ignore browser open errors
-      }
-    }, 1500);
-  }
+      }, 1500);
+    }
 
-  console.log();
-  console.log(chalk.green('✓ Orchestral is running'));
-  console.log();
-  console.log(chalk.white(`  Dashboard: ${chalk.cyan(`http://localhost:${port}`)}`));
-  console.log(chalk.white(`  New Run:   ${chalk.cyan(`http://localhost:${port}/run/new`)}`));
-  console.log();
+    console.log();
+    console.log(chalk.green('✓ Orchestral is running'));
+    console.log();
+    console.log(chalk.white(`  Dashboard: ${chalk.cyan(`http://localhost:${port}`)}`));
+    console.log(chalk.white(`  New Run:   ${chalk.cyan(`http://localhost:${port}/run/new`)}`));
+    console.log();
+  }
   console.log(chalk.gray('Attaching to tmux session...'));
   console.log(chalk.gray('Press Ctrl+B, D to detach from session'));
   console.log();

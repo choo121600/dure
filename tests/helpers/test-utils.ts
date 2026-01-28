@@ -4,7 +4,7 @@
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import type { RunState, CRP, VCR, GatekeeperVerdict, OrchestraConfig, UsageInfo } from '../../src/types/index.js';
+import type { RunState, CRP, VCR, GatekeeperVerdict, OrchestraConfig, UsageInfo, MRPEvidence, Verdict } from '../../src/types/index.js';
 
 /**
  * Create a unique temporary directory for tests
@@ -166,6 +166,62 @@ export function createMockUsageInfo(overrides: Partial<UsageInfo> = {}): UsageIn
 }
 
 /**
+ * Create a mock MRP evidence
+ */
+export function createMockMRPEvidence(
+  runId: string,
+  verdict: Verdict = 'PASS',
+  overrides: Partial<MRPEvidence> = {}
+): MRPEvidence {
+  return {
+    run_id: runId,
+    completed_at: new Date().toISOString(),
+    tests: {
+      total: 10,
+      passed: verdict === 'PASS' ? 10 : 8,
+      failed: verdict === 'PASS' ? 0 : 2,
+      coverage: 85,
+    },
+    files_changed: ['src/index.ts', 'src/utils.ts'],
+    files_created: ['src/new-file.ts'],
+    lines_added: 150,
+    lines_deleted: 30,
+    net_change: 120,
+    decisions: ['Implemented feature X', 'Used library Y'],
+    iterations: 2,
+    max_iterations: 3,
+    logs: {
+      refiner: '.orchestral/runs/' + runId + '/refiner.log',
+      builder: '.orchestral/runs/' + runId + '/builder.log',
+      verifier: '.orchestral/runs/' + runId + '/verifier.log',
+      gatekeeper: '.orchestral/runs/' + runId + '/gatekeeper.log',
+    },
+    edge_cases_tested: ['null input', 'empty string', 'unicode characters'],
+    adversarial_findings: verdict === 'FAIL' ? ['Potential XSS vulnerability'] : [],
+    verdict,
+    ready_for_merge: verdict === 'PASS',
+    gatekeeper_confidence: verdict === 'PASS' ? 'High - all tests passing' : 'Low - issues found',
+    usage: {
+      by_agent: {
+        refiner: createMockUsageInfo({ cost_usd: 0.005 }),
+        builder: createMockUsageInfo({ cost_usd: 0.015 }),
+        verifier: createMockUsageInfo({ cost_usd: 0.008 }),
+        gatekeeper: createMockUsageInfo({ cost_usd: 0.012 }),
+      },
+      total: {
+        total_input_tokens: 4000,
+        total_output_tokens: 2000,
+        total_cache_creation_tokens: 400,
+        total_cache_read_tokens: 800,
+        total_cost_usd: 0.04,
+      },
+      iterations: 2,
+    },
+    ...overrides,
+  };
+}
+
+/**
  * Write a mock state file to disk
  */
 export function writeMockState(runDir: string, state: RunState): void {
@@ -195,6 +251,22 @@ export function writeMockVCR(runDir: string, vcr: VCR): void {
 export function writeMockVerdict(runDir: string, verdict: GatekeeperVerdict): void {
   const verdictPath = join(runDir, 'gatekeeper', 'verdict.json');
   writeFileSync(verdictPath, JSON.stringify(verdict, null, 2), 'utf-8');
+}
+
+/**
+ * Write a mock MRP evidence file to disk
+ */
+export function writeMockMRPEvidence(runDir: string, evidence: MRPEvidence): void {
+  const evidencePath = join(runDir, 'mrp', 'evidence.json');
+  writeFileSync(evidencePath, JSON.stringify(evidence, null, 2), 'utf-8');
+}
+
+/**
+ * Write a mock MRP summary file to disk
+ */
+export function writeMockMRPSummary(runDir: string, summary: string): void {
+  const summaryPath = join(runDir, 'mrp', 'summary.md');
+  writeFileSync(summaryPath, summary, 'utf-8');
 }
 
 /**

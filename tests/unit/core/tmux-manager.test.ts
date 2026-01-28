@@ -723,6 +723,35 @@ describe('TmuxManager', () => {
     });
   });
 
+  describe('showServerInfo', () => {
+    it('should display server URLs in debug shell', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      manager.showServerInfo(3000);
+
+      // Should call send-keys with server URLs
+      const debugCall = mockSpawnSync.mock.calls.find(
+        (call: any[]) => call[0] === 'tmux' &&
+          call[1]?.some((arg: string) =>
+            arg.includes('http://localhost:3000') &&
+            arg.includes('api-docs')
+          )
+      );
+      expect(debugCall).toBeDefined();
+    });
+
+    it('should throw error for invalid port', () => {
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      const manager = new TmuxManager('orchestral', '/project/root');
+
+      expect(() => manager.showServerInfo(0)).toThrow('Invalid port');
+      expect(() => manager.showServerInfo(-1)).toThrow('Invalid port');
+      expect(() => manager.showServerInfo(65536)).toThrow('Invalid port');
+      expect(() => manager.showServerInfo(3.14)).toThrow('Invalid port');
+    });
+  });
+
   describe('listSessions', () => {
     it('should return sessions with matching prefix', () => {
       mockSpawnSync.mockReturnValue({
