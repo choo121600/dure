@@ -1,82 +1,82 @@
-# MRP 검토하기
+# Reviewing MRP
 
-MRP(Merge-Readiness Pack)를 효과적으로 검토하는 방법을 설명합니다.
+This explains how to effectively review MRP (Merge-Readiness Pack).
 
-## MRP란?
+## What is MRP?
 
-**MRP(Merge-Readiness Pack)**는 Gatekeeper가 PASS 판정을 내렸을 때 생성되는 최종 결과물 패키지입니다.
+**MRP (Merge-Readiness Pack)** is the final deliverable package generated when the Gatekeeper gives a PASS judgment.
 
-MRP에는 코드를 머지하기 위해 필요한 모든 정보가 포함됩니다:
+MRP includes all information needed to merge the code:
 
-- 📄 변경 사항 요약
-- 💾 최종 코드
-- 🧪 테스트 파일
-- 📊 테스트 결과
-- 💰 비용 정보
-- 📝 설계 근거 및 로그
+- 📄 Summary of changes
+- 💾 Final code
+- 🧪 Test files
+- 📊 Test results
+- 💰 Cost information
+- 📝 Design rationale and logs
 
-## MRP 알림
+## MRP Notification
 
-MRP가 생성되면:
+When MRP is generated:
 
-1. **웹 대시보드**에 알림 표시
-2. **Run 상태**가 "ready_for_merge"로 변경
-3. **터미널 벨** 울림 (설정된 경우)
+1. **Notification displayed** on web dashboard
+2. **Run status** changes to "ready_for_merge"
+3. **Terminal bell** sounds (if configured)
 
-대시보드에서 "Review MRP" 클릭하여 MRP 페이지로 이동합니다.
+Click "Review MRP" on the dashboard to navigate to the MRP page.
 
-## MRP 구조
+## MRP Structure
 
 ```
 .dure/runs/{run_id}/mrp/
-├── summary.md          # 요약 (가장 먼저 읽기)
-├── code/               # 최종 코드 스냅샷
+├── summary.md          # Summary (read first)
+├── code/               # Final code snapshot
 │   └── src/
 │       └── ...
-├── tests/              # 테스트 파일
+├── tests/              # Test files
 │   └── *.test.ts
-└── evidence.json       # 증거 및 메타데이터
+└── evidence.json       # Evidence and metadata
 ```
 
 ### 1. summary.md
 
-**가장 먼저 읽어야 할 파일입니다.**
+**This is the file you should read first.**
 
 ```markdown
 # Merge-Readiness Pack
 
-## Run 정보
+## Run Information
 - Run ID: run-20240126-143022
-- 총 iteration: 2
-- 완료 시간: 2024-01-26T15:00:00Z
-- 소요 시간: 30분
+- Total iterations: 2
+- Completion time: 2024-01-26T15:00:00Z
+- Duration: 30 minutes
 
-## 변경 사항
-### 추가된 파일
-- `src/middleware/rateLimiter.ts` (45줄)
-- `src/middleware/__tests__/rateLimiter.test.ts` (120줄)
+## Changes
+### Added Files
+- `src/middleware/rateLimiter.ts` (45 lines)
+- `src/middleware/__tests__/rateLimiter.test.ts` (120 lines)
 
-### 수정된 파일
-- `src/app.ts` (+3줄, -0줄)
-  - rateLimiter 미들웨어 등록
+### Modified Files
+- `src/app.ts` (+3 lines, -0 lines)
+  - Registered rateLimiter middleware
 
-## 테스트 결과
-- 총 15개 테스트
-- 통과: 15 (100%)
-- 실패: 0
-- 커버리지: 95%
+## Test Results
+- Total 15 tests
+- Passed: 15 (100%)
+- Failed: 0
+- Coverage: 95%
 
-### 테스트 상세
-✅ Happy path (5개)
-✅ Edge cases (5개)
-✅ Error cases (5개)
+### Test Details
+✅ Happy path (5)
+✅ Edge cases (5)
+✅ Error cases (5)
 
-## 설계 결정
-1. **Rate limiting 기준**: IP 기반, 분당 60회 (VCR-001)
-2. **저장소**: 인메모리 Map 사용 (외부 라이브러리 금지 제약)
-3. **클린업**: 1분마다 만료된 항목 정리
+## Design Decisions
+1. **Rate limiting criteria**: IP-based, 60 per minute (VCR-001)
+2. **Storage**: In-memory Map (external library prohibition constraint)
+3. **Cleanup**: Clean expired items every 1 minute
 
-## 비용
+## Cost
 - Total: $0.124
   - Refiner (iteration 1): $0.002
   - Builder (iteration 1): $0.055
@@ -84,17 +84,17 @@ MRP가 생성되면:
   - Verifier: $0.025
   - Gatekeeper: $0.012
 
-## 리뷰 통과 사유
-- ✅ 모든 테스트 통과
-- ✅ Briefing 요구사항 100% 충족
-- ✅ 코드 품질 양호 (가독성, 유지보수성)
-- ✅ 보안 이슈 없음
-- ✅ 성능 영향 미미
+## Review Pass Reason
+- ✅ All tests passed
+- ✅ 100% Briefing requirements met
+- ✅ Good code quality (readability, maintainability)
+- ✅ No security issues
+- ✅ Minimal performance impact
 ```
 
 ### 2. code/
 
-최종 코드의 **스냅샷**입니다. 변경되거나 추가된 파일만 포함됩니다.
+A **snapshot** of the final code. Only changed or added files are included.
 
 ```
 mrp/code/
@@ -104,7 +104,7 @@ mrp/code/
     └── app.ts
 ```
 
-프로젝트에 직접 적용하려면:
+To apply directly to your project:
 
 ```bash
 cp -r .dure/runs/{run_id}/mrp/code/* .
@@ -112,7 +112,7 @@ cp -r .dure/runs/{run_id}/mrp/code/* .
 
 ### 3. tests/
 
-생성된 테스트 파일입니다.
+Generated test files.
 
 ```
 mrp/tests/
@@ -121,7 +121,7 @@ mrp/tests/
 
 ### 4. evidence.json
 
-메타데이터 및 증거 링크:
+Metadata and evidence links:
 
 ```json
 {
@@ -164,63 +164,63 @@ mrp/tests/
 }
 ```
 
-## 검토 체크리스트
+## Review Checklist
 
-### 1단계: 요약 검토 (summary.md)
+### Step 1: Review Summary (summary.md)
 
-- [ ] Run 정보 확인 (iteration 횟수, 소요 시간)
-- [ ] 변경 사항이 예상과 일치하는가?
-- [ ] 테스트 결과가 모두 통과했는가?
-- [ ] 설계 결정이 합리적인가?
-- [ ] 비용이 예산 내인가?
+- [ ] Check Run information (iteration count, duration)
+- [ ] Do changes match expectations?
+- [ ] Did all tests pass?
+- [ ] Are design decisions reasonable?
+- [ ] Is cost within budget?
 
-### 2단계: 코드 검토 (code/)
+### Step 2: Review Code (code/)
 
-#### 구조 및 위치
+#### Structure and Location
 
-- [ ] 파일 위치가 적절한가?
-- [ ] 네이밍이 프로젝트 컨벤션을 따르는가?
-- [ ] 폴더 구조가 일관적인가?
+- [ ] Is file location appropriate?
+- [ ] Does naming follow project conventions?
+- [ ] Is folder structure consistent?
 
-#### 코드 품질
+#### Code Quality
 
-- [ ] 가독성이 좋은가?
-- [ ] 중복 코드가 없는가?
-- [ ] 주석이 적절한가? (과도하지 않은가?)
-- [ ] 에러 처리가 적절한가?
+- [ ] Is readability good?
+- [ ] Is there no duplicate code?
+- [ ] Are comments appropriate? (not excessive?)
+- [ ] Is error handling appropriate?
 
-#### 기능 정확성
+#### Functional Correctness
 
-- [ ] Briefing의 요구사항을 충족하는가?
-- [ ] Edge case가 고려되었는가?
-- [ ] 보안 취약점이 없는가?
+- [ ] Does it meet Briefing requirements?
+- [ ] Are edge cases considered?
+- [ ] Are there no security vulnerabilities?
 
-### 3단계: 테스트 검토 (tests/)
+### Step 3: Review Tests (tests/)
 
-- [ ] 테스트가 충분한가?
-- [ ] Happy path가 커버되는가?
-- [ ] Edge case가 테스트되는가?
-- [ ] Error case가 테스트되는가?
-- [ ] 테스트 코드가 읽기 쉬운가?
+- [ ] Are tests sufficient?
+- [ ] Is happy path covered?
+- [ ] Are edge cases tested?
+- [ ] Are error cases tested?
+- [ ] Is test code readable?
 
-### 4단계: 로그 검토 (선택)
+### Step 4: Review Logs (Optional)
 
-설계 근거를 이해하고 싶다면:
+If you want to understand design rationale:
 
 ```bash
-# Builder 로그
+# Builder log
 cat .dure/runs/{run_id}/builder/log.md
 
-# Verifier 로그
+# Verifier log
 cat .dure/runs/{run_id}/verifier/log.md
 
-# Gatekeeper 리뷰
+# Gatekeeper review
 cat .dure/runs/{run_id}/gatekeeper/review.md
 ```
 
-## 웹 UI에서 검토
+## Reviewing in Web UI
 
-### MRP 페이지 구조
+### MRP Page Structure
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -255,55 +255,55 @@ cat .dure/runs/{run_id}/gatekeeper/review.md
 └─────────────────────────────────────────────┘
 ```
 
-### 탭별 내용
+### Tab Contents
 
-#### Summary 탭
+#### Summary Tab
 
-- 요약 정보 (summary.md)
-- 빠른 결정을 위한 핵심 정보
+- Summary information (summary.md)
+- Key information for quick decisions
 
-#### Code 탭
+#### Code Tab
 
-- 코드 diff 뷰어
+- Code diff viewer
 - Syntax highlighting
-- 파일별 변경 사항
+- Changes by file
 
-#### Tests 탭
+#### Tests Tab
 
-- 테스트 코드
-- 테스트 결과 상세
-- 커버리지 리포트
+- Test code
+- Detailed test results
+- Coverage report
 
-#### Evidence 탭
+#### Evidence Tab
 
-- evidence.json 내용
-- 메타데이터
-- 링크
+- evidence.json content
+- Metadata
+- Links
 
-#### Logs 탭
+#### Logs Tab
 
-- 모든 에이전트 로그
-- 시간순 이벤트
-- 디버그 정보
+- All agent logs
+- Chronological events
+- Debug information
 
-## 결정 내리기
+## Making a Decision
 
-### 옵션 1: Approve
+### Option 1: Approve
 
-**언제 Approve?**
+**When to Approve?**
 
-- ✅ 모든 요구사항 충족
-- ✅ 코드 품질 양호
-- ✅ 테스트 충분
-- ✅ 설계 결정 합리적
+- ✅ All requirements met
+- ✅ Good code quality
+- ✅ Sufficient tests
+- ✅ Reasonable design decisions
 
-**Approve 후:**
+**After Approve:**
 
-1. Run 상태가 "completed"로 변경
-2. 코드를 프로젝트에 수동으로 적용
+1. Run status changes to "completed"
+2. Manually apply code to project
 
 ```bash
-# 코드 복사
+# Copy code
 cp -r .dure/runs/{run_id}/mrp/code/* .
 
 # Git commit
@@ -318,158 +318,158 @@ Co-Authored-By: Claude Sonnet <noreply@anthropic.com>"
 git push
 ```
 
-### 옵션 2: Request Changes
+### Option 2: Request Changes
 
-**언제 Request Changes?**
+**When to Request Changes?**
 
-- ❌ 요구사항 누락
-- ❌ 코드 품질 문제
-- ❌ 테스트 부족
-- ❌ 설계 문제
+- ❌ Requirements missing
+- ❌ Code quality issues
+- ❌ Insufficient tests
+- ❌ Design issues
 
-**Request Changes 시:**
+**When Requesting Changes:**
 
-1. 피드백 작성:
+1. Write feedback:
 
 ```markdown
-## 변경 요청 사항
+## Change Requests
 
-### 1. 성능 문제
-- 인메모리 Map이 계속 커질 수 있음
-- 메모리 누수 가능성
+### 1. Performance Issue
+- In-memory Map may grow indefinitely
+- Potential memory leak
 
-### 2. 테스트 누락
-- 동시 요청 테스트 필요
-- 클린업 로직 테스트 필요
+### 2. Missing Tests
+- Concurrent request test needed
+- Cleanup logic test needed
 
-### 3. 코드 개선
-- 매직 넘버 (60, 60000) 상수로 추출
+### 3. Code Improvements
+- Extract magic numbers (60, 60000) to constants
 ```
 
-2. 제출 후:
-   - Briefing이 업데이트됨
-   - Builder가 재시작됨 (iteration 증가)
-   - 변경 사항 반영하여 재구현
+2. After submission:
+   - Briefing is updated
+   - Builder restarts (iteration increases)
+   - Re-implements reflecting changes
 
-### 옵션 3: Download
+### Option 3: Download
 
-코드만 다운로드하고 수동으로 적용:
+Download only the code and apply manually:
 
 ```bash
-# 웹 UI에서 "Download" 클릭
-# 또는
+# Click "Download" in web UI
+# Or
 tar -czf mrp.tar.gz .dure/runs/{run_id}/mrp/
 ```
 
-## 실전 예시
+## Practical Examples
 
-### 예시 1: 간단한 유틸리티 함수
+### Example 1: Simple Utility Function
 
 **summary.md:**
 
 ```markdown
-## 변경 사항
-+ src/utils/formatDate.ts (30줄)
+## Changes
++ src/utils/formatDate.ts (30 lines)
 
-## 테스트 결과
-- 총 8개 테스트
-- 통과: 8 (100%)
+## Test Results
+- Total 8 tests
+- Passed: 8 (100%)
 
-## 비용
+## Cost
 Total: $0.018
 ```
 
-**검토:**
+**Review:**
 
 ```bash
-# 코드 확인
+# Check code
 cat .dure/runs/{run_id}/mrp/code/src/utils/formatDate.ts
 
-# 간단하고 테스트 충분 → Approve
+# Simple and sufficient tests → Approve
 ```
 
-### 예시 2: 복잡한 API 구현
+### Example 2: Complex API Implementation
 
 **summary.md:**
 
 ```markdown
-## 변경 사항
-+ src/api/users.ts (150줄)
-+ src/models/User.ts (80줄)
+## Changes
++ src/api/users.ts (150 lines)
++ src/models/User.ts (80 lines)
 ~ src/app.ts (+5, -0)
 
-## 테스트 결과
-- 총 25개 테스트
-- 통과: 23 (92%)
-- 실패: 2
+## Test Results
+- Total 25 tests
+- Passed: 23 (92%)
+- Failed: 2
 
 ## Iteration
-2번 재시도 후 통과
+Passed after 2 retries
 ```
 
-**검토:**
+**Review:**
 
 ```bash
-# 코드 확인 (복잡함)
+# Check code (complex)
 cat .dure/runs/{run_id}/mrp/code/src/api/users.ts
 
-# 로그 확인 (왜 2번 재시도?)
+# Check logs (why 2 retries?)
 cat .dure/runs/{run_id}/gatekeeper/review.md
 
-# 실패한 테스트 확인
+# Check failed tests
 cat .dure/runs/{run_id}/verifier/results.json
 ```
 
-**발견:**
+**Findings:**
 
-- 인증 미들웨어가 누락됨
-- 에러 메시지가 일관적이지 않음
+- Authentication middleware missing
+- Error messages inconsistent
 
-**결정:** Request Changes
+**Decision:** Request Changes
 
 ```markdown
-## 변경 요청
+## Change Requests
 
-1. 인증 미들웨어 추가 필요
-2. 에러 메시지 표준화
-3. 입력 검증 강화
+1. Need to add authentication middleware
+2. Standardize error messages
+3. Strengthen input validation
 ```
 
-### 예시 3: 리팩토링
+### Example 3: Refactoring
 
 **summary.md:**
 
 ```markdown
-## 변경 사항
-~ src/services/UserService.ts (-120줄, +85줄)
-+ src/services/validators.ts (40줄)
+## Changes
+~ src/services/UserService.ts (-120 lines, +85 lines)
++ src/services/validators.ts (40 lines)
 
-## 테스트 결과
-- 기존 테스트 모두 통과
-- 새 테스트 10개 추가
+## Test Results
+- All existing tests passed
+- 10 new tests added
 
-## 비용
+## Cost
 Total: $0.095
 ```
 
-**검토:**
+**Review:**
 
 ```bash
-# Diff 확인
+# Check diff
 diff -u src/services/UserService.ts \
   .dure/runs/{run_id}/mrp/code/src/services/UserService.ts
 
-# 리팩토링 결과:
-# - 함수가 작아지고 읽기 쉬워짐
-# - 재사용 가능한 validator 분리
-# - 기존 동작 유지 (테스트 통과)
+# Refactoring result:
+# - Functions are smaller and more readable
+# - Reusable validators separated
+# - Existing behavior maintained (tests pass)
 ```
 
-**결정:** Approve
+**Decision:** Approve
 
-## 자동화 스크립트
+## Automation Script
 
-### 빠른 적용 스크립트
+### Quick Apply Script
 
 ```bash
 #!/bin/bash
@@ -489,7 +489,7 @@ if [ ! -d "$MRP_DIR" ]; then
   exit 1
 fi
 
-# 요약 확인
+# Check summary
 echo "=== Summary ==="
 cat "$MRP_DIR/summary.md"
 echo ""
@@ -500,7 +500,7 @@ if [ "$confirm" != "y" ]; then
   exit 0
 fi
 
-# 코드 적용
+# Apply code
 cp -r "$MRP_DIR/code/"* .
 
 # Git commit
@@ -514,46 +514,46 @@ Co-Authored-By: Claude Sonnet <noreply@anthropic.com>"
 echo "Applied successfully"
 ```
 
-사용:
+Usage:
 
 ```bash
 chmod +x apply-mrp.sh
 ./apply-mrp.sh run-20240126-143022
 ```
 
-## 주의사항
+## Cautions
 
-### ⚠️ 맹목적으로 Approve 하지 말 것
+### ⚠️ Don't Blindly Approve
 
-테스트가 통과했어도:
+Even if tests pass:
 
-- 요구사항 누락 가능
-- 엣지 케이스 미고려 가능
-- 성능 문제 존재 가능
+- Requirements may be missing
+- Edge cases may not be considered
+- Performance issues may exist
 
-### ⚠️ 기존 코드와 충돌 확인
+### ⚠️ Check for Conflicts with Existing Code
 
-MRP는 Run 시작 시점의 코드 기반입니다. 그 사이 다른 변경이 있었다면 충돌 가능:
+MRP is based on code at Run start time. Conflicts possible if other changes were made since:
 
 ```bash
-# 최신 코드 pull
+# Pull latest code
 git pull
 
-# MRP 적용 전 diff 확인
+# Check diff before applying MRP
 diff -r .dure/runs/{run_id}/mrp/code/ .
 ```
 
-### ⚠️ 보안 검토
+### ⚠️ Security Review
 
-특히 다음 항목은 수동 검토 필수:
+Especially these items require manual review:
 
-- 사용자 입력 처리
-- 인증/인가
-- 데이터베이스 쿼리
-- 외부 API 호출
+- User input handling
+- Authentication/authorization
+- Database queries
+- External API calls
 
-## 다음 단계
+## Next Steps
 
-- [문제 해결](/guide/troubleshooting.md) - MRP 관련 문제 해결
-- [데이터 포맷](/architecture/data-formats.md) - MRP 형식 상세
-- [비용 최적화](/advanced/cost-optimization.md) - 비용 절감 방법
+- [Troubleshooting](/guide/troubleshooting.md) - Solving MRP-related issues
+- [Data Formats](/architecture/data-formats.md) - MRP format details
+- [Cost Optimization](/advanced/cost-optimization.md) - Cost reduction methods

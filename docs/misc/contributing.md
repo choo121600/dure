@@ -1,150 +1,150 @@
-# 기여 가이드
+# Contributing Guide
 
-Dure에 기여해주셔서 감사합니다! 🎼
+Thank you for contributing to Dure! 🎼
 
-## 기여 방법
+## How to Contribute
 
-### 버그 리포트
+### Bug Reports
 
-버그를 발견하셨나요? GitHub Issues에 리포트해주세요.
+Found a bug? Please report it on GitHub Issues.
 
-**포함할 정보:**
+**Information to include:**
 
-- 명확한 제목 (예: "Builder가 JSON 파싱 에러로 크래시")
-- 재현 단계
-- 예상 동작 vs 실제 동작
-- 환경 정보:
-  - OS 및 버전
-  - Node.js 버전
-  - tmux 버전
-  - Claude CLI 버전
-  - Dure 버전
-- 로그 파일:
+- Clear title (e.g., "Builder crashes with JSON parsing error")
+- Steps to reproduce
+- Expected behavior vs actual behavior
+- Environment information:
+  - OS and version
+  - Node.js version
+  - tmux version
+  - Claude CLI version
+  - Dure version
+- Log files:
   - `events.log`
   - `state.json`
-  - `error.flag` (있는 경우)
+  - `error.flag` (if exists)
 
-**템플릿:**
+**Template:**
 
 ```markdown
-## 버그 설명
-Builder가 JSON 파싱 중 크래시합니다.
+## Bug Description
+Builder crashes during JSON parsing.
 
-## 재현 단계
-1. dure start 실행
-2. 다음 Briefing 작성: [내용]
-3. Run 시작
-4. Builder Phase에서 크래시
+## Steps to Reproduce
+1. Run dure start
+2. Write the following Briefing: [content]
+3. Start Run
+4. Crash during Builder Phase
 
-## 예상 동작
-Builder가 정상적으로 완료되어야 합니다.
+## Expected Behavior
+Builder should complete normally.
 
-## 실제 동작
-error.flag가 생성되고 "Unexpected token" 에러 발생
+## Actual Behavior
+error.flag is created with "Unexpected token" error
 
-## 환경
+## Environment
 - OS: macOS 14.0
 - Node.js: v20.0.0
 - tmux: 3.3a
 - Claude CLI: 1.2.0
 - Dure: 0.1.0
 
-## 로그
-[첨부 파일 또는 내용]
+## Logs
+[Attached files or content]
 ```
 
-### 기능 제안
+### Feature Suggestions
 
-새로운 기능을 제안하고 싶으신가요? GitHub Discussions의 "Feature Requests" 카테고리를 사용하세요.
+Want to suggest a new feature? Use the "Feature Requests" category in GitHub Discussions.
 
-**포함할 정보:**
+**Information to include:**
 
-- 문제점: 현재 어떤 불편함이 있나요?
-- 제안: 어떤 기능이 필요한가요?
-- 사용 사례: 어떤 상황에서 사용하나요?
-- 대안: 다른 해결 방법은 없나요?
+- Problem: What inconvenience do you currently have?
+- Suggestion: What feature do you need?
+- Use case: In what situation would you use it?
+- Alternatives: Are there any other solutions?
 
-### 코드 기여
+### Code Contributions
 
-Pull Request는 언제나 환영합니다!
+Pull Requests are always welcome!
 
-#### 사전 준비
+#### Prerequisites
 
 1. **Fork & Clone**
 
 ```bash
-# Fork: GitHub에서 "Fork" 버튼 클릭
+# Fork: Click "Fork" button on GitHub
 
 # Clone
 git clone https://github.com/your-username/dure.git
 cd dure
 
-# Upstream 추가
+# Add upstream
 git remote add upstream https://github.com/yourusername/dure.git
 ```
 
-2. **개발 환경 설정**
+2. **Set up development environment**
 
 ```bash
-# 의존성 설치
+# Install dependencies
 npm install
 
-# 빌드
+# Build
 npm run build
 
-# 테스트
+# Test
 npm test
 
-# 로컬 실행
+# Run locally
 npm run dev
 ```
 
-#### 브랜치 전략
+#### Branch Strategy
 
 ```bash
-# 최신 main 받기
+# Get latest main
 git checkout main
 git pull upstream main
 
-# Feature 브랜치 생성
+# Create feature branch
 git checkout -b feature/your-feature-name
 
-# 또는 Bugfix 브랜치
+# Or bugfix branch
 git checkout -b fix/bug-description
 ```
 
-브랜치 네이밍:
+Branch naming:
 
-- `feature/` - 새 기능
-- `fix/` - 버그 수정
-- `docs/` - 문서 수정
-- `refactor/` - 리팩토링
-- `test/` - 테스트 추가
+- `feature/` - New feature
+- `fix/` - Bug fix
+- `docs/` - Documentation fix
+- `refactor/` - Refactoring
+- `test/` - Adding tests
 
-#### 코드 작성
+#### Writing Code
 
-**코딩 스타일:**
+**Coding style:**
 
-- TypeScript strict mode 준수
-- ESLint 규칙 따르기
-- 의미 있는 변수명/함수명
-- 복잡한 로직에 주석 추가
+- Follow TypeScript strict mode
+- Follow ESLint rules
+- Meaningful variable/function names
+- Add comments for complex logic
 
-**테스트:**
+**Testing:**
 
-- 새 기능은 테스트 필수
-- 기존 테스트가 통과해야 함
-- 커버리지 80% 이상 유지
+- Tests are required for new features
+- Existing tests must pass
+- Maintain coverage above 80%
 
 ```bash
-# 테스트 실행
+# Run tests
 npm test
 
-# 커버리지 확인
+# Check coverage
 npm run test:coverage
 ```
 
-**커밋 메시지:**
+**Commit messages:**
 
 ```
 <type>: <subject>
@@ -154,30 +154,30 @@ npm run test:coverage
 <footer>
 ```
 
-타입:
+Types:
 
-- `feat`: 새 기능
-- `fix`: 버그 수정
-- `docs`: 문서 수정
-- `style`: 코드 포매팅 (로직 변경 없음)
-- `refactor`: 리팩토링
-- `test`: 테스트 추가/수정
-- `chore`: 빌드 설정, 의존성 업데이트 등
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation fix
+- `style`: Code formatting (no logic changes)
+- `refactor`: Refactoring
+- `test`: Adding/modifying tests
+- `chore`: Build settings, dependency updates, etc.
 
-예시:
+Example:
 
 ```
 feat: Add auto-retry for agent crashes
 
-에이전트 크래시 시 자동으로 재시도하는 기능을 추가했습니다.
-config.global.auto_retry.enabled 설정으로 제어할 수 있습니다.
+Added functionality to automatically retry when an agent crashes.
+Can be controlled with the config.global.auto_retry.enabled setting.
 
 Closes #123
 ```
 
-#### Pull Request 제출
+#### Submitting Pull Request
 
-1. **변경 사항 Push**
+1. **Push changes**
 
 ```bash
 git add .
@@ -185,102 +185,102 @@ git commit -m "feat: Add auto-retry"
 git push origin feature/auto-retry
 ```
 
-2. **PR 생성**
+2. **Create PR**
 
-GitHub에서 "New Pull Request" 클릭
+Click "New Pull Request" on GitHub
 
-**PR 템플릿:**
+**PR Template:**
 
 ```markdown
-## 변경 사항
-[무엇을 변경했나요?]
+## Changes
+[What did you change?]
 
-## 동기
-[왜 이 변경이 필요한가요?]
+## Motivation
+[Why is this change needed?]
 
-## 테스트
-[어떻게 테스트했나요?]
+## Testing
+[How did you test it?]
 
-## 체크리스트
-- [ ] 테스트 추가/업데이트
-- [ ] 문서 업데이트
-- [ ] CHANGELOG.md 업데이트 (breaking change인 경우)
-- [ ] 모든 테스트 통과
-- [ ] ESLint 통과
+## Checklist
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] CHANGELOG.md updated (if breaking change)
+- [ ] All tests pass
+- [ ] ESLint passes
 
-## 스크린샷 (UI 변경 시)
-[스크린샷]
+## Screenshots (for UI changes)
+[Screenshots]
 
-## 관련 이슈
+## Related Issues
 Closes #123
 ```
 
-3. **코드 리뷰 대응**
+3. **Respond to code review**
 
-- 리뷰어의 피드백에 정중하게 응답
-- 변경 요청 사항 반영
-- 토론은 PR 코멘트에서
+- Respond politely to reviewer feedback
+- Reflect requested changes
+- Discuss in PR comments
 
-### 문서 기여
+### Documentation Contributions
 
-문서 개선도 큰 기여입니다!
+Documentation improvements are also a great contribution!
 
-**문서 위치:**
+**Documentation location:**
 
-- 가이드: `docs/guide/`
-- 아키텍처: `docs/architecture/`
+- Guides: `docs/guide/`
+- Architecture: `docs/architecture/`
 - API: `docs/api/`
-- 기타: `docs/misc/`
+- Misc: `docs/misc/`
 
-**수정 방법:**
+**How to edit:**
 
-1. `docs/` 폴더의 Markdown 파일 수정
-2. 로컬에서 확인:
+1. Edit Markdown files in `docs/` folder
+2. Verify locally:
 
 ```bash
-# Docsify 서버 실행
+# Run Docsify server
 npx docsify serve docs
 
-# http://localhost:3000 접속
+# Access http://localhost:3000
 ```
 
-3. PR 제출
+3. Submit PR
 
-**문서 작성 가이드라인:**
+**Documentation writing guidelines:**
 
-- 명확하고 간결하게
-- 코드 예시 포함
-- 스크린샷 활용 (UI 관련)
-- 내부 링크 활용
+- Clear and concise
+- Include code examples
+- Use screenshots (for UI-related content)
+- Use internal links
 
-## 개발 가이드
+## Development Guide
 
-### 프로젝트 구조
+### Project Structure
 
 ```
 dure/
 ├── src/
-│   ├── cli/              # CLI 명령어
-│   ├── core/             # 핵심 로직
-│   ├── server/           # 웹 서버
-│   ├── agents/           # 에이전트 로직
-│   └── types/            # TypeScript 타입
-├── templates/            # 프롬프트 템플릿
-├── docs/                 # 문서
-└── tests/                # 테스트
+│   ├── cli/              # CLI commands
+│   ├── core/             # Core logic
+│   ├── server/           # Web server
+│   ├── agents/           # Agent logic
+│   └── types/            # TypeScript types
+├── templates/            # Prompt templates
+├── docs/                 # Documentation
+└── tests/                # Tests
 ```
 
-### 주요 모듈
+### Main Modules
 
-| 모듈 | 설명 |
-|------|------|
-| `Orchestrator` | 에이전트 실행 조율 |
-| `StateManager` | 상태 관리 |
-| `FileWatcher` | 파일 시스템 감시 |
-| `TmuxManager` | tmux 세션 관리 |
-| `UsageTracker` | 토큰 사용량 추적 |
+| Module | Description |
+|--------|-------------|
+| `Orchestrator` | Agent execution orchestration |
+| `StateManager` | State management |
+| `FileWatcher` | File system monitoring |
+| `TmuxManager` | tmux session management |
+| `UsageTracker` | Token usage tracking |
 
-### 테스트 작성
+### Writing Tests
 
 ```typescript
 // tests/core/orchestrator.test.ts
@@ -309,23 +309,23 @@ describe('Orchestrator', () => {
 });
 ```
 
-### 디버깅
+### Debugging
 
-**로그 레벨 조정:**
+**Adjust log level:**
 
 ```bash
 dure start --log-level debug
 ```
 
-**브레이크포인트:**
+**Breakpoints:**
 
 ```typescript
 // src/core/orchestrator.ts
 console.log('[DEBUG] Starting agent:', agentName);
-debugger; // Node.js 디버거 사용
+debugger; // Use Node.js debugger
 ```
 
-**VSCode 디버깅:**
+**VSCode debugging:**
 
 `.vscode/launch.json`:
 
@@ -346,52 +346,52 @@ debugger; // Node.js 디버거 사용
 }
 ```
 
-## 커뮤니티 가이드라인
+## Community Guidelines
 
-### 행동 강령
+### Code of Conduct
 
-- 🤝 존중과 배려
-- 💬 건설적인 피드백
-- 🌍 다양성 존중
-- 🚫 괴롭힘 금지
+- 🤝 Respect and consideration
+- 💬 Constructive feedback
+- 🌍 Respect diversity
+- 🚫 No harassment
 
-### 소통 채널
+### Communication Channels
 
-- **GitHub Issues**: 버그 리포트
-- **GitHub Discussions**: 질문, 토론
-- **Pull Requests**: 코드 리뷰
+- **GitHub Issues**: Bug reports
+- **GitHub Discussions**: Questions, discussions
+- **Pull Requests**: Code review
 
-### 응답 시간
+### Response Time
 
-- 이슈/PR: 보통 3-5일 이내
-- 긴급한 경우: "urgent" 라벨 추가
+- Issues/PRs: Usually within 3-5 days
+- For urgent cases: Add "urgent" label
 
-## 릴리스 프로세스
+## Release Process
 
-### 버전 관리
+### Version Management
 
-[Semantic Versioning](https://semver.org/) 사용:
+Uses [Semantic Versioning](https://semver.org/):
 
 - **Major** (1.0.0): Breaking changes
-- **Minor** (0.1.0): 새 기능 (하위 호환)
-- **Patch** (0.0.1): 버그 수정
+- **Minor** (0.1.0): New features (backward compatible)
+- **Patch** (0.0.1): Bug fixes
 
-### 릴리스 체크리스트
+### Release Checklist
 
-1. [ ] 모든 테스트 통과
-2. [ ] CHANGELOG.md 업데이트
-3. [ ] package.json 버전 업데이트
-4. [ ] Git tag 생성
+1. [ ] All tests pass
+2. [ ] CHANGELOG.md updated
+3. [ ] package.json version updated
+4. [ ] Git tag created
 5. [ ] npm publish
-6. [ ] GitHub Release 작성
+6. [ ] GitHub Release written
 
-## 라이선스
+## License
 
-기여한 코드는 [MIT License](../LICENSE)가 적용됩니다.
+Contributed code is licensed under the [MIT License](../LICENSE).
 
-## 질문이 있으신가요?
+## Have questions?
 
-- GitHub Discussions에 질문 작성
-- 이메일: dure@example.com (가상)
+- Write a question on GitHub Discussions
+- Email: dure@example.com (fictional)
 
-감사합니다! 🎼
+Thank you! 🎼

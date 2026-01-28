@@ -1,68 +1,68 @@
-# Dure - 에이전트 정의
+# Dure - Agent Definitions
 
 ## Refiner
 
-| 항목 | 값 |
+| Item | Value |
 |------|-----|
-| 역할 | Briefing 검토 및 개선 |
-| 기본 모델 | haiku |
-| 입력 | `briefing/raw.md` |
-| 출력 | `briefing/refined.md`, `briefing/clarifications.json`, `briefing/log.md` |
+| Role | Briefing review and improvement |
+| Default Model | haiku |
+| Input | `briefing/raw.md` |
+| Output | `briefing/refined.md`, `briefing/clarifications.json`, `briefing/log.md` |
 
-**행동 규칙:**
-- 충분한 briefing → `refined.md` 생성, 다음 단계로
-- 개선 가능 → `refined.md`에 보완, `log.md`에 근거 기록
-- 모호함 → `crp/` 생성, 인간 응답 대기
+**Behavior Rules:**
+- Sufficient briefing → Generate `refined.md`, proceed to next phase
+- Improvable → Supplement in `refined.md`, record reasoning in `log.md`
+- Ambiguous → Create `crp/`, wait for human response
 
-**자동 개선 허용:**
-- 숫자 기본값
-- 네이밍 컨벤션
-- 파일 경로
+**Auto-improvement Allowed:**
+- Numeric defaults
+- Naming conventions
+- File paths
 
-**CRP 필수:**
-- 아키텍처 결정
-- 외부 의존성 추가
-- 보안 관련 사항
+**CRP Required:**
+- Architecture decisions
+- Adding external dependencies
+- Security-related matters
 
 ## Builder
 
-| 항목 | 값 |
+| Item | Value |
 |------|-----|
-| 역할 | 코드 구현 |
-| 기본 모델 | sonnet |
-| 입력 | `briefing/refined.md`, `briefing/clarifications.json` |
-| 출력 | `builder/output/`, `builder/log.md`, `builder/done.flag` |
+| Role | Code implementation |
+| Default Model | sonnet |
+| Input | `briefing/refined.md`, `briefing/clarifications.json` |
+| Output | `builder/output/`, `builder/log.md`, `builder/done.flag` |
 
-**행동 규칙:**
-- `refined.md` 기반으로 코드 생성
-- 설계 결정 근거를 `log.md`에 기록
-- 완료 시 `done.flag` 생성
+**Behavior Rules:**
+- Generate code based on `refined.md`
+- Record design decision reasoning in `log.md`
+- Create `done.flag` upon completion
 
 ## Verifier
 
-| 항목 | 값 |
+| Item | Value |
 |------|-----|
-| 역할 | 테스트 생성 및 실행, 반례 탐색 |
-| 기본 모델 | haiku |
-| 입력 | `briefing/refined.md`, `builder/output/` |
-| 출력 | `verifier/tests/`, `verifier/results.json`, `verifier/log.md`, `verifier/done.flag` |
+| Role | Test generation and execution, counterexample search |
+| Default Model | haiku |
+| Input | `briefing/refined.md`, `builder/output/` |
+| Output | `verifier/tests/`, `verifier/results.json`, `verifier/log.md`, `verifier/done.flag` |
 
-**행동 규칙:**
-- Builder 완료 후 시작 (`builder/done.flag` 감지)
-- 기능 테스트, 경계 조건 테스트 생성
-- 테스트 실행 결과를 `results.json`에 기록
-- 실패 케이스, 엣지 케이스 명시
+**Behavior Rules:**
+- Start after Builder completion (detect `builder/done.flag`)
+- Generate functional tests, boundary condition tests
+- Record test execution results in `results.json`
+- Specify failure cases, edge cases
 
 ## Gatekeeper
 
-| 항목 | 값 |
+| Item | Value |
 |------|-----|
-| 역할 | 코드 리뷰, 최종 판정 |
-| 기본 모델 | sonnet |
-| 입력 | 전체 아티팩트 (briefing/, builder/, verifier/) |
-| 출력 | `gatekeeper/review.md`, `gatekeeper/verdict.json`, `mrp/` |
+| Role | Code review, final verdict |
+| Default Model | sonnet |
+| Input | All artifacts (briefing/, builder/, verifier/) |
+| Output | `gatekeeper/review.md`, `gatekeeper/verdict.json`, `mrp/` |
 
-**판정 결과:**
-- `PASS` → `mrp/` 생성, 인간에게 제출
-- `FAIL` → `review.md`에 사유, Phase 1로 복귀 (재시도)
-- `NEEDS_HUMAN` → `crp/` 생성, 인간 응답 대기
+**Verdict Results:**
+- `PASS` → Create `mrp/`, submit to human
+- `FAIL` → Record reason in `review.md`, return to Phase 1 (retry)
+- `NEEDS_HUMAN` → Create `crp/`, wait for human response

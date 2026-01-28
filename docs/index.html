@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Dure - Agentic Software Engineering</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템">
+  <meta name="description" content="Input your intent, four agents execute sequentially, and humans only review evidence and make decisions - an engineering system">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
   <style>
@@ -46,18 +46,18 @@
       search: {
         maxAge: 86400000,
         paths: 'auto',
-        placeholder: '검색...',
-        noData: '결과 없음',
+        placeholder: 'Search...',
+        noData: 'No results',
         depth: 6
       },
       copyCode: {
-        buttonText: '복사',
-        errorText: '에러',
-        successText: '복사됨'
+        buttonText: 'Copy',
+        errorText: 'Error',
+        successText: 'Copied'
       },
       pagination: {
-        previousText: '이전',
-        nextText: '다음',
+        previousText: 'Previous',
+        nextText: 'Next',
         crossChapter: true
       },
       tabs: {
@@ -89,7 +89,7 @@
   <!-- Mermaid -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
-    // Mermaid 설정
+    // Mermaid configuration
     var mermaidConfig = {
       startOnLoad: false,
       theme: 'default',
@@ -108,15 +108,15 @@
     mermaid.initialize(mermaidConfig);
   </script>
   <script>
-    // Docsify Mermaid 플러그인
+    // Docsify Mermaid plugin
     window.$docsify.plugins = [].concat(window.$docsify.plugins || [], [
       function(hook, vm) {
         hook.ready(function() {
-          // 페이지 준비 완료
+          // Page ready
         });
 
         hook.doneEach(function() {
-          // 각 페이지 렌더링 완료 후
+          // After each page render
           setTimeout(function() {
             var mermaidElements = document.querySelectorAll('.mermaid:not([data-processed])');
             if (mermaidElements.length > 0) {

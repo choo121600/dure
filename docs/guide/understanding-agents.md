@@ -1,149 +1,149 @@
-# 에이전트 이해하기
+# Understanding Agents
 
-네 개의 에이전트가 어떻게 동작하고 협력하는지 자세히 알아봅니다.
+Learn in detail how the four agents work and collaborate.
 
-## 에이전트 파이프라인
+## Agent Pipeline
 
 ```mermaid
 sequenceDiagram
-    participant H as 인간
+    participant H as Human
     participant R as Refiner
     participant B as Builder
     participant V as Verifier
     participant G as Gatekeeper
 
-    H->>R: Briefing 작성
-    R->>R: 검토 및 개선
-    alt 모호함
-        R->>H: CRP 생성
-        H->>R: VCR 응답
+    H->>R: Write Briefing
+    R->>R: Review and improve
+    alt Ambiguous
+        R->>H: Generate CRP
+        H->>R: VCR response
     end
     R->>B: refined.md
-    B->>B: 코드 생성
+    B->>B: Generate code
     B->>V: done.flag
-    V->>V: 테스트 생성/실행
+    V->>V: Generate/run tests
     V->>G: done.flag
-    G->>G: 최종 판정
+    G->>G: Final judgment
     alt PASS
-        G->>H: MRP 생성
+        G->>H: Generate MRP
     else FAIL
-        G->>B: review.md (재시도)
+        G->>B: review.md (retry)
     else NEEDS_HUMAN
-        G->>H: CRP 생성
+        G->>H: Generate CRP
     end
 ```
 
 ## Refiner
 
-### 역할
+### Role
 
-Briefing을 검토하고 개선하는 첫 번째 게이트키퍼입니다.
+The first gatekeeper that reviews and improves the Briefing.
 
-### 기본 모델
+### Default Model
 
-**Haiku** - 빠른 응답, 비용 효율적
+**Haiku** - Fast response, cost-effective
 
-?> Settings에서 Sonnet이나 Opus로 변경 가능
+?> Can be changed to Sonnet or Opus in Settings
 
-### 입력
+### Input
 
-- `briefing/raw.md` - 인간이 작성한 원본 Briefing
+- `briefing/raw.md` - Original Briefing written by human
 
-### 출력
+### Output
 
-1. `briefing/refined.md` - 검토/개선된 Briefing
-2. `briefing/clarifications.json` - 해석 및 보완 내용
-3. `briefing/log.md` - 검토 근거 및 변경 사항
+1. `briefing/refined.md` - Reviewed/improved Briefing
+2. `briefing/clarifications.json` - Interpretations and supplements
+3. `briefing/log.md` - Review rationale and changes
 
-### 행동 규칙
+### Behavior Rules
 
-#### 1. 충분한 Briefing
+#### 1. Sufficient Briefing
 
 ```markdown
-**입력 (raw.md):**
+**Input (raw.md):**
 # Hello Function
 
-## 요구사항
-- sayHello 함수 생성
-- 파라미터: name (string)
-- 반환: "Hello, {name}!"
+## Requirements
+- Create sayHello function
+- Parameter: name (string)
+- Return: "Hello, {name}!"
 
-**출력 (refined.md):**
-[원본 그대로 복사]
+**Output (refined.md):**
+[Copy original as-is]
 
 **clarifications.json:**
 {}
 
 **log.md:**
-Briefing이 충분히 명확합니다. 추가 개선 없이 다음 단계로 진행합니다.
+Briefing is sufficiently clear. Proceeding to next step without additional improvements.
 ```
 
-#### 2. 자동 개선 가능
+#### 2. Auto-improvement Possible
 
-**허용된 자동 개선:**
+**Allowed Auto-improvements:**
 
-| 항목 | 예시 |
-|------|------|
-| 숫자 기본값 | "적절한 제한" → "분당 60회" |
-| 네이밍 컨벤션 | 프로젝트 스타일 적용 |
-| 파일 경로 | 프로젝트 구조에 맞게 |
+| Item | Example |
+|------|---------|
+| Numeric defaults | "appropriate limit" → "60 per minute" |
+| Naming conventions | Apply project style |
+| File paths | Match project structure |
 
 ```markdown
-**입력 (raw.md):**
-- 적절한 rate limiting 적용
+**Input (raw.md):**
+- Apply appropriate rate limiting
 
-**출력 (refined.md):**
-- IP 기반 rate limiting (분당 60회)
+**Output (refined.md):**
+- IP-based rate limiting (60 per minute)
 
 **clarifications.json:**
 {
   "rate_limit": {
     "interpreted_as": "60 requests per minute per IP",
-    "rationale": "일반적인 API 기본값 적용"
+    "rationale": "Applied common API default value"
   }
 }
 
 **log.md:**
-'적절한'을 구체적인 값(60/분)으로 보완했습니다.
-이는 일반적인 웹 API 표준값입니다.
+Supplemented 'appropriate' with concrete value (60/minute).
+This is a standard value for common web APIs.
 ```
 
-**금지된 자동 개선:**
+**Forbidden Auto-improvements:**
 
-| 항목 | 이유 |
-|------|------|
-| 아키텍처 결정 | 인간 판단 필요 |
-| 외부 의존성 추가 | 프로젝트 정책 확인 필요 |
-| 보안 관련 사항 | 리스크 판단 필요 |
+| Item | Reason |
+|------|--------|
+| Architecture decisions | Human judgment required |
+| Adding external dependencies | Project policy verification needed |
+| Security-related matters | Risk assessment needed |
 
-#### 3. 모호한 Briefing → CRP
+#### 3. Ambiguous Briefing → CRP
 
 ```json
 {
   "crp_id": "crp-001",
   "created_by": "refiner",
   "type": "clarification",
-  "question": "Rate limiting을 어떤 기준으로 적용할까요?",
-  "context": "briefing에 '적절한 rate limiting'이라고만 명시됨",
+  "question": "What criteria should rate limiting be based on?",
+  "context": "Briefing only specifies 'appropriate rate limiting'",
   "options": [
     {
       "id": "A",
-      "label": "IP당 분당 60회",
-      "description": "일반적인 API 기본값",
-      "risk": "낮음"
+      "label": "60 per minute per IP",
+      "description": "Common API default",
+      "risk": "low"
     },
     {
       "id": "B",
-      "label": "사용자당 분당 100회",
-      "description": "인증된 사용자 기준",
-      "risk": "인증 시스템 필요"
+      "label": "100 per minute per user",
+      "description": "Authenticated user basis",
+      "risk": "authentication system required"
     }
   ],
   "recommendation": "A"
 }
 ```
 
-### 설정 (refiner.json)
+### Configuration (refiner.json)
 
 ```json
 {
@@ -152,105 +152,105 @@ Briefing이 충분히 명확합니다. 추가 개선 없이 다음 단계로 진
     "allowed": ["numeric_defaults", "naming", "file_paths"],
     "forbidden": ["architecture", "external_deps", "security"]
   },
-  "delegation_keywords": ["적당히", "알아서", "합리적으로"],
+  "delegation_keywords": ["appropriately", "as needed", "reasonably"],
   "max_refinement_iterations": 2
 }
 ```
 
 ## Builder
 
-### 역할
+### Role
 
-코드를 구현하는 핵심 에이전트입니다.
+The core agent that implements the code.
 
-### 기본 모델
+### Default Model
 
-**Sonnet** - 코드 생성에 최적화된 균형
+**Sonnet** - Balanced optimization for code generation
 
-### 입력
+### Input
 
-1. `briefing/refined.md` - Refiner가 검토한 Briefing
-2. `briefing/clarifications.json` - 해석 내용
-3. (재시도 시) `gatekeeper/review.md` - 피드백
+1. `briefing/refined.md` - Briefing reviewed by Refiner
+2. `briefing/clarifications.json` - Interpretation content
+3. (On retry) `gatekeeper/review.md` - Feedback
 
-### 출력
+### Output
 
-1. 프로젝트 루트에 코드 파일 생성/수정
-2. `builder/output/` - 변경된 파일 목록
-3. `builder/log.md` - 설계 근거
-4. `builder/done.flag` - 완료 신호
+1. Create/modify code files in project root
+2. `builder/output/` - List of changed files
+3. `builder/log.md` - Design rationale
+4. `builder/done.flag` - Completion signal
 
-### 행동 규칙
+### Behavior Rules
 
-#### 1. Refined Briefing 충실히 구현
+#### 1. Faithfully Implement Refined Briefing
 
 ```typescript
-// refined.md의 요구사항:
-// - sayHello 함수
-// - 파라미터: name (string)
-// - 반환: "Hello, {name}!"
+// Requirements from refined.md:
+// - sayHello function
+// - Parameter: name (string)
+// - Return: "Hello, {name}!"
 
 export function sayHello(name: string): string {
   return `Hello, ${name}!`;
 }
 ```
 
-#### 2. 설계 근거 기록 (log.md)
+#### 2. Record Design Rationale (log.md)
 
 ```markdown
 # Builder Log - run-20240126-143022
 
-## 설계 결정
+## Design Decisions
 
-### 1. 파일 위치
-- 파일: src/utils/hello.ts
-- 이유: 프로젝트의 유틸리티 함수는 src/utils/에 위치
+### 1. File Location
+- File: src/utils/hello.ts
+- Reason: Project utility functions are located in src/utils/
 
-### 2. 타입 안전성
-- TypeScript strict mode 준수
-- 명시적 반환 타입 정의
+### 2. Type Safety
+- Compliant with TypeScript strict mode
+- Explicit return type definition
 
-### 3. 에러 처리
-- name이 빈 문자열인 경우: "Hello, !" 반환 (briefing에 명시 없음)
-- 추가 검증은 Verifier에서 필요 시 제안될 것
+### 3. Error Handling
+- If name is empty string: Returns "Hello, !" (not specified in briefing)
+- Additional validation will be suggested by Verifier if needed
 
-## 구현 완료
-- src/utils/hello.ts 생성
-- 총 5줄
+## Implementation Complete
+- Created src/utils/hello.ts
+- Total 5 lines
 ```
 
-#### 3. 기존 프로젝트 스타일 준수
+#### 3. Follow Existing Project Style
 
-Builder는 기존 코드베이스를 분석하여 일관된 스타일을 유지합니다:
+Builder analyzes the existing codebase to maintain consistent style:
 
-- 네이밍 컨벤션
-- 폴더 구조
-- Import 순서
-- 코드 포매팅
+- Naming conventions
+- Folder structure
+- Import order
+- Code formatting
 
-### 재시도 시 동작
+### Behavior on Retry
 
-Gatekeeper가 FAIL 판정을 내리면:
+When Gatekeeper gives a FAIL judgment:
 
-1. `gatekeeper/review.md` 읽기
-2. 피드백 반영하여 재구현
-3. `log.md`에 변경 사항 기록
+1. Read `gatekeeper/review.md`
+2. Re-implement reflecting feedback
+3. Record changes in `log.md`
 
 ```markdown
 # Builder Log - Iteration 2
 
-## Gatekeeper 피드백
-- 빈 문자열 처리 필요
-- 에러 케이스 명시 필요
+## Gatekeeper Feedback
+- Empty string handling needed
+- Error cases need to be explicit
 
-## 변경 사항
-- name이 빈 문자열이면 Error throw
-- 타입 가드 추가
+## Changes
+- Throw Error if name is empty string
+- Added type guard
 
-## 재구현 완료
+## Re-implementation Complete
 ```
 
-### 설정 (builder.json)
+### Configuration (builder.json)
 
 ```json
 {
@@ -269,30 +269,30 @@ Gatekeeper가 FAIL 판정을 내리면:
 
 ## Verifier
 
-### 역할
+### Role
 
-테스트를 생성하고 실행하여 코드를 검증합니다.
+Generates and runs tests to verify the code.
 
-### 기본 모델
+### Default Model
 
-**Haiku** - 빠른 테스트 생성
+**Haiku** - Fast test generation
 
-### 입력
+### Input
 
-1. `briefing/refined.md` - 요구사항
-2. `builder/output/` - 생성된 코드
-3. `builder/log.md` - 설계 근거
+1. `briefing/refined.md` - Requirements
+2. `builder/output/` - Generated code
+3. `builder/log.md` - Design rationale
 
-### 출력
+### Output
 
-1. `verifier/tests/` - 테스트 파일
-2. `verifier/results.json` - 테스트 결과
-3. `verifier/log.md` - 검증 로그
-4. `verifier/done.flag` - 완료 신호
+1. `verifier/tests/` - Test files
+2. `verifier/results.json` - Test results
+3. `verifier/log.md` - Verification log
+4. `verifier/done.flag` - Completion signal
 
-### 테스트 전략
+### Testing Strategy
 
-#### 1. Happy Path 테스트
+#### 1. Happy Path Tests
 
 ```typescript
 // verifier/tests/hello.test.ts
@@ -310,7 +310,7 @@ describe('sayHello', () => {
 });
 ```
 
-#### 2. Edge Cases 테스트
+#### 2. Edge Cases Tests
 
 ```typescript
 describe('sayHello - edge cases', () => {
@@ -331,11 +331,11 @@ describe('sayHello - edge cases', () => {
 
 #### 3. Adversarial Testing
 
-`config.verifier.adversarial.enabled: true`인 경우:
+When `config.verifier.adversarial.enabled: true`:
 
 ```typescript
 describe('sayHello - adversarial', () => {
-  it('should handle null (타입 우회)', () => {
+  it('should handle null (type bypass)', () => {
     // @ts-ignore
     expect(() => sayHello(null)).toThrow();
   });
@@ -352,7 +352,7 @@ describe('sayHello - adversarial', () => {
 });
 ```
 
-### 테스트 결과 (results.json)
+### Test Results (results.json)
 
 ```json
 {
@@ -379,12 +379,12 @@ describe('sayHello - adversarial', () => {
     "number"
   ],
   "adversarial_findings": [
-    "타입 검증이 런타임에 수행되지 않음"
+    "Type validation is not performed at runtime"
   ]
 }
 ```
 
-### 설정 (verifier.json)
+### Configuration (verifier.json)
 
 ```json
 {
@@ -403,46 +403,46 @@ describe('sayHello - adversarial', () => {
 
 ## Gatekeeper
 
-### 역할
+### Role
 
-전체 결과물을 검토하고 최종 판정을 내립니다.
+Reviews the overall deliverables and makes the final judgment.
 
-### 기본 모델
+### Default Model
 
-**Sonnet** - 신중한 판단 필요
+**Sonnet** - Careful judgment required
 
-### 입력
+### Input
 
-모든 아티팩트:
-- `briefing/` - 전체 요구사항
-- `builder/` - 구현 결과
-- `verifier/` - 테스트 결과
-- `vcr/` - 인간 결정 (있는 경우)
-- `state.json` - 현재 상태
+All artifacts:
+- `briefing/` - Full requirements
+- `builder/` - Implementation results
+- `verifier/` - Test results
+- `vcr/` - Human decisions (if any)
+- `state.json` - Current state
 
-### 출력
+### Output
 
-1. `gatekeeper/review.md` - 리뷰 코멘트
-2. `gatekeeper/verdict.json` - 판정 결과
-3. (PASS인 경우) `mrp/` - 최종 결과물
+1. `gatekeeper/review.md` - Review comments
+2. `gatekeeper/verdict.json` - Judgment result
+3. (If PASS) `mrp/` - Final deliverables
 
-### 판정 기준
+### Judgment Criteria
 
-| 기준 | 설명 |
-|------|------|
-| ✅ 테스트 통과 | 모든 테스트 PASS |
-| ✅ 요구사항 충족 | Briefing의 모든 항목 구현 |
-| ✅ 코드 품질 | 읽기 쉽고 유지보수 가능 |
-| ✅ 보안 | 취약점 없음 |
+| Criterion | Description |
+|-----------|-------------|
+| ✅ Tests pass | All tests PASS |
+| ✅ Requirements met | All Briefing items implemented |
+| ✅ Code quality | Readable and maintainable |
+| ✅ Security | No vulnerabilities |
 
-### 판정 결과
+### Judgment Results
 
 #### PASS
 
 ```json
 {
   "verdict": "PASS",
-  "reason": "모든 기준 충족",
+  "reason": "All criteria met",
   "test_results": {
     "total": 10,
     "passed": 10,
@@ -454,55 +454,55 @@ describe('sayHello - adversarial', () => {
 }
 ```
 
-→ MRP 생성
+→ Generate MRP
 
 #### FAIL
 
 ```json
 {
   "verdict": "FAIL",
-  "reason": "테스트 2개 실패",
+  "reason": "2 tests failed",
   "issues": [
-    "빈 문자열 처리 누락",
-    "타입 검증 누락"
+    "Empty string handling missing",
+    "Type validation missing"
   ],
   "suggestions": [
-    "sayHello 함수에 입력 검증 추가",
-    "런타임 타입 체크 구현"
+    "Add input validation to sayHello function",
+    "Implement runtime type check"
   ],
   "iteration": 1,
   "timestamp": "2024-01-26T14:35:00Z"
 }
 ```
 
-→ `review.md` 작성, Builder 재시도
+→ Write `review.md`, Builder retry
 
 #### NEEDS_HUMAN
 
 ```json
 {
   "verdict": "NEEDS_HUMAN",
-  "reason": "보안 관련 결정 필요",
-  "question": "XSS 방지를 위해 HTML 이스케이프를 적용할까요?",
-  "context": "name 파라미터가 웹 페이지에 직접 출력될 수 있음",
+  "reason": "Security-related decision needed",
+  "question": "Should we apply HTML escaping for XSS prevention?",
+  "context": "name parameter may be directly output to web page",
   "timestamp": "2024-01-26T14:35:00Z"
 }
 ```
 
-→ CRP 생성
+→ Generate CRP
 
-### MRP 생성 (PASS인 경우)
+### MRP Generation (If PASS)
 
 ```
 mrp/
-├── summary.md          # 요약
-├── code/               # 최종 코드 스냅샷
+├── summary.md          # Summary
+├── code/               # Final code snapshot
 │   └── src/
 │       └── utils/
 │           └── hello.ts
-├── tests/              # 테스트 파일
+├── tests/              # Test files
 │   └── hello.test.ts
-└── evidence.json       # 증거
+└── evidence.json       # Evidence
 ```
 
 **summary.md:**
@@ -510,39 +510,39 @@ mrp/
 ```markdown
 # Merge-Readiness Pack
 
-## Run 정보
+## Run Information
 - Run ID: run-20240126-143022
-- 총 iteration: 1
-- 완료 시간: 2024-01-26T14:35:00Z
+- Total iterations: 1
+- Completion time: 2024-01-26T14:35:00Z
 
-## 변경 사항
-- `src/utils/hello.ts` 추가 (5줄)
+## Changes
+- Added `src/utils/hello.ts` (5 lines)
 
-## 테스트 결과
-- 총 10개 테스트
-- 통과: 10
-- 실패: 0
-- 커버리지: 100%
+## Test Results
+- Total 10 tests
+- Passed: 10
+- Failed: 0
+- Coverage: 100%
 
-## 설계 결정
-1. TypeScript strict mode 준수
-2. 입력 검증 포함
+## Design Decisions
+1. Compliant with TypeScript strict mode
+2. Input validation included
 
-## 비용
+## Cost
 - Total: $0.012
   - Refiner: $0.001
   - Builder: $0.005
   - Verifier: $0.003
   - Gatekeeper: $0.003
 
-## 리뷰 통과 사유
-- 모든 테스트 통과
-- 요구사항 100% 충족
-- 코드 품질 양호
-- 보안 이슈 없음
+## Review Pass Reason
+- All tests passed
+- 100% requirements met
+- Good code quality
+- No security issues
 ```
 
-### 설정 (gatekeeper.json)
+### Configuration (gatekeeper.json)
 
 ```json
 {
@@ -561,9 +561,9 @@ mrp/
 }
 ```
 
-## 에이전트 간 통신
+## Inter-Agent Communication
 
-### 파일 기반 조율
+### File-Based Coordination
 
 ```mermaid
 graph LR
@@ -571,30 +571,30 @@ graph LR
     B -->|done.flag| V[Verifier]
     V -->|done.flag| G[Gatekeeper]
     G -->|review.md| B
-    G -->|MRP| H[인간]
+    G -->|MRP| H[Human]
     R -->|CRP| H
     H -->|VCR| R
 ```
 
-### Done Flag 메커니즘
+### Done Flag Mechanism
 
-각 에이전트는 완료 시 `done.flag` 파일을 생성합니다:
+Each agent creates a `done.flag` file upon completion:
 
 ```bash
-# Builder 완료
+# Builder complete
 touch .dure/runs/{run_id}/builder/done.flag
 
-# Verifier가 이를 감지하고 시작
+# Verifier detects this and starts
 inotifywait -e create .dure/runs/{run_id}/builder/
 ```
 
-이는:
-- ✅ 명확한 순서 보장
-- ✅ 디버깅 용이
-- ✅ 중간 상태 확인 가능
+This provides:
+- ✅ Clear order guarantee
+- ✅ Easy debugging
+- ✅ Ability to check intermediate states
 
-## 다음 단계
+## Next Steps
 
-- [CRP 응답](/guide/responding-to-crp.md) - CRP 처리 방법
-- [MRP 검토](/guide/reviewing-mrp.md) - 최종 결과 검토 방법
-- [실행 흐름](/architecture/execution-flow.md) - 상세 실행 과정
+- [Responding to CRP](/guide/responding-to-crp.md) - How to handle CRP
+- [Reviewing MRP](/guide/reviewing-mrp.md) - How to review final results
+- [Execution Flow](/architecture/execution-flow.md) - Detailed execution process

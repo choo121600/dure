@@ -1,109 +1,109 @@
-# Dure - API 및 이벤트 명세
+# Dure - API and Event Specification
 
-## CLI 명령어
+## CLI Commands
 
 ```bash
-dure start                    # 프로젝트 시작
-dure start --port 3001        # 포트 지정
-dure start --no-browser       # 브라우저 자동 열기 비활성화
-dure status                   # 현재 run 상태
-dure logs                     # 실시간 로그
-dure stop                     # run 중지
-dure history                  # 과거 run 목록
-dure recover                  # 중단된 run 목록 확인
-dure recover [run-id]         # 특정 run 복구
-dure recover --auto           # 자동 복구 모드
+dure start                    # Start project
+dure start --port 3001        # Specify port
+dure start --no-browser       # Disable automatic browser opening
+dure status                   # Current run status
+dure logs                     # Real-time logs
+dure stop                     # Stop run
+dure history                  # Past run list
+dure recover                  # Check interrupted run list
+dure recover [run-id]         # Recover specific run
+dure recover --auto           # Auto recovery mode
 ```
 
-## ACE 웹서버 페이지 구조
+## ACE Web Server Page Structure
 
 ```
-/                       # 대시보드 (현재 상태, 최근 runs)
-/settings               # 에이전트별 설정
-/run/new                # 새 run 시작 (briefing 입력)
-/run/:id                # run 상세 (실시간 진행 상황)
-/run/:id/crp/:crpId     # CRP 응답 페이지
-/run/:id/mrp            # MRP 검토 페이지
-/history                # 과거 runs 목록
+/                       # Dashboard (current status, recent runs)
+/settings               # Per-agent settings
+/run/new                # Start new run (briefing input)
+/run/:id                # Run details (real-time progress)
+/run/:id/crp/:crpId     # CRP response page
+/run/:id/mrp            # MRP review page
+/history                # Past runs list
 ```
 
-UI 구현: `src/server/public/`
+UI implementation: `src/server/public/`
 
-## 이벤트 유형
+## Event Types
 
-| 이벤트 | 트리거 | 심각도 | 액션 |
-|--------|--------|--------|------|
-| `agent.started` | 에이전트 실행 시작 | info | 상태 업데이트, UI 갱신 |
-| `agent.completed` | done.flag 생성 | info | 다음 에이전트 시작, UI 갱신 |
-| `agent.failed` | error.flag 또는 크래시 | error | 중단, 알림, 인간 개입 요청 |
-| `agent.timeout` | 제한 시간 초과 | warning | 경고, 재시도 또는 중단 선택 |
-| `crp.created` | CRP 파일 생성 | warning | 인간 입력 필요 알림 |
-| `vcr.created` | VCR 파일 생성 | info | 해당 에이전트 재시작 |
-| `mrp.created` | MRP 디렉토리 생성 | success | 완료 알림, 검토 요청 |
-| `iteration.started` | 재시도 시작 | info | 상태 업데이트 |
-| `iteration.exhausted` | max_iterations 도달 | error | 중단, 인간 개입 요청 |
+| Event | Trigger | Severity | Action |
+|-------|---------|----------|--------|
+| `agent.started` | Agent execution started | info | Status update, UI refresh |
+| `agent.completed` | done.flag created | info | Start next agent, UI refresh |
+| `agent.failed` | error.flag or crash | error | Stop, notification, human intervention request |
+| `agent.timeout` | Time limit exceeded | warning | Warning, choose retry or stop |
+| `crp.created` | CRP file created | warning | Human input required notification |
+| `vcr.created` | VCR file created | info | Restart corresponding agent |
+| `mrp.created` | MRP directory created | success | Completion notification, review request |
+| `iteration.started` | Retry started | info | Status update |
+| `iteration.exhausted` | max_iterations reached | error | Stop, human intervention request |
 
-## 알림 채널
+## Notification Channels
 
-- **WebSocket (필수)**: 실시간 UI 푸시, 재연결 및 상태 동기화
-- **Terminal Bell (선택)**: `\a`, `config.global.terminal_bell: true`
-- **System Notification (선택)**: macOS `osascript`, Linux `notify-send`
-- **File Log (필수)**: `events.log`에 모든 이벤트 기록
+- **WebSocket (required)**: Real-time UI push, reconnection and state synchronization
+- **Terminal Bell (optional)**: `\a`, `config.global.terminal_bell: true`
+- **System Notification (optional)**: macOS `osascript`, Linux `notify-send`
+- **File Log (required)**: Record all events in `events.log`
 
-## WebSocket 이벤트
+## WebSocket Events
 
-**서버→클라이언트:**
+**Server→Client:**
 - `agent.started`, `agent.completed`, `agent.failed`, `agent.timeout`
 - `crp.created`, `phase.changed`, `run.completed`, `run.failed`
 
-**클라이언트→서버:**
+**Client→Server:**
 - `retry.agent`, `stop.run`, `extend.timeout`, `vcr.submit`
 
-## 에러 처리
+## Error Handling
 
-**에러 유형:**
-- `crash` (재시도 가능): 프로세스 비정상 종료
-- `timeout` (재시도 가능): 시간 초과
-- `validation` (재시도 가능): 출력 형식 오류
-- `permission` (복구 불가): 파일/명령 권한 오류
-- `resource` (복구 불가): 메모리/디스크 부족
+**Error Types:**
+- `crash` (recoverable): Abnormal process termination
+- `timeout` (recoverable): Time exceeded
+- `validation` (recoverable): Output format error
+- `permission` (unrecoverable): File/command permission error
+- `resource` (unrecoverable): Memory/disk shortage
 
-**에이전트 status 값:**
+**Agent status values:**
 `pending`, `running`, `completed`, `failed`, `timeout`, `waiting_human`
 
-## 타임아웃 처리
+## Timeout Handling
 
-| 에이전트 | 기본값 |
-|---------|--------|
-| Refiner | 5분 (300000ms) |
-| Builder | 10분 (600000ms) |
-| Verifier | 5분 (300000ms) |
-| Gatekeeper | 5분 (300000ms) |
+| Agent | Default |
+|-------|---------|
+| Refiner | 5 min (300000ms) |
+| Builder | 10 min (600000ms) |
+| Verifier | 5 min (300000ms) |
+| Gatekeeper | 5 min (300000ms) |
 
-**timeout_action 옵션:** `warn`, `retry`, `stop`
+**timeout_action options:** `warn`, `retry`, `stop`
 
-## events.log 형식
+## events.log Format
 
 ```
 {timestamp} [{level}] {event_type} {key=value pairs}
 ```
 
-예시:
+Example:
 ```
 2024-01-15T14:30:22Z [INFO] run.started run_id=run-20240115-143022
 2024-01-15T14:30:25Z [INFO] agent.started agent=refiner
 2024-01-15T14:31:00Z [INFO] agent.completed agent=refiner duration_ms=35000
 ```
 
-## 헬스체크 엔드포인트
+## Health Check Endpoints
 
-운영 환경에서 서버 상태를 모니터링하기 위한 엔드포인트입니다. Kubernetes liveness/readiness probe와 호환됩니다.
+Endpoints for monitoring server status in production environments. Compatible with Kubernetes liveness/readiness probes.
 
 ### GET /health
 
-전체 시스템 상태를 반환합니다.
+Returns overall system status.
 
-**응답 예시:**
+**Response example:**
 ```json
 {
   "status": "healthy",
@@ -118,25 +118,25 @@ UI 구현: `src/server/public/`
 }
 ```
 
-**상태 값:**
-- `healthy`: 모든 체크 통과
-- `degraded`: 일부 체크 실패 (서비스 가능)
-- `unhealthy`: 핵심 체크 실패
+**Status values:**
+- `healthy`: All checks passed
+- `degraded`: Some checks failed (service available)
+- `unhealthy`: Core checks failed
 
 ### GET /health/live
 
-서버가 응답 가능한지만 확인합니다 (Kubernetes liveness probe용).
+Check only if server is responsive (for Kubernetes liveness probe).
 
-**응답:**
+**Response:**
 ```json
 { "status": "ok", "timestamp": "2026-01-27T10:30:00Z" }
 ```
 
 ### GET /health/ready
 
-모든 의존성이 준비되었는지 확인합니다 (Kubernetes readiness probe용).
+Check if all dependencies are ready (for Kubernetes readiness probe).
 
-**응답 (200 OK):**
+**Response (200 OK):**
 ```json
 {
   "status": "ready",
@@ -148,7 +148,7 @@ UI 구현: `src/server/public/`
 }
 ```
 
-**응답 (503 Service Unavailable):**
+**Response (503 Service Unavailable):**
 ```json
 {
   "status": "not_ready",
@@ -161,9 +161,9 @@ UI 구현: `src/server/public/`
 
 ### GET /health/interrupted
 
-중단된 run 목록을 반환합니다.
+Returns list of interrupted runs.
 
-**응답:**
+**Response:**
 ```json
 {
   "count": 2,
@@ -181,7 +181,7 @@ UI 구현: `src/server/public/`
 }
 ```
 
-## Usage 추적
+## Usage Tracking
 
-[ccusage](https://ccusage.com/)를 활용하여 `~/.claude/projects/`의 JSONL 파일에서 사용량 수집.
-구현: `src/core/usage-tracker.ts`
+Utilizes [ccusage](https://ccusage.com/) to collect usage from JSONL files in `~/.claude/projects/`.
+Implementation: `src/core/usage-tracker.ts`

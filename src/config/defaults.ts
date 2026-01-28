@@ -45,7 +45,7 @@ export const defaultRefinerConfig: RefinerConfig = {
     allowed: ['numeric_defaults', 'naming', 'file_paths'],
     forbidden: ['architecture', 'external_deps', 'security'],
   },
-  delegation_keywords: ['적당히', '알아서', '합리적으로', 'reasonable', 'appropriate'],
+  delegation_keywords: ['as appropriate', 'as needed', 'reasonable', 'appropriate', 'suitable'],
   max_refinement_iterations: 2,
 };
 

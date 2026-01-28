@@ -1,8 +1,8 @@
-# 시스템 개요
+# System Overview
 
-Dure의 전체 아키텍처를 설명합니다.
+Describes the overall architecture of Dure.
 
-## 아키텍처 다이어그램
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -18,7 +18,7 @@ Dure의 전체 아키텍처를 설명합니다.
 │   │ :3000       │         │   └─ runs/                  │   │
 │   └─────────────┘         └─────────────────────────────┘   │
 │         │                              ▲                     │
-│         │ Run 시작                     │                     │
+│         │ Run start                    │                     │
 │         ▼                              │                     │
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │                  tmux session                        │   │
@@ -34,60 +34,60 @@ Dure의 전체 아키텍처를 설명합니다.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 핵심 구성요소
+## Core Components
 
 ### 1. CLI (Command Line Interface)
 
-**역할:** 사용자 진입점
+**Role:** User entry point
 
-**책임:**
-- Dure 초기화
-- tmux 세션 생성
-- 웹 서버 시작
-- 상태 조회 (`status`, `history`)
+**Responsibilities:**
+- Initialize Dure
+- Create tmux session
+- Start web server
+- Query status (`status`, `history`)
 
-**기술:**
+**Technology:**
 - Node.js + TypeScript
-- Commander.js (CLI 프레임워크)
+- Commander.js (CLI framework)
 
 ### 2. ACE Web Server
 
-**역할:** 웹 기반 제어 인터페이스
+**Role:** Web-based control interface
 
-**책임:**
-- Run 생성 및 관리
-- 실시간 상태 모니터링
-- CRP/VCR 인터페이스
-- MRP 검토 인터페이스
+**Responsibilities:**
+- Run creation and management
+- Real-time status monitoring
+- CRP/VCR interface
+- MRP review interface
 
-**기술:**
-- Express.js (웹 프레임워크)
-- Socket.io (실시간 통신)
-- HTML/CSS/JS (프론트엔드)
+**Technology:**
+- Express.js (web framework)
+- Socket.io (real-time communication)
+- HTML/CSS/JS (frontend)
 
-**주요 라우트:**
+**Main Routes:**
 
-| 경로 | 메서드 | 설명 |
-|------|--------|------|
-| `/` | GET | 대시보드 |
-| `/api/runs` | GET | Run 목록 |
-| `/api/runs` | POST | 새 Run 시작 |
-| `/api/runs/:id` | GET | Run 상세 |
-| `/api/crp/:id` | GET | CRP 조회 |
-| `/api/crp/:id` | POST | VCR 제출 |
-| `/api/mrp/:id` | GET | MRP 조회 |
+| Path | Method | Description |
+|------|--------|-------------|
+| `/` | GET | Dashboard |
+| `/api/runs` | GET | Run list |
+| `/api/runs` | POST | Start new Run |
+| `/api/runs/:id` | GET | Run details |
+| `/api/crp/:id` | GET | Get CRP |
+| `/api/crp/:id` | POST | Submit VCR |
+| `/api/mrp/:id` | GET | Get MRP |
 
 ### 3. Tmux Session Manager
 
-**역할:** 에이전트 프로세스 격리
+**Role:** Agent process isolation
 
-**책임:**
-- 각 Run마다 독립된 tmux 세션 생성
-- 6개 pane 레이아웃 구성
-- 에이전트 프로세스 시작/중지
-- 로그 캡처
+**Responsibilities:**
+- Create independent tmux session for each Run
+- Configure 6-pane layout
+- Start/stop agent processes
+- Capture logs
 
-**레이아웃:**
+**Layout:**
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -104,23 +104,23 @@ Dure의 전체 아키텍처를 설명합니다.
 
 ### 4. Orchestrator
 
-**역할:** 에이전트 실행 조율
+**Role:** Agent execution coordination
 
-**책임:**
-- Phase 전환 관리
-- Done flag 감지
-- 에이전트 순차 실행
-- 에러 처리 및 재시도
-- 이벤트 발행
+**Responsibilities:**
+- Phase transition management
+- Done flag detection
+- Sequential agent execution
+- Error handling and retry
+- Event publishing
 
-**상태 기계:**
+**State Machine:**
 
 ```mermaid
 stateDiagram-v2
     [*] --> refine
-    refine --> build : refined.md 생성
-    refine --> waiting_human : CRP 생성
-    waiting_human --> refine : VCR 응답
+    refine --> build : refined.md created
+    refine --> waiting_human : CRP created
+    waiting_human --> refine : VCR response
     build --> verify : done.flag
     verify --> gate : done.flag
     gate --> ready_for_merge : PASS
@@ -131,28 +131,28 @@ stateDiagram-v2
 
 ### 5. File Watcher
 
-**역할:** 파일 시스템 이벤트 감지
+**Role:** File system event detection
 
-**책임:**
-- `done.flag` 생성 감지
-- `crp/` 파일 감지
-- `vcr/` 파일 감지
-- 이벤트 트리거
+**Responsibilities:**
+- Detect `done.flag` creation
+- Detect `crp/` files
+- Detect `vcr/` files
+- Trigger events
 
-**기술:**
-- chokidar (파일 감시 라이브러리)
+**Technology:**
+- chokidar (file watching library)
 
 ### 6. State Manager
 
-**역할:** Run 상태 관리
+**Role:** Run state management
 
-**책임:**
-- `state.json` 읽기/쓰기
-- 상태 업데이트
-- 상태 검증
-- 히스토리 기록
+**Responsibilities:**
+- Read/write `state.json`
+- State updates
+- State validation
+- History recording
 
-**상태 구조:**
+**State Structure:**
 
 ```typescript
 interface RunState {
@@ -172,15 +172,15 @@ interface RunState {
 
 ### 7. Usage Tracker
 
-**역할:** 토큰 사용량 및 비용 추적
+**Role:** Token usage and cost tracking
 
-**책임:**
-- Claude API 사용량 수집
-- 비용 계산
-- 에이전트별 집계
-- 실시간 업데이트
+**Responsibilities:**
+- Collect Claude API usage
+- Calculate costs
+- Aggregate per agent
+- Real-time updates
 
-**비용 계산:**
+**Cost Calculation:**
 
 ```typescript
 const PRICING = {
@@ -198,9 +198,9 @@ function calculateCost(model, inputTokens, outputTokens) {
 }
 ```
 
-## 데이터 흐름
+## Data Flow
 
-### Run 시작부터 완료까지
+### From Run Start to Completion
 
 ```mermaid
 sequenceDiagram
@@ -216,47 +216,47 @@ sequenceDiagram
     participant FileWatcher
 
     User->>CLI: dure start
-    CLI->>WebServer: 시작
-    CLI->>Tmux: 세션 생성
+    CLI->>WebServer: Start
+    CLI->>Tmux: Create session
 
-    User->>WebServer: Briefing 작성
-    WebServer->>Orchestrator: Run 시작
-    Orchestrator->>Tmux: Refiner 실행
+    User->>WebServer: Write Briefing
+    WebServer->>Orchestrator: Start Run
+    Orchestrator->>Tmux: Run Refiner
     Tmux->>Refiner: claude --prompt-file...
 
-    Refiner->>Refiner: Briefing 검토
-    Refiner->>FileSystem: refined.md 생성
+    Refiner->>Refiner: Review Briefing
+    Refiner->>FileSystem: Create refined.md
 
-    FileWatcher->>Orchestrator: refined.md 감지
-    Orchestrator->>Tmux: Builder 실행
+    FileWatcher->>Orchestrator: Detect refined.md
+    Orchestrator->>Tmux: Run Builder
     Tmux->>Builder: claude --prompt-file...
 
-    Builder->>Builder: 코드 생성
-    Builder->>FileSystem: done.flag 생성
+    Builder->>Builder: Generate code
+    Builder->>FileSystem: Create done.flag
 
-    FileWatcher->>Orchestrator: done.flag 감지
-    Orchestrator->>Tmux: Verifier 실행
+    FileWatcher->>Orchestrator: Detect done.flag
+    Orchestrator->>Tmux: Run Verifier
     Tmux->>Verifier: claude --prompt-file...
 
-    Verifier->>Verifier: 테스트 생성/실행
-    Verifier->>FileSystem: done.flag 생성
+    Verifier->>Verifier: Create/run tests
+    Verifier->>FileSystem: Create done.flag
 
-    FileWatcher->>Orchestrator: done.flag 감지
-    Orchestrator->>Tmux: Gatekeeper 실행
+    FileWatcher->>Orchestrator: Detect done.flag
+    Orchestrator->>Tmux: Run Gatekeeper
     Tmux->>Gatekeeper: claude --prompt-file...
 
-    Gatekeeper->>Gatekeeper: 최종 판정
-    Gatekeeper->>FileSystem: MRP 생성
+    Gatekeeper->>Gatekeeper: Final verdict
+    Gatekeeper->>FileSystem: Create MRP
 
-    Orchestrator->>WebServer: Run 완료 이벤트
-    WebServer->>User: 알림 표시
+    Orchestrator->>WebServer: Run completed event
+    WebServer->>User: Display notification
 ```
 
-## 통신 메커니즘
+## Communication Mechanisms
 
-### 1. 파일 기반 조율
+### 1. File-Based Coordination
 
-에이전트 간 통신은 **파일시스템**으로 이루어집니다:
+Communication between agents is done through the **file system**:
 
 ```
 Refiner → refined.md → Builder
@@ -264,61 +264,61 @@ Builder → done.flag → Verifier
 Verifier → done.flag → Gatekeeper
 ```
 
-**장점:**
-- ✅ 명확한 인터페이스
-- ✅ 디버깅 용이 (파일 직접 확인)
-- ✅ 재현 가능 (모든 중간 산출물 보존)
-- ✅ 에이전트 독립성 (프로세스 격리)
+**Advantages:**
+- Clear interface
+- Easy debugging (can directly check files)
+- Reproducible (all intermediate artifacts preserved)
+- Agent independence (process isolation)
 
-**단점:**
-- ❌ 실시간성 낮음 (폴링 필요)
-- ❌ 파일 I/O 오버헤드
+**Disadvantages:**
+- Low real-time capability (requires polling)
+- File I/O overhead
 
-### 2. WebSocket (실시간 업데이트)
+### 2. WebSocket (Real-time Updates)
 
-웹 UI는 **WebSocket**으로 실시간 상태를 받습니다:
+The web UI receives real-time status via **WebSocket**:
 
 ```typescript
-// 서버 → 클라이언트
+// Server → Client
 socket.emit('agent.started', { agent: 'builder' });
 socket.emit('agent.completed', { agent: 'builder', duration_ms: 45000 });
 socket.emit('phase.changed', { from: 'build', to: 'verify' });
 
-// 클라이언트 → 서버
+// Client → Server
 socket.emit('retry.agent', { agent: 'builder' });
 socket.emit('stop.run', {});
 ```
 
-### 3. 이벤트 버스
+### 3. Event Bus
 
-내부적으로 **EventEmitter** 기반 이벤트 버스:
+Internal **EventEmitter**-based event bus:
 
 ```typescript
 eventBus.on('agent.completed', (data) => {
-  // 다음 에이전트 시작
+  // Start next agent
   orchestrator.startNextAgent();
 
-  // 웹소켓으로 브로드캐스트
+  // Broadcast via websocket
   io.emit('agent.completed', data);
 
-  // 로그 기록
+  // Log recording
   logger.info('Agent completed', data);
 });
 ```
 
-## 에러 처리
+## Error Handling
 
-### 에러 유형
+### Error Types
 
-| 유형 | 복구 가능 | 처리 방법 |
-|------|----------|----------|
-| `crash` | Yes | 자동 재시도 (최대 2회) |
-| `timeout` | Yes | 타임아웃 연장 또는 재시도 |
-| `validation` | Yes | 자동 재시도 |
-| `permission` | No | 즉시 중단, 인간 개입 |
-| `resource` | No | 즉시 중단, 인간 개입 |
+| Type | Recoverable | Handling Method |
+|------|-------------|-----------------|
+| `crash` | Yes | Auto retry (max 2 times) |
+| `timeout` | Yes | Extend timeout or retry |
+| `validation` | Yes | Auto retry |
+| `permission` | No | Immediate stop, human intervention |
+| `resource` | No | Immediate stop, human intervention |
 
-### 자동 재시도 로직
+### Auto Retry Logic
 
 ```typescript
 async function runAgentWithRetry(agent: Agent, maxRetries = 2) {
@@ -332,27 +332,27 @@ async function runAgentWithRetry(agent: Agent, maxRetries = 2) {
       }
 
       logger.warn(`Agent ${agent.name} failed, retrying (${attempt}/${maxRetries})`);
-      await sleep(5000); // 5초 대기 후 재시도
+      await sleep(5000); // Wait 5 seconds before retry
     }
   }
 }
 ```
 
-## 보안 고려사항
+## Security Considerations
 
-### 1. Claude CLI 권한
+### 1. Claude CLI Permissions
 
-에이전트는 `--dangerously-skip-permissions` 플래그로 실행됩니다:
+Agents are run with the `--dangerously-skip-permissions` flag:
 
 ```bash
 claude --dangerously-skip-permissions --prompt-file ...
 ```
 
-⚠️ **주의:** 에이전트는 프로젝트 내 모든 파일에 접근 가능합니다.
+Warning: Agents have access to all files in the project.
 
-### 2. 파일 시스템 격리
+### 2. File System Isolation
 
-각 Run은 독립된 폴더:
+Each Run has an independent folder:
 
 ```
 .dure/runs/
@@ -360,9 +360,9 @@ claude --dangerously-skip-permissions --prompt-file ...
 └── run-20240126-150000/  # Run 2
 ```
 
-### 3. 입력 검증
+### 3. Input Validation
 
-Briefing 및 VCR 입력은 검증됩니다:
+Briefing and VCR inputs are validated:
 
 ```typescript
 function validateBriefing(content: string): void {
@@ -376,39 +376,39 @@ function validateBriefing(content: string): void {
 }
 ```
 
-## 확장성
+## Scalability
 
-### 수평 확장 (향후)
+### Horizontal Scaling (Future)
 
-현재는 단일 머신에서 실행되지만, 향후:
+Currently runs on a single machine, but in the future:
 
-- 에이전트를 별도 머신에서 실행
-- 공유 파일시스템 (NFS, S3 등)
-- 분산 이벤트 버스 (Redis Pub/Sub 등)
+- Run agents on separate machines
+- Shared file system (NFS, S3, etc.)
+- Distributed event bus (Redis Pub/Sub, etc.)
 
-### 수직 확장
+### Vertical Scaling
 
-- 더 강력한 모델 사용 (Opus)
-- 병렬 Run 지원 (현재는 순차)
-- 에이전트 병렬 실행 (독립적인 작업)
+- Use more powerful models (Opus)
+- Support parallel Runs (currently sequential)
+- Parallel agent execution (for independent tasks)
 
-## 기술 스택 요약
+## Technology Stack Summary
 
-| 구성요소 | 기술 |
-|---------|------|
-| **런타임** | Node.js 18+ |
-| **언어** | TypeScript |
+| Component | Technology |
+|-----------|------------|
+| **Runtime** | Node.js 18+ |
+| **Language** | TypeScript |
 | **CLI** | Commander.js |
-| **웹 프레임워크** | Express.js |
-| **실시간 통신** | Socket.io |
-| **파일 감시** | chokidar |
-| **프로세스 관리** | tmux |
-| **AI 에이전트** | Claude CLI |
-| **테스트** | Vitest |
+| **Web Framework** | Express.js |
+| **Real-time Communication** | Socket.io |
+| **File Watching** | chokidar |
+| **Process Management** | tmux |
+| **AI Agent** | Claude CLI |
+| **Testing** | Vitest |
 
-## 다음 단계
+## Next Steps
 
-- [에이전트 설계](/architecture/agents.md) - 에이전트 상세 설계
-- [파일 구조](/architecture/file-structure.md) - 폴더 구조 상세
-- [실행 흐름](/architecture/execution-flow.md) - 실행 과정 상세
-- [데이터 포맷](/architecture/data-formats.md) - 파일 포맷 명세
+- [Agent Design](/architecture/agents.md) - Detailed agent design
+- [File Structure](/architecture/file-structure.md) - Detailed folder structure
+- [Execution Flow](/architecture/execution-flow.md) - Detailed execution process
+- [Data Formats](/architecture/data-formats.md) - File format specifications

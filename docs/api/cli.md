@@ -1,67 +1,67 @@
-# CLI 명령어
+# CLI Commands
 
-Dure CLI의 모든 명령어와 옵션을 설명합니다.
+Describes all commands and options for the Dure CLI.
 
-## 설치
+## Installation
 
 ```bash
-# npm으로 전역 설치
+# Global installation via npm
 npm install -g dure
 
-# 또는 로컬 설치
+# Or local installation
 npm install dure
 
-# 또는 npx 사용 (설치 없이)
+# Or use npx (without installation)
 npx dure [command]
 ```
 
 ## dure start
 
-Dure을 시작합니다.
+Starts Dure.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure start [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--port <number>` | `-p` | 3000 | 웹 서버 포트 |
-| `--no-browser` | - | false | 브라우저 자동 열기 비활성화 |
-| `--config <path>` | `-c` | `.dure/config` | 설정 파일 경로 |
-| `--log-level <level>` | `-l` | `info` | 로그 레벨 (debug/info/warn/error) |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--port <number>` | `-p` | 3000 | Web server port |
+| `--no-browser` | - | false | Disable automatic browser opening |
+| `--config <path>` | `-c` | `.dure/config` | Configuration file path |
+| `--log-level <level>` | `-l` | `info` | Log level (debug/info/warn/error) |
 
-### 예시
+### Examples
 
 ```bash
-# 기본 실행
+# Default execution
 dure start
 
-# 포트 변경
+# Change port
 dure start --port 3001
 
-# 브라우저 자동 열기 비활성화
+# Disable automatic browser opening
 dure start --no-browser
 
-# 디버그 로그
+# Debug logs
 dure start --log-level debug
 
-# 복합
+# Combined
 dure start -p 3001 --no-browser
 ```
 
-### 동작
+### Behavior
 
-1. `.dure/` 폴더가 없으면 생성
-2. 설정 파일이 없으면 기본값으로 생성
-3. tmux 세션 생성 (pane 구조)
-4. 웹 서버 시작 (포트 3000)
-5. 브라우저 열기 (옵션에 따라)
+1. Create `.dure/` folder if it doesn't exist
+2. Create configuration files with defaults if they don't exist
+3. Create tmux session (pane structure)
+4. Start web server (port 3000)
+5. Open browser (depending on options)
 
-### 출력
+### Output
 
 ```
 🎼 Dure starting...
@@ -77,35 +77,35 @@ Press Ctrl+C to stop
 
 ## dure status
 
-현재 실행 중인 Run의 상태를 확인합니다.
+Check the status of the currently running Run.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure status [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--json` | - | false | JSON 형식으로 출력 |
-| `--watch` | `-w` | false | 실시간 모니터링 (1초마다 갱신) |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--json` | - | false | Output in JSON format |
+| `--watch` | `-w` | false | Real-time monitoring (refresh every second) |
 
-### 예시
+### Examples
 
 ```bash
-# 현재 상태 확인
+# Check current status
 dure status
 
-# JSON 형식
+# JSON format
 dure status --json
 
-# 실시간 모니터링
+# Real-time monitoring
 dure status --watch
 ```
 
-### 출력 (일반)
+### Output (Normal)
 
 ```
 Current Run: run-20240126-143022
@@ -127,7 +127,7 @@ Usage:
 Pending CRP: None
 ```
 
-### 출력 (JSON)
+### Output (JSON)
 
 ```json
 {
@@ -165,7 +165,7 @@ Pending CRP: None
 }
 ```
 
-### 출력 (Run 없음)
+### Output (No Run)
 
 ```
 No active run
@@ -175,38 +175,38 @@ Use 'dure start' to begin
 
 ## dure stop
 
-현재 실행 중인 Run을 중지합니다.
+Stop the currently running Run.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure stop [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--force` | `-f` | false | 강제 종료 (에이전트 응답 대기 없이) |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--force` | `-f` | false | Force termination (without waiting for agent response) |
 
-### 예시
+### Examples
 
 ```bash
-# 정상 종료
+# Normal termination
 dure stop
 
-# 강제 종료
+# Force termination
 dure stop --force
 ```
 
-### 동작
+### Behavior
 
-1. 현재 실행 중인 에이전트에 종료 신호 전송
-2. 에이전트 완료 대기 (최대 30초)
-3. tmux 세션 종료
-4. 웹 서버 종료
+1. Send termination signal to currently running agent
+2. Wait for agent completion (max 30 seconds)
+3. Terminate tmux session
+4. Stop web server
 
-### 출력
+### Output
 
 ```
 Stopping run-20240126-143022...
@@ -220,42 +220,42 @@ Run stopped successfully
 
 ## dure history
 
-과거 Run 목록을 조회합니다.
+View past Run list.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure history [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--limit <number>` | `-n` | 10 | 표시할 Run 개수 |
-| `--filter <status>` | - | all | 필터 (all/pass/fail/running) |
-| `--json` | - | false | JSON 형식 출력 |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--limit <number>` | `-n` | 10 | Number of Runs to display |
+| `--filter <status>` | - | all | Filter (all/pass/fail/running) |
+| `--json` | - | false | JSON format output |
 
-### 예시
+### Examples
 
 ```bash
-# 최근 10개 Run
+# Recent 10 Runs
 dure history
 
-# 최근 20개 Run
+# Recent 20 Runs
 dure history --limit 20
 
-# PASS만 보기
+# Show only PASS
 dure history --filter pass
 
-# FAIL만 보기
+# Show only FAIL
 dure history --filter fail
 
-# JSON 형식
+# JSON format
 dure history --json
 ```
 
-### 출력
+### Output
 
 ```
 Recent Runs:
@@ -269,7 +269,7 @@ run-20240125-150000  ✓ PASS   $0.145  1 day ago    "Add user API"
 Total: 5 runs
 ```
 
-### 출력 (JSON)
+### Output (JSON)
 
 ```json
 {
@@ -292,42 +292,42 @@ Total: 5 runs
 
 ## dure logs
 
-Run의 로그를 실시간으로 확인합니다.
+View Run logs in real-time.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure logs [run_id] [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--follow` | `-f` | false | 실시간 로그 팔로우 (tail -f) |
-| `--agent <name>` | `-a` | all | 특정 에이전트 로그만 |
-| `--lines <number>` | `-n` | 100 | 표시할 줄 수 |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--follow` | `-f` | false | Follow logs in real-time (tail -f) |
+| `--agent <name>` | `-a` | all | Show only specific agent logs |
+| `--lines <number>` | `-n` | 100 | Number of lines to display |
 
-### 예시
+### Examples
 
 ```bash
-# 현재 Run 로그
+# Current Run logs
 dure logs
 
-# 특정 Run 로그
+# Specific Run logs
 dure logs run-20240126-143022
 
-# 실시간 팔로우
+# Real-time follow
 dure logs --follow
 
-# Builder 로그만
+# Builder logs only
 dure logs --agent builder
 
-# 최근 50줄
+# Recent 50 lines
 dure logs --lines 50
 ```
 
-### 출력
+### Output
 
 ```
 === Events Log (run-20240126-143022) ===
@@ -343,43 +343,43 @@ dure logs --lines 50
 
 ## dure clean
 
-오래된 Run을 정리합니다.
+Clean up old Runs.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure clean [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--days <number>` | `-d` | 30 | N일 이전 Run 삭제 |
-| `--status <status>` | - | - | 특정 상태만 삭제 (fail/pass) |
-| `--dry-run` | - | false | 실제 삭제 없이 목록만 표시 |
-| `--force` | `-f` | false | 확인 없이 삭제 |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--days <number>` | `-d` | 30 | Delete Runs older than N days |
+| `--status <status>` | - | - | Delete only specific status (fail/pass) |
+| `--dry-run` | - | false | Show list only without actual deletion |
+| `--force` | `-f` | false | Delete without confirmation |
 
-### 예시
+### Examples
 
 ```bash
-# 30일 이전 Run 삭제 (대화형)
+# Delete Runs older than 30 days (interactive)
 dure clean
 
-# 7일 이전 Run 삭제
+# Delete Runs older than 7 days
 dure clean --days 7
 
-# FAIL Run만 삭제
+# Delete only FAIL Runs
 dure clean --status fail
 
-# Dry run (실제 삭제 안 함)
+# Dry run (no actual deletion)
 dure clean --dry-run
 
-# 확인 없이 삭제
+# Delete without confirmation
 dure clean --force
 ```
 
-### 출력
+### Output
 
 ```
 Runs to be deleted:
@@ -395,31 +395,31 @@ Delete these runs? (y/N):
 
 ## dure delete
 
-특정 Run을 삭제합니다.
+Delete a specific Run.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure delete <run_id> [options]
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 짧은 형식 | 기본값 | 설명 |
-|------|----------|--------|------|
-| `--force` | `-f` | false | 확인 없이 삭제 |
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--force` | `-f` | false | Delete without confirmation |
 
-### 예시
+### Examples
 
 ```bash
-# 특정 Run 삭제
+# Delete specific Run
 dure delete run-20240126-143022
 
-# 확인 없이 삭제
+# Delete without confirmation
 dure delete run-20240126-143022 --force
 ```
 
-### 출력
+### Output
 
 ```
 Run: run-20240126-143022
@@ -431,69 +431,69 @@ Delete this run? (y/N):
 
 ## dure config
 
-설정을 확인하거나 수정합니다.
+View or modify settings.
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 dure config [command] [options]
 ```
 
-### 서브 명령어
+### Subcommands
 
 #### show
 
-설정 확인:
+View settings:
 
 ```bash
-# 전체 설정
+# All settings
 dure config show
 
-# 특정 에이전트 설정
+# Specific agent settings
 dure config show refiner
 dure config show builder
 
-# JSON 형식
+# JSON format
 dure config show --json
 ```
 
 #### set
 
-설정 변경:
+Change settings:
 
 ```bash
-# 전역 설정
+# Global settings
 dure config set global.max_iterations 5
 
-# 에이전트 모델 변경
+# Change agent model
 dure config set builder.model opus
 
-# 타임아웃 변경
+# Change timeout
 dure config set global.timeouts.builder 900000
 ```
 
 #### reset
 
-설정 초기화:
+Reset settings:
 
 ```bash
-# 전체 초기화
+# Reset all
 dure config reset
 
-# 특정 에이전트만
+# Reset specific agent only
 dure config reset builder
 ```
 
 ## dure version
 
-버전 정보 확인:
+View version information:
 
 ```bash
 dure version
 # dure v0.1.0
 ```
 
-또는:
+Or:
 
 ```bash
 dure --version
@@ -502,45 +502,45 @@ dure --version
 
 ## dure help
 
-도움말 확인:
+View help:
 
 ```bash
-# 전체 명령어 목록
+# All commands list
 dure help
 
-# 특정 명령어 도움말
+# Specific command help
 dure help start
 dure help status
 ```
 
-## 환경 변수
+## Environment Variables
 
-Dure은 다음 환경 변수를 지원합니다:
+Dure supports the following environment variables:
 
-| 변수 | 설명 | 기본값 |
-|------|------|--------|
-| `DURE_PORT` | 웹 서버 포트 | 3000 |
-| `DURE_LOG_LEVEL` | 로그 레벨 | info |
-| `DURE_CONFIG_DIR` | 설정 디렉토리 | .dure/config |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DURE_PORT` | Web server port | 3000 |
+| `DURE_LOG_LEVEL` | Log level | info |
+| `DURE_CONFIG_DIR` | Configuration directory | .dure/config |
 
-예시:
+Example:
 
 ```bash
 DURE_PORT=3001 dure start
 ```
 
-## 종료 코드
+## Exit Codes
 
-| 코드 | 의미 |
-|------|------|
-| 0 | 성공 |
-| 1 | 일반 에러 |
-| 2 | 설정 에러 |
-| 3 | tmux 에러 |
-| 4 | 웹 서버 에러 |
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Configuration error |
+| 3 | tmux error |
+| 4 | Web server error |
 
-## 다음 단계
+## Next Steps
 
-- [설정 파일](/api/configuration.md) - 설정 파일 상세
-- [웹 API](/api/web-api.md) - HTTP API 엔드포인트
-- [문제 해결](/guide/troubleshooting.md) - CLI 문제 해결
+- [Configuration Files](/api/configuration.md) - Configuration file details
+- [Web API](/api/web-api.md) - HTTP API endpoints
+- [Troubleshooting](/guide/troubleshooting.md) - CLI troubleshooting

@@ -1,33 +1,33 @@
 # Dure Documentation
 
-이 문서는 Dure 프로젝트의 공식 문서입니다.
+This is the official documentation for the Dure project.
 
-## 로컬에서 확인하기
+## Viewing Locally
 
 ```bash
-# Docsify CLI 설치
+# Install Docsify CLI
 npm install -g docsify-cli
 
-# 문서 서버 실행
+# Run documentation server
 docsify serve docs
 
-# 브라우저에서 http://localhost:3000 접속
+# Access http://localhost:3000 in browser
 ```
 
-## 문서 구조
+## Documentation Structure
 
-- `guide/` - 사용 가이드
-- `architecture/` - 아키텍처 문서
-- `api/` - API 레퍼런스
-- `advanced/` - 고급 주제
-- `misc/` - FAQ, 기여 가이드 등
+- `guide/` - Usage guides
+- `architecture/` - Architecture documentation
+- `api/` - API reference
+- `advanced/` - Advanced topics
+- `misc/` - FAQ, contributing guide, etc.
 
-## 기여
+## Contributing
 
-문서 개선에 기여하고 싶으시다면 [기여 가이드](misc/contributing.md)를 참고하세요.
+If you'd like to contribute to documentation improvements, please refer to the [Contributing Guide](misc/contributing.md).
 
-## 배포
+## Deployment
 
-이 문서는 GitHub Pages에 자동으로 배포됩니다.
+This documentation is automatically deployed to GitHub Pages.
 
-자세한 내용은 [배포 가이드](deployment.md)를 참고하세요.
+For details, see the [Deployment Guide](deployment.md).

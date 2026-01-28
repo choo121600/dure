@@ -1,6 +1,6 @@
-# Dure - 시스템 아키텍처
+# Dure - System Architecture
 
-## 시스템 개요
+## System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -16,7 +16,7 @@
 │   │ :3000       │         │   └─ runs/                  │   │
 │   └─────────────┘         └─────────────────────────────┘   │
 │         │                              ▲                     │
-│         │ Run 시작                     │                     │
+│         │ Run start                    │                     │
 │         ▼                              │                     │
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │                  tmux session                        │   │
@@ -32,9 +32,9 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 실행 흐름
+## Execution Flow
 
-### Phase 다이어그램
+### Phase Diagram
 
 ```
      ┌──────────────────────────────────────────────────────────┐
@@ -58,57 +58,57 @@
      │              │         └───┬───┘      │    └────┬───┘    │
      │              │             │          │         │        │
      │              │             ▼          │         ▼        │
-     │              │        [인간 검토]      │    [인간 응답]   │
+     │              │        [Human Review]  │    [Human Response]
      │              │             │          │         │        │
      │              └─────────────┼──────────┘         │        │
      │                            │                    │        │
      │                            ▼                    │        │
-     │                        [완료]                   │        │
+     │                        [Complete]               │        │
      │                                                 │        │
      └─────────────────────────────────────────────────┘        │
                                                                 │
      iteration < max_iterations ────────────────────────────────┘
 ```
 
-### 상세 흐름
+### Detailed Flow
 
 ```
-T0   인간: briefing/raw.md 작성
+T0   Human: Write briefing/raw.md
      state = { phase: "refine", iteration: 1 }
 
-T1   Refiner 실행
-     ├─ 충분 → refined.md, phase: "build"
-     ├─ 개선 → refined.md + log.md, phase: "build"
-     └─ 모호 → crp/ 생성, phase: "waiting_human"
+T1   Refiner runs
+     ├─ Sufficient → refined.md, phase: "build"
+     ├─ Improved → refined.md + log.md, phase: "build"
+     └─ Ambiguous → crp/ created, phase: "waiting_human"
 
-T2   Builder 실행
-     - refined.md 읽음
-     - output/에 코드 생성
-     - done.flag 생성
+T2   Builder runs
+     - Read refined.md
+     - Generate code in output/
+     - Create done.flag
      - phase: "verify"
 
-T3   Verifier 실행
-     - builder/done.flag 감지 후 시작
-     - tests/ 생성, 테스트 실행
-     - results.json 기록
-     - done.flag 생성
+T3   Verifier runs
+     - Start after detecting builder/done.flag
+     - Create tests/, run tests
+     - Record results.json
+     - Create done.flag
      - phase: "gate"
 
-T4   Gatekeeper 실행
-     - 전체 아티팩트 검토
-     - verdict.json 작성
-     ├─ PASS → mrp/ 생성, phase: "ready_for_merge"
+T4   Gatekeeper runs
+     - Review all artifacts
+     - Write verdict.json
+     ├─ PASS → Create mrp/, phase: "ready_for_merge"
      ├─ FAIL → review.md, phase: "build", iteration++
-     └─ NEEDS_HUMAN → crp/ 생성, phase: "waiting_human"
+     └─ NEEDS_HUMAN → Create crp/, phase: "waiting_human"
 
-T5   [PASS] 인간: MRP 검토 → 승인 또는 피드백
-     [FAIL] Builder 재시작 (review.md 참조)
-     [NEEDS_HUMAN] 인간: VCR 작성 → 해당 단계 재시작
+T5   [PASS] Human: Review MRP → Approve or provide feedback
+     [FAIL] Builder restarts (reference review.md)
+     [NEEDS_HUMAN] Human: Write VCR → Restart corresponding stage
 ```
 
-## tmux 세션 구성
+## tmux Session Configuration
 
-### 레이아웃
+### Layout
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -123,7 +123,7 @@ T5   [PASS] 인간: MRP 검토 → 승인 또는 피드백
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### 생성 스크립트
+### Creation Script
 
 ```bash
 #!/bin/bash
@@ -131,7 +131,7 @@ SESSION="dure-run-$1"
 
 tmux new-session -d -s $SESSION -n main
 
-# 4개 에이전트 pane
+# 4 agent panes
 tmux split-window -h -t $SESSION:main
 tmux split-window -h -t $SESSION:main.0
 tmux split-window -h -t $SESSION:main.2
@@ -143,31 +143,31 @@ tmux join-pane -v -s $SESSION:main.1 -t $SESSION:main.4
 # ACE server
 tmux split-window -v -t $SESSION:main.4
 
-# 레이아웃 조정
+# Adjust layout
 tmux select-layout -t $SESSION:main tiled
 ```
 
-## 에이전트 실행 명세
+## Agent Execution Specification
 
-### 실행 흐름 개요
+### Execution Flow Overview
 
 ```
-tmux pane 생성
+tmux pane created
        │
        ▼
-claude --dangerously-skip-permissions 실행
+claude --dangerously-skip-permissions execution
        │
        ▼
-프롬프트 파일 경로 전달 (--prompt-file)
+Prompt file path passed (--prompt-file)
        │
        ▼
-에이전트 작업 시작
+Agent task starts
        │
        ▼
-done.flag 생성 → 다음 에이전트 트리거
+done.flag created → Next agent triggered
 ```
 
-### 각 pane 실행 명령어
+### Commands for Each Pane
 
 **Pane 0 (Refiner):**
 ```bash
@@ -197,14 +197,14 @@ cd {project_root} && claude --dangerously-skip-permissions \
   --prompt-file .dure/runs/{run_id}/prompts/gatekeeper.md
 ```
 
-**Pane 4 (Debug Shell):** 대기 상태 - 인간 개입용
+**Pane 4 (Debug Shell):** Standby state - for human intervention
 
 **Pane 5 (ACE Server):**
 ```bash
 cd {project_root} && node .dure/server/index.js --port {config.web_port}
 ```
 
-### 프롬프트 파일 구조
+### Prompt File Structure
 
 ```
 .dure/runs/{run_id}/prompts/
@@ -214,83 +214,83 @@ cd {project_root} && node .dure/server/index.js --port {config.web_port}
 └── gatekeeper.md
 ```
 
-프롬프트 템플릿은 `src/agents/prompt-generator.ts`에 구현되어 있음.
+Prompt templates are implemented in `src/agents/prompt-generator.ts`.
 
-### 에이전트 트리거 메커니즘
+### Agent Trigger Mechanism
 
-순차 실행을 위한 done.flag 감지 방식:
+done.flag detection method for sequential execution:
 
 ```bash
-# 방법 1: 폴링 (단순)
+# Method 1: Polling (simple)
 while [ ! -f ".dure/runs/{run_id}/builder/done.flag" ]; do
   sleep 2
 done
 
-# 방법 2: inotifywait (효율적)
+# Method 2: inotifywait (efficient)
 inotifywait -e create ".dure/runs/{run_id}/builder/"
 ```
 
-### tmux send-keys를 통한 명령어 주입
+### Command Injection via tmux send-keys
 
 ```bash
-# Refiner 시작
+# Start Refiner
 tmux send-keys -t dure-run-{timestamp}:main.0 \
   "claude --dangerously-skip-permissions --model haiku --prompt-file .dure/runs/{run_id}/prompts/refiner.md" Enter
 
-# Builder 시작 (Refiner 완료 후)
+# Start Builder (after Refiner completes)
 tmux send-keys -t dure-run-{timestamp}:main.1 \
   "claude --dangerously-skip-permissions --model sonnet --prompt-file .dure/runs/{run_id}/prompts/builder.md" Enter
 ```
 
-### 재시도 시 컨텍스트 초기화
+### Context Reset on Retry
 
-Gatekeeper가 FAIL 판정 시:
+When Gatekeeper issues FAIL verdict:
 
-1. `state.json`의 `iteration` 증가
-2. Builder pane에 `/clear` 명령으로 컨텍스트 초기화
-3. 트리거 메시지로 재시작 유도
+1. Increment `iteration` in `state.json`
+2. Reset context in Builder pane with `/clear` command
+3. Trigger message to initiate restart
 
 ```bash
 tmux send-keys -t dure-run-{timestamp}:main.1 "/clear" Enter
 sleep 2
 tmux send-keys -t dure-run-{timestamp}:main.1 \
-  "iteration 2를 시작합니다. prompts/builder.md를 읽고 작업을 재개하세요." Enter
+  "Starting iteration 2. Please read prompts/builder.md and resume work." Enter
 ```
 
-### CRP 발생 시 흐름
+### CRP Occurrence Flow
 
-1. 에이전트가 `crp/crp-{n}.json` 생성
-2. ACE 서버가 파일 감지 (inotify 또는 폴링)
-3. 웹 UI에 알림 표시
-4. 인간이 응답 → `vcr/vcr-{n}.json` 생성
-5. ACE 서버가 VCR 감지 → 해당 에이전트 `/clear` 후 재시작
+1. Agent creates `crp/crp-{n}.json`
+2. ACE server detects file (inotify or polling)
+3. Notification displayed in web UI
+4. Human responds → `vcr/vcr-{n}.json` created
+5. ACE server detects VCR → `/clear` and restart corresponding agent
 
-## 코어 클래스 구조
+## Core Class Structure
 
-### Orchestrator 책임 분리
+### Orchestrator Responsibility Separation
 
-Orchestrator의 책임을 여러 전문 클래스로 분리하여 단일 책임 원칙(SRP)을 준수합니다.
+Orchestrator responsibilities are separated into multiple specialized classes following the Single Responsibility Principle (SRP).
 
 ```
 src/core/
-├── orchestrator.ts           # 조율 역할만 담당 (진입점)
-├── run-lifecycle-manager.ts  # 런 생성/재개/중지 관리
-├── agent-coordinator.ts      # 에이전트 시작/완료/전환 조정
-├── error-recovery-service.ts # 에러 감지/재시도 로직
-├── verdict-handler.ts        # Gatekeeper 판정 처리 (PASS/FAIL/NEEDS_HUMAN)
-├── agent-lifecycle-manager.ts # 개별 에이전트 생명주기 관리
-├── phase-transition-manager.ts # 페이즈 전환 상태 관리
-├── event-coordinator.ts      # 이벤트 수집 및 조정
-└── interrupt-recovery.ts     # 중단된 런 복구
+├── orchestrator.ts           # Only coordination role (entry point)
+├── run-lifecycle-manager.ts  # Run creation/resume/stop management
+├── agent-coordinator.ts      # Agent start/completion/transition coordination
+├── error-recovery-service.ts # Error detection/retry logic
+├── verdict-handler.ts        # Gatekeeper verdict handling (PASS/FAIL/NEEDS_HUMAN)
+├── agent-lifecycle-manager.ts # Individual agent lifecycle management
+├── phase-transition-manager.ts # Phase transition state management
+├── event-coordinator.ts      # Event collection and coordination
+└── interrupt-recovery.ts     # Interrupted run recovery
 ```
 
-### 클래스 다이어그램
+### Class Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Orchestrator                            │
-│ - 이벤트 발행 (EventEmitter)                                 │
-│ - 공개 API 제공                                              │
+│ - Event publishing (EventEmitter)                            │
+│ - Public API provision                                       │
 └───────────────────────────────┬─────────────────────────────┘
                                 │
         ┌───────────────────────┼───────────────────────┐
@@ -318,37 +318,37 @@ src/core/
 
 ### Graceful Shutdown
 
-서버 종료 시 안전한 상태 저장을 위한 구조:
+Structure for safe state preservation on server shutdown:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   GracefulShutdown                           │
 ├─────────────────────────────────────────────────────────────┤
-│ 1. 새로운 요청 거부 시작                                      │
-│ 2. 진행 중인 HTTP 요청 완료 대기                             │
-│ 3. WebSocket 연결에 종료 알림 전송                           │
-│ 4. 진행 중인 런 상태 저장 (phase: 'interrupted')             │
-│ 5. tmux 세션 유지 (에이전트 계속 실행 가능)                  │
-│ 6. 파일 워처 정리                                            │
-│ 7. 서버 종료                                                 │
+│ 1. Start rejecting new requests                              │
+│ 2. Wait for in-progress HTTP requests to complete            │
+│ 3. Send shutdown notification to WebSocket connections       │
+│ 4. Save in-progress run state (phase: 'interrupted')         │
+│ 5. Maintain tmux session (agents can continue running)       │
+│ 6. Clean up file watchers                                    │
+│ 7. Shutdown server                                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 인터럽트 복구
+### Interrupt Recovery
 
-서버 재시작 시 중단된 런을 복구하는 구조:
+Structure for recovering interrupted runs on server restart:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   InterruptRecovery                          │
 ├─────────────────────────────────────────────────────────────┤
 │ detectInterruptedRuns()                                      │
-│   └─ .dure/runs/ 스캔                                  │
-│   └─ phase: 'interrupted' 런 식별                            │
+│   └─ Scan .dure/runs/                                        │
+│   └─ Identify runs with phase: 'interrupted'                 │
 │                                                              │
-│ 복구 전략:                                                   │
-│   - refine/build/verify: 해당 에이전트 재시작                │
-│   - gate: Gatekeeper 재시작                                  │
-│   - waiting_human: 그대로 대기                               │
+│ Recovery strategy:                                           │
+│   - refine/build/verify: Restart corresponding agent         │
+│   - gate: Restart Gatekeeper                                 │
+│   - waiting_human: Continue waiting                          │
 └─────────────────────────────────────────────────────────────┘
 ```

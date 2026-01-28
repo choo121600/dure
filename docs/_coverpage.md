@@ -1,12 +1,12 @@
 # Dure 🎼
 
-> 의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고,
-> 인간은 증거를 보고 결정만 하는 엔지니어링 시스템
+> Enter your intent, four agents run sequentially,
+> and humans only make decisions based on evidence
 
-- ✨ 4개의 전문화된 AI 에이전트
-- 🔄 완전한 추적성과 재현 가능성
-- 🎯 인간 중심 설계
-- 🌐 실시간 웹 대시보드
+- ✨ 4 specialized AI agents
+- 🔄 Complete traceability and reproducibility
+- 🎯 Human-centered design
+- 🌐 Real-time web dashboard
 
 [GitHub](https://github.com/yourusername/dure)
-[빠른 시작](/guide/getting-started)
+[Quick Start](/guide/getting-started)

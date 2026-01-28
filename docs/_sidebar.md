@@ -1,42 +1,42 @@
-- 시작하기
+- Getting Started
 
-  - [소개](/)
-  - [빠른 시작](/guide/getting-started.md)
-  - [핵심 개념](/guide/core-concepts.md)
+  - [Introduction](/)
+  - [Quick Start](/guide/getting-started.md)
+  - [Core Concepts](/guide/core-concepts.md)
 
-- 가이드
+- Guide
 
-  - [Briefing 작성](/guide/writing-briefings.md)
-  - [에이전트 이해하기](/guide/understanding-agents.md)
-  - [CRP 응답](/guide/responding-to-crp.md)
-  - [MRP 검토](/guide/reviewing-mrp.md)
-  - [문제 해결](/guide/troubleshooting.md)
+  - [Writing Briefings](/guide/writing-briefings.md)
+  - [Understanding Agents](/guide/understanding-agents.md)
+  - [Responding to CRP](/guide/responding-to-crp.md)
+  - [Reviewing MRP](/guide/reviewing-mrp.md)
+  - [Troubleshooting](/guide/troubleshooting.md)
 
-- 아키텍처
+- Architecture
 
-  - [시스템 개요](/architecture/overview.md)
-  - [에이전트 설계](/architecture/agents.md)
-  - [파일 구조](/architecture/file-structure.md)
-  - [실행 흐름](/architecture/execution-flow.md)
-  - [데이터 포맷](/architecture/data-formats.md)
+  - [System Overview](/architecture/overview.md)
+  - [Agent Design](/architecture/agents.md)
+  - [File Structure](/architecture/file-structure.md)
+  - [Execution Flow](/architecture/execution-flow.md)
+  - [Data Formats](/architecture/data-formats.md)
 
-- API 레퍼런스
+- API Reference
 
-  - [CLI 명령어](/api/cli.md)
-  - [설정 파일](/api/configuration.md)
-  - [웹 API](/api/web-api.md)
-  - [이벤트](/api/events.md)
+  - [CLI Commands](/api/cli.md)
+  - [Configuration Files](/api/configuration.md)
+  - [Web API](/api/web-api.md)
+  - [Events](/api/events.md)
 
-- 고급 주제
+- Advanced Topics
 
-  - [모델 선택](/advanced/model-selection.md)
-  - [재시도 전략](/advanced/retry-strategy.md)
-  - [비용 최적화](/advanced/cost-optimization.md)
-  - [디버깅](/advanced/debugging.md)
+  - [Model Selection](/advanced/model-selection.md)
+  - [Retry Strategy](/advanced/retry-strategy.md)
+  - [Cost Optimization](/advanced/cost-optimization.md)
+  - [Debugging](/advanced/debugging.md)
 
-- 기타
+- Miscellaneous
 
-  - [로드맵](/misc/roadmap.md)
+  - [Roadmap](/misc/roadmap.md)
   - [FAQ](/misc/faq.md)
-  - [기여 가이드](/misc/contributing.md)
-  - [변경 로그](/misc/changelog.md)
+  - [Contributing Guide](/misc/contributing.md)
+  - [Changelog](/misc/changelog.md)

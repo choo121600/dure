@@ -262,22 +262,22 @@ describe('ModelSelector', () => {
     });
   });
 
-  describe('Korean Keywords', () => {
-    it('should recognize Korean technical keywords', () => {
+  describe('Technical Keywords', () => {
+    it('should recognize technical keywords', () => {
       const selector = new ModelSelector({
         enabled: true,
         strategy: 'balanced',
       });
 
-      const koreanBriefing = `
-        아키텍처 설계를 리팩토링합니다.
-        보안 취약점을 수정하고 성능 최적화를 진행합니다.
-        전체 시스템의 확장성을 개선합니다.
+      const technicalBriefing = `
+        Refactoring the architecture design.
+        Fixing security vulnerabilities and performing performance optimization.
+        Improving scalability of the entire system.
       `;
 
-      const result = selector.selectModels(koreanBriefing);
+      const result = selector.selectModels(technicalBriefing);
 
-      // Should recognize Korean keywords
+      // Should recognize technical keywords
       expect(result.analysis.factors.technical_depth).toBeGreaterThan(0);
       expect(result.analysis.factors.risk_level).toBeGreaterThan(0);
     });

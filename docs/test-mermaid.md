@@ -1,46 +1,46 @@
-# Mermaid 테스트
+# Mermaid Test
 
-## 간단한 플로우차트
+## Simple Flowchart
 
 ```mermaid
 graph LR
-    A[에이전트 실행] --> B{판단 필요?}
-    B -->|Yes| C[인간 개입]
-    B -->|No| D[계속 진행]
+    A[Agent Execution] --> B{Decision Required?}
+    B -->|Yes| C[Human Intervention]
+    B -->|No| D[Continue]
     C --> A
-    D --> E[완료]
+    D --> E[Complete]
 ```
 
-## 시퀀스 다이어그램
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
-    participant 인간
+    participant Human
     participant Refiner
     participant Builder
 
-    인간->>Refiner: Briefing 작성
-    Refiner->>Refiner: 검토 및 개선
+    Human->>Refiner: Write Briefing
+    Refiner->>Refiner: Review and Improve
     Refiner->>Builder: refined.md
-    Builder->>Builder: 코드 생성
+    Builder->>Builder: Generate Code
 ```
 
-## 복잡한 플로우
+## Complex Flow
 
 ```mermaid
 graph TD
-    A[Briefing 작성] --> B[Refiner]
-    B -->|충분| C[Builder]
-    B -->|모호| D[CRP 생성]
-    D --> E[인간 응답]
-    E --> F[VCR 생성]
+    A[Write Briefing] --> B[Refiner]
+    B -->|Sufficient| C[Builder]
+    B -->|Ambiguous| D[Create CRP]
+    D --> E[Human Response]
+    E --> F[Create VCR]
     F --> B
     C --> G[Verifier]
     G --> H[Gatekeeper]
-    H -->|PASS| I[MRP 생성]
+    H -->|PASS| I[Create MRP]
     H -->|FAIL| C
     H -->|NEEDS_HUMAN| D
-    I --> J[인간 검토]
-    J -->|Approve| K[완료]
+    I --> J[Human Review]
+    J -->|Approve| K[Complete]
     J -->|Request Changes| C
 ```

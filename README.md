@@ -1,23 +1,23 @@
 # Dure
 
-> Named after the Korean tradition of "두레" (cooperative farming),
+> Named after the Korean tradition of "Dure" (cooperative farming),
 > where villagers work together with distinct roles toward a shared goal.
 
 [![CI](https://github.com/choo121600/dure/actions/workflows/ci.yml/badge.svg)](https://github.com/choo121600/dure/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/choo121600/dure/branch/main/graph/badge.svg)](https://codecov.io/gh/choo121600/dure)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> 의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템
+> Input your intent, four agents execute sequentially, and humans only review evidence and make decisions - an engineering system
 
-Agentic Software Engineering MVP - 4개의 AI 에이전트가 코드를 생성하고, 인간은 판단만 하는 시스템입니다.
+Agentic Software Engineering MVP - A system where 4 AI agents generate code while humans only make decisions.
 
-## 요구 사항
+## Requirements
 
-- **Node.js** 18.0.0 이상
-- **tmux** (터미널 멀티플렉서)
-- **Claude CLI** (`claude` 명령어가 설치되어 있어야 함)
+- **Node.js** 18.0.0 or higher
+- **tmux** (terminal multiplexer)
+- **Claude CLI** (`claude` command must be installed)
 
-### tmux 설치
+### Installing tmux
 
 ```bash
 # macOS
@@ -30,187 +30,187 @@ sudo apt-get install tmux
 sudo yum install tmux
 ```
 
-## 설치
+## Installation
 
 ```bash
-# 저장소 클론
+# Clone the repository
 git clone <repository-url>
 cd dure
 
-# 의존성 설치
+# Install dependencies
 npm install
 
-# 빌드
+# Build
 npm run build
 
-# 전역 설치 (선택사항)
+# Global installation (optional)
 npm link
 ```
 
-## 사용법
+## Usage
 
-### 기본 사용
+### Basic Usage
 
 ```bash
-# 프로젝트 폴더로 이동
+# Navigate to your project folder
 cd /path/to/your-project
 
-# Dure 시작
+# Start Dure
 npx dure start
 
-# 또는 전역 설치했다면
+# Or if globally installed
 dure start
 ```
 
-브라우저가 자동으로 열리고 대시보드(http://localhost:3000)가 표시됩니다.
+The browser will automatically open and display the dashboard (http://localhost:3000).
 
-### CLI 명령어
+### CLI Commands
 
 ![dure --help](docs/images/cli/output_.svg)
 
 ```bash
-# 포트 지정
+# Specify port
 dure start --port 3001
 
-# 브라우저 자동 열기 비활성화
+# Disable automatic browser opening
 dure start --no-browser
 
-# 현재 실행 상태 확인
+# Check current run status
 dure status
 
-# 실행 중인 run 중지
+# Stop running run
 dure stop
 
-# 과거 run 목록
+# Past run history
 dure history
 
-# 중단된 run 복구
+# Recover interrupted run
 dure recover [run-id]
 
-# 중단된 run 목록 확인
+# List interrupted runs
 dure recover --list
 ```
 
-전체 CLI 레퍼런스는 [CLI Reference](docs/CLI_REFERENCE.md)를 참고하세요.
+For the complete CLI reference, see [CLI Reference](docs/CLI_REFERENCE.md).
 
-## 워크플로우
+## Workflow
 
-### 1. 새 Run 시작
+### 1. Start a New Run
 
-1. 대시보드에서 "New Run" 클릭
-2. Briefing 작성 (Markdown 지원)
-3. "Start Run" 클릭
+1. Click "New Run" on the dashboard
+2. Write your briefing (Markdown supported)
+3. Click "Start Run"
 
-### 2. 에이전트 파이프라인
+### 2. Agent Pipeline
 
 ```
 Refiner → Builder → Verifier → Gatekeeper
    ↓         ↓          ↓          ↓
-briefing  코드 생성   테스트    최종 판정
-  검토                 실행
+briefing   code       test      final
+ review   generation  execution  verdict
 ```
 
-- **Refiner**: Briefing을 검토하고 개선
-- **Builder**: 코드 구현
-- **Verifier**: 테스트 생성 및 실행
-- **Gatekeeper**: 최종 검토 및 판정
+- **Refiner**: Reviews and improves the briefing
+- **Builder**: Implements code
+- **Verifier**: Generates and executes tests
+- **Gatekeeper**: Final review and verdict
 
-### 3. 인간 개입 (CRP)
+### 3. Human Intervention (CRP)
 
-에이전트가 판단이 필요한 상황을 만나면 **CRP(Consultation Request Pack)**를 생성합니다:
+When an agent encounters a situation requiring judgment, it generates a **CRP (Consultation Request Pack)**:
 
-1. 대시보드에 알림 표시
-2. CRP 페이지에서 옵션 선택
-3. 결정 사유 입력 (선택)
-4. 제출 후 에이전트 재시작
+1. Notification displayed on dashboard
+2. Select options on CRP page
+3. Enter decision rationale (optional)
+4. Submit and restart agent
 
-### 4. 최종 검토 (MRP)
+### 4. Final Review (MRP)
 
-Gatekeeper가 PASS 판정을 내리면 **MRP(Merge-Readiness Pack)**가 생성됩니다:
+When Gatekeeper issues a PASS verdict, an **MRP (Merge-Readiness Pack)** is generated:
 
-1. 변경 사항 요약
-2. 테스트 결과 확인
-3. Approve 또는 Request Changes
+1. Summary of changes
+2. Review test results
+3. Approve or Request Changes
 
-## Briefing 작성 가이드
+## Briefing Writing Guide
 
-좋은 Briefing 예시:
+Good briefing example:
 
 ```markdown
-# Rate Limiter 미들웨어 구현
+# Implement Rate Limiter Middleware
 
-## 요구사항
-- Express.js 미들웨어로 구현
-- IP 기반 요청 제한
-- 분당 60회 제한
-- 429 응답 시 Retry-After 헤더 포함
+## Requirements
+- Implement as Express.js middleware
+- IP-based request limiting
+- 60 requests per minute limit
+- Include Retry-After header in 429 response
 
-## 제약 조건
-- 외부 라이브러리 사용 금지 (express-rate-limit 등)
-- 인메모리 저장소 사용
+## Constraints
+- No external libraries (no express-rate-limit, etc.)
+- Use in-memory storage
 
-## 예상 동작
-- 정상 요청: 다음 미들웨어로 전달
-- 제한 초과: 429 Too Many Requests 응답
+## Expected Behavior
+- Normal request: pass to next middleware
+- Rate exceeded: 429 Too Many Requests response
 ```
 
-### 피해야 할 표현
+### Expressions to Avoid
 
-다음 표현들은 CRP를 트리거합니다:
-- "적당히", "알아서", "합리적으로"
-- "적절한", "reasonable", "appropriate"
+The following expressions will trigger a CRP:
+- "as appropriate", "as needed", "reasonable"
+- "appropriate", "suitable"
 
-구체적인 수치와 명확한 요구사항을 작성하세요.
+Write specific numbers and clear requirements.
 
-## 폴더 구조
+## Folder Structure
 
-Dure 실행 시 프로젝트에 `.dure/` 폴더가 생성됩니다:
+When Dure runs, a `.dure/` folder is created in your project:
 
 ```
 .dure/
-├── config/           # 에이전트 설정
+├── config/           # Agent configuration
 │   ├── global.json
 │   ├── refiner.json
 │   ├── builder.json
 │   ├── verifier.json
 │   └── gatekeeper.json
 │
-└── runs/             # 실행 기록
+└── runs/             # Run history
     └── run-{timestamp}/
-        ├── state.json        # 현재 상태
-        ├── briefing/         # Briefing 파일
-        ├── builder/          # Builder 출력
-        ├── verifier/         # 테스트 결과
-        ├── gatekeeper/       # 판정 결과
-        ├── crp/              # 인간 질의
-        ├── vcr/              # 인간 응답
-        └── mrp/              # 최종 결과물
+        ├── state.json        # Current state
+        ├── briefing/         # Briefing files
+        ├── builder/          # Builder output
+        ├── verifier/         # Test results
+        ├── gatekeeper/       # Verdict results
+        ├── crp/              # Human queries
+        ├── vcr/              # Human responses
+        └── mrp/              # Final deliverables
 ```
 
-## 설정
+## Configuration
 
-Settings 페이지 또는 `.dure/config/` 파일을 직접 수정하여 설정을 변경할 수 있습니다.
+You can change settings via the Settings page or by directly editing `.dure/config/` files.
 
-### 주요 설정
+### Main Settings
 
-| 설정 | 기본값 | 설명 |
-|------|--------|------|
-| `global.max_iterations` | 3 | 최대 재시도 횟수 |
-| `global.web_port` | 3000 | 웹 서버 포트 |
-| `refiner.model` | haiku | Refiner 모델 |
-| `builder.model` | sonnet | Builder 모델 |
-| `verifier.model` | haiku | Verifier 모델 |
-| `gatekeeper.model` | sonnet | Gatekeeper 모델 |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `global.max_iterations` | 3 | Maximum retry count |
+| `global.web_port` | 3000 | Web server port |
+| `refiner.model` | haiku | Refiner model |
+| `builder.model` | sonnet | Builder model |
+| `verifier.model` | haiku | Verifier model |
+| `gatekeeper.model` | sonnet | Gatekeeper model |
 
-### 모델 선택
+### Model Selection
 
-- **haiku**: 빠른 응답, 간단한 작업에 적합
-- **sonnet**: 균형 잡힌 성능 (권장)
-- **opus**: 최고 품질, 복잡한 작업에 적합
+- **haiku**: Fast response, suitable for simple tasks
+- **sonnet**: Balanced performance (recommended)
+- **opus**: Highest quality, suitable for complex tasks
 
-## tmux 세션
+## tmux Session
 
-Dure는 tmux를 사용하여 에이전트를 병렬 실행합니다:
+Dure uses tmux to run agents in parallel:
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
@@ -223,62 +223,62 @@ Dure는 tmux를 사용하여 에이전트를 병렬 실행합니다:
 └────────────────────────────────────────────┘
 ```
 
-tmux 세션에 직접 접속하려면:
+To directly connect to the tmux session:
 
 ```bash
 tmux attach-session -t dure-run-{timestamp}
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### "tmux is not installed" 오류
+### "tmux is not installed" error
 
-tmux를 설치하세요:
+Install tmux:
 ```bash
 brew install tmux  # macOS
 ```
 
-### "claude command not found" 오류
+### "claude command not found" error
 
-Claude CLI가 설치되어 있고 PATH에 포함되어 있는지 확인하세요.
+Make sure Claude CLI is installed and included in PATH.
 
-### 에이전트가 멈춤
+### Agent stuck
 
-1. tmux 세션에 접속하여 에이전트 상태 확인
-2. `dure stop`으로 중지 후 재시작
-3. Debug Shell (pane 4)에서 직접 디버깅
+1. Connect to tmux session to check agent status
+2. Stop with `dure stop` and restart
+3. Debug directly in Debug Shell (pane 4)
 
-### 포트 충돌
+### Port conflict
 
 ```bash
 dure start --port 3001
 ```
 
-## 문서
+## Documentation
 
-상세한 문서는 [공식 문서 사이트](https://choo121600.github.io/dure/)를 참고하세요.
+For detailed documentation, see the [official documentation site](https://choo121600.github.io/dure/).
 
-- [빠른 시작](https://choo121600.github.io/dure/#/guide/getting-started)
-- [Briefing 작성 가이드](https://choo121600.github.io/dure/#/guide/writing-briefings)
-- [아키텍처](https://choo121600.github.io/dure/#/architecture/overview)
-- [API 레퍼런스](https://choo121600.github.io/dure/#/api/cli)
+- [Quick Start](https://choo121600.github.io/dure/#/guide/getting-started)
+- [Briefing Writing Guide](https://choo121600.github.io/dure/#/guide/writing-briefings)
+- [Architecture](https://choo121600.github.io/dure/#/architecture/overview)
+- [API Reference](https://choo121600.github.io/dure/#/api/cli)
 
-### 로컬에서 문서 확인
+### View Documentation Locally
 
 ```bash
-# Docsify CLI 설치
+# Install Docsify CLI
 npm install -g docsify-cli
 
-# 문서 서버 실행
+# Run documentation server
 docsify serve docs
 
-# http://localhost:3000 접속
+# Access http://localhost:3000
 ```
 
-## 라이선스
+## License
 
 MIT
 
-## 기여
+## Contributing
 
-이슈와 PR을 환영합니다. 자세한 내용은 [기여 가이드](https://yourusername.github.io/dure/#/misc/contributing)를 참고하세요.
+Issues and PRs are welcome. For details, see the [Contributing Guide](https://yourusername.github.io/dure/#/misc/contributing).

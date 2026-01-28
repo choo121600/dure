@@ -1,24 +1,24 @@
-# 파일 구조
+# File Structure
 
-Dure의 폴더 및 파일 구조를 상세히 설명합니다.
+Detailed description of Dure's folder and file structure.
 
-## 전체 구조
+## Overall Structure
 
 ```
 your-project/
-├── src/                    # 프로젝트 소스 코드
+├── src/                    # Project source code
 ├── package.json
 ├── .gitignore
 │
-└── .dure/            # Dure 작업 디렉토리
-    ├── config/             # 설정 파일
+└── .dure/            # Dure working directory
+    ├── config/             # Configuration files
     │   ├── global.json
     │   ├── refiner.json
     │   ├── builder.json
     │   ├── verifier.json
     │   └── gatekeeper.json
     │
-    └── runs/               # 실행 기록
+    └── runs/               # Execution records
         └── run-{timestamp}/
             ├── state.json
             ├── events.log
@@ -34,11 +34,11 @@ your-project/
 
 ## .dure/config/
 
-설정 파일들이 저장됩니다. `dure start` 시 자동 생성됩니다.
+Configuration files are stored here. Automatically created on `dure start`.
 
 ### global.json
 
-전역 설정:
+Global settings:
 
 ```json
 {
@@ -67,53 +67,53 @@ your-project/
 
 ### refiner.json, builder.json, verifier.json, gatekeeper.json
 
-각 에이전트별 설정. 자세한 내용은 [설정 파일](/api/configuration.md) 참고.
+Settings for each agent. See [Configuration Files](/api/configuration.md) for details.
 
 ## .dure/runs/
 
-모든 Run의 실행 기록이 저장됩니다.
+All Run execution records are stored here.
 
-### Run 디렉토리 명명 규칙
+### Run Directory Naming Convention
 
 ```
 run-{timestamp}
 
-예시:
+Examples:
 run-20240126-143022
 run-20240126-150000
 ```
 
-타임스탬프 형식: `YYYYMMDD-HHMMSS` (UTC)
+Timestamp format: `YYYYMMDD-HHMMSS` (UTC)
 
-## Run 디렉토리 구조
+## Run Directory Structure
 
 ```
 run-{timestamp}/
-├── state.json              # 현재 상태 (항상 존재)
-├── events.log              # 이벤트 로그 (항상 존재)
+├── state.json              # Current state (always exists)
+├── events.log              # Event log (always exists)
 │
-├── briefing/               # Briefing 관련 (Phase 0)
+├── briefing/               # Briefing related (Phase 0)
 │   ├── raw.md
 │   ├── refined.md
 │   ├── clarifications.json
 │   └── log.md
 │
-├── builder/                # Builder 관련 (Phase 1)
+├── builder/                # Builder related (Phase 1)
 │   ├── output/
 │   │   └── files.json
 │   ├── log.md
 │   ├── done.flag
-│   └── error.flag          (에러 시에만)
+│   └── error.flag          (only on error)
 │
-├── verifier/               # Verifier 관련 (Phase 2)
+├── verifier/               # Verifier related (Phase 2)
 │   ├── tests/
 │   │   └── *.test.ts
 │   ├── results.json
 │   ├── log.md
 │   ├── done.flag
-│   └── error.flag          (에러 시에만)
+│   └── error.flag          (only on error)
 │
-├── gatekeeper/             # Gatekeeper 관련 (Phase 3)
+├── gatekeeper/             # Gatekeeper related (Phase 3)
 │   ├── review.md
 │   ├── verdict.json
 │   └── log.md
@@ -128,7 +128,7 @@ run-{timestamp}/
 │   ├── vcr-002.json
 │   └── ...
 │
-├── mrp/                    # Merge-Readiness Pack (PASS 시)
+├── mrp/                    # Merge-Readiness Pack (on PASS)
 │   ├── summary.md
 │   ├── code/
 │   │   └── ...
@@ -136,22 +136,22 @@ run-{timestamp}/
 │   │   └── ...
 │   └── evidence.json
 │
-└── prompts/                # 에이전트 프롬프트 파일
+└── prompts/                # Agent prompt files
     ├── refiner.md
     ├── builder.md
     ├── verifier.md
     └── gatekeeper.md
 ```
 
-## 주요 파일 설명
+## Key File Descriptions
 
 ### state.json
 
-**위치:** `.dure/runs/{run_id}/state.json`
+**Location:** `.dure/runs/{run_id}/state.json`
 
-**용도:** Run의 현재 상태를 저장
+**Purpose:** Store the current state of the Run
 
-**구조:**
+**Structure:**
 
 ```json
 {
@@ -200,19 +200,19 @@ run-{timestamp}/
 }
 ```
 
-**업데이트 시점:**
-- 에이전트 시작/완료 시
-- Phase 전환 시
-- CRP/VCR 생성 시
-- 에러 발생 시
+**Update Timing:**
+- On agent start/completion
+- On phase transition
+- On CRP/VCR creation
+- On error occurrence
 
 ### events.log
 
-**위치:** `.dure/runs/{run_id}/events.log`
+**Location:** `.dure/runs/{run_id}/events.log`
 
-**용도:** 모든 이벤트를 시간순으로 기록
+**Purpose:** Record all events in chronological order
 
-**형식:** 한 줄에 하나의 이벤트
+**Format:** One event per line
 
 ```
 2024-01-26T14:30:22Z [INFO] run.started run_id=run-20240126-143022
@@ -224,59 +224,59 @@ run-{timestamp}/
 2024-01-26T14:35:00Z [INFO] agent.retry agent=builder attempt=1
 ```
 
-**로그 레벨:**
-- `INFO` - 일반 이벤트
-- `WARN` - 경고 (타임아웃 등)
-- `ERROR` - 에러
+**Log Levels:**
+- `INFO` - General events
+- `WARN` - Warnings (timeouts, etc.)
+- `ERROR` - Errors
 
 ### briefing/raw.md
 
-**위치:** `.dure/runs/{run_id}/briefing/raw.md`
+**Location:** `.dure/runs/{run_id}/briefing/raw.md`
 
-**용도:** 인간이 작성한 원본 Briefing
+**Purpose:** Original Briefing written by human
 
-**생성 시점:** Run 시작 시 (웹 UI에서 제출한 내용)
+**Creation Time:** At Run start (content submitted from web UI)
 
-**예시:**
+**Example:**
 
 ```markdown
-# Rate Limiter 미들웨어 구현
+# Rate Limiter Middleware Implementation
 
-## 요구사항
-- Express.js 미들웨어로 구현
-- IP 기반 요청 제한
-- 분당 60회 제한
+## Requirements
+- Implement as Express.js middleware
+- IP-based request limiting
+- Limit to 60 requests per minute
 ```
 
 ### briefing/refined.md
 
-**위치:** `.dure/runs/{run_id}/briefing/refined.md`
+**Location:** `.dure/runs/{run_id}/briefing/refined.md`
 
-**용도:** Refiner가 검토/개선한 Briefing
+**Purpose:** Briefing reviewed/improved by Refiner
 
-**생성 시점:** Refiner 완료 시
+**Creation Time:** On Refiner completion
 
-**차이점:**
-- 모호한 표현 → 구체적인 값
-- 누락된 제약 조건 추가
-- 명확화된 요구사항
+**Differences:**
+- Ambiguous expressions → specific values
+- Added missing constraints
+- Clarified requirements
 
 ### done.flag
 
-**위치:**
+**Location:**
 - `.dure/runs/{run_id}/builder/done.flag`
 - `.dure/runs/{run_id}/verifier/done.flag`
 
-**용도:** 에이전트 완료 신호
+**Purpose:** Agent completion signal
 
-**내용:** 비어있음 (파일 존재 자체가 신호)
+**Content:** Empty (file existence itself is the signal)
 
-**생성 시점:** 에이전트 작업 완료 시
+**Creation Time:** On agent task completion
 
-**감지 방법:**
+**Detection Method:**
 
 ```typescript
-// File Watcher가 감지
+// Detected by File Watcher
 chokidar
   .watch('.dure/runs/{run_id}/builder/')
   .on('add', (path) => {
@@ -288,13 +288,13 @@ chokidar
 
 ### error.flag
 
-**위치:** `.dure/runs/{run_id}/{agent}/error.flag`
+**Location:** `.dure/runs/{run_id}/{agent}/error.flag`
 
-**용도:** 에이전트 에러 정보
+**Purpose:** Agent error information
 
-**생성 시점:** 에이전트 실행 실패 시
+**Creation Time:** On agent execution failure
 
-**구조:**
+**Structure:**
 
 ```json
 {
@@ -307,42 +307,42 @@ chokidar
 }
 ```
 
-### CRP 파일
+### CRP Files
 
-**위치:** `.dure/runs/{run_id}/crp/crp-{n}.json`
+**Location:** `.dure/runs/{run_id}/crp/crp-{n}.json`
 
-**용도:** 인간 판단 요청
+**Purpose:** Human judgment request
 
-**명명 규칙:** `crp-001.json`, `crp-002.json`, ...
+**Naming Convention:** `crp-001.json`, `crp-002.json`, ...
 
-**구조:** [CRP 응답 가이드](/guide/responding-to-crp.md) 참고
+**Structure:** See [CRP Response Guide](/guide/responding-to-crp.md)
 
-### VCR 파일
+### VCR Files
 
-**위치:** `.dure/runs/{run_id}/vcr/vcr-{n}.json`
+**Location:** `.dure/runs/{run_id}/vcr/vcr-{n}.json`
 
-**용도:** 인간 결정 기록
+**Purpose:** Human decision record
 
-**명명 규칙:** `vcr-001.json` (해당 `crp-001.json`에 대한 응답)
+**Naming Convention:** `vcr-001.json` (response to corresponding `crp-001.json`)
 
-**구조:** [CRP 응답 가이드](/guide/responding-to-crp.md) 참고
+**Structure:** See [CRP Response Guide](/guide/responding-to-crp.md)
 
-### MRP 디렉토리
+### MRP Directory
 
-**위치:** `.dure/runs/{run_id}/mrp/`
+**Location:** `.dure/runs/{run_id}/mrp/`
 
-**용도:** 최종 결과물 패키지
+**Purpose:** Final deliverable package
 
-**생성 시점:** Gatekeeper PASS 판정 시
+**Creation Time:** On Gatekeeper PASS verdict
 
-**구조:** [MRP 검토 가이드](/guide/reviewing-mrp.md) 참고
+**Structure:** See [MRP Review Guide](/guide/reviewing-mrp.md)
 
-## 파일 생성 순서
+## File Creation Order
 
-### 정상 흐름 (Phase 0 → 3)
+### Normal Flow (Phase 0 → 3)
 
 ```
-1. Run 시작
+1. Run Start
    - state.json
    - events.log
    - briefing/raw.md
@@ -368,67 +368,67 @@ chokidar
    - gatekeeper/review.md
    - gatekeeper/verdict.json
    - gatekeeper/log.md
-   - (PASS인 경우) mrp/
+   - (if PASS) mrp/
 ```
 
-### CRP 발생 시
+### When CRP Occurs
 
 ```
-1. 에이전트가 CRP 생성
+1. Agent creates CRP
    - crp/crp-001.json
-   - state.json 업데이트 (pending_crp: "crp-001")
+   - state.json updated (pending_crp: "crp-001")
 
-2. 인간이 응답
+2. Human responds
    - vcr/vcr-001.json
-   - state.json 업데이트 (pending_crp: null)
+   - state.json updated (pending_crp: null)
 
-3. 에이전트 재시작
-   - 기존 로그 파일 덮어쓰기
+3. Agent restarts
+   - Existing log file overwritten
 ```
 
-### 재시도 (iteration) 시
+### On Retry (iteration)
 
 ```
-1. Gatekeeper FAIL 판정
+1. Gatekeeper FAIL verdict
    - gatekeeper/verdict.json (verdict: "FAIL")
-   - gatekeeper/review.md (피드백)
+   - gatekeeper/review.md (feedback)
 
-2. Builder 재시작 (iteration 2)
-   - builder/log.md 덮어쓰기
-   - builder/output/files.json 덮어쓰기
-   - builder/done.flag 재생성
+2. Builder restarts (iteration 2)
+   - builder/log.md overwritten
+   - builder/output/files.json overwritten
+   - builder/done.flag recreated
 
-3. Verifier 재실행
-   - verifier/results.json 덮어쓰기
+3. Verifier re-runs
+   - verifier/results.json overwritten
    - ...
 ```
 
-## 디스크 사용량
+## Disk Usage
 
-### 예상 크기
+### Expected Size
 
-| 구성요소 | 크기 (평균) |
-|---------|------------|
+| Component | Size (average) |
+|-----------|----------------|
 | state.json | ~5 KB |
 | events.log | ~10-50 KB |
 | briefing/*.md | ~5-20 KB |
 | builder/log.md | ~10-100 KB |
 | verifier/tests/ | ~10-100 KB |
 | MRP | ~50-500 KB |
-| **Run 전체** | **~100 KB - 1 MB** |
+| **Total per Run** | **~100 KB - 1 MB** |
 
-### 정리 방법
+### Cleanup Methods
 
-오래된 Run 삭제:
+Delete old Runs:
 
 ```bash
-# 30일 이전 Run 삭제
+# Delete Runs older than 30 days
 find .dure/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
 
-# 특정 Run 삭제
+# Delete specific Run
 rm -rf .dure/runs/run-20240126-143022
 
-# 모든 실패한 Run 삭제
+# Delete all failed Runs
 for dir in .dure/runs/run-*; do
   verdict=$(jq -r '.verdict' "$dir/gatekeeper/verdict.json" 2>/dev/null)
   if [ "$verdict" = "FAIL" ]; then
@@ -437,35 +437,35 @@ for dir in .dure/runs/run-*; do
 done
 ```
 
-## Git 관리
+## Git Management
 
-### .gitignore 권장 설정
+### Recommended .gitignore Settings
 
 ```gitignore
-# Dure - 실행 기록은 무시
+# Dure - Ignore execution records
 .dure/runs/
 
-# Dure - 설정은 커밋 (팀과 공유)
+# Dure - Commit settings (share with team)
 !.dure/config/
 ```
 
-또는 모두 무시:
+Or ignore everything:
 
 ```gitignore
 # Dure
 .dure/
 ```
 
-### 실행 기록 보존
+### Preserving Execution Records
 
-중요한 Run은 별도 보관:
+Archive important Runs separately:
 
 ```bash
-# 특정 Run 아카이브
+# Archive specific Run
 tar -czf run-20240126-143022.tar.gz \
   .dure/runs/run-20240126-143022
 
-# 모든 PASS Run 아카이브
+# Archive all PASS Runs
 for dir in .dure/runs/run-*; do
   verdict=$(jq -r '.verdict' "$dir/gatekeeper/verdict.json" 2>/dev/null)
   if [ "$verdict" = "PASS" ]; then
@@ -474,8 +474,8 @@ for dir in .dure/runs/run-*; do
 done
 ```
 
-## 다음 단계
+## Next Steps
 
-- [데이터 포맷](/architecture/data-formats.md) - 파일 포맷 상세 명세
-- [실행 흐름](/architecture/execution-flow.md) - 파일 생성 타이밍
-- [설정 파일](/api/configuration.md) - config 파일 상세
+- [Data Formats](/architecture/data-formats.md) - Detailed file format specifications
+- [Execution Flow](/architecture/execution-flow.md) - File creation timing
+- [Configuration Files](/api/configuration.md) - Config file details

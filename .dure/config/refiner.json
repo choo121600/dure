@@ -13,11 +13,11 @@
     ]
   },
   "delegation_keywords": [
-    "적당히",
-    "알아서",
-    "합리적으로",
+    "as appropriate",
+    "as needed",
     "reasonable",
-    "appropriate"
+    "appropriate",
+    "suitable"
   ],
   "max_refinement_iterations": 2
 }

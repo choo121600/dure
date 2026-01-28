@@ -1,17 +1,17 @@
-# GitHub Pages 배포 가이드
+# GitHub Pages Deployment Guide
 
-이 문서 사이트를 GitHub Pages에 배포하는 방법을 설명합니다.
+This document explains how to deploy this documentation site to GitHub Pages.
 
-## 자동 배포 (GitHub Actions)
+## Automatic Deployment (GitHub Actions)
 
-### 1단계: GitHub Pages 활성화
+### Step 1: Enable GitHub Pages
 
-1. GitHub 저장소로 이동
-2. **Settings** > **Pages** 클릭
-3. **Source** 섹션에서:
-   - Source: **GitHub Actions** 선택
+1. Go to GitHub repository
+2. Click **Settings** > **Pages**
+3. In the **Source** section:
+   - Source: Select **GitHub Actions**
 
-### 2단계: 코드 Push
+### Step 2: Push Code
 
 ```bash
 git add .
@@ -19,57 +19,57 @@ git commit -m "docs: Add documentation site"
 git push origin main
 ```
 
-### 3단계: 배포 확인
+### Step 3: Verify Deployment
 
-1. **Actions** 탭에서 워크플로우 실행 확인
-2. 완료되면 `https://yourusername.github.io/dure/` 접속
+1. Check workflow execution in the **Actions** tab
+2. Once complete, access `https://yourusername.github.io/dure/`
 
-## 수동 배포
+## Manual Deployment
 
-GitHub Actions를 사용하지 않는 경우:
+If not using GitHub Actions:
 
-### 1단계: gh-pages 브랜치 생성
+### Step 1: Create gh-pages Branch
 
 ```bash
-# gh-pages 브랜치 생성
+# Create gh-pages branch
 git checkout --orphan gh-pages
 
-# docs 폴더 내용만 유지
+# Keep only docs folder contents
 git rm -rf .
 git add -f docs/*
 mv docs/* .
 rm -rf docs
 
-# 커밋 및 Push
+# Commit and push
 git commit -m "Deploy documentation"
 git push origin gh-pages
 
-# main 브랜치로 돌아가기
+# Return to main branch
 git checkout main
 ```
 
-### 2단계: GitHub Pages 설정
+### Step 2: GitHub Pages Settings
 
 1. **Settings** > **Pages**
-2. **Source**: `gh-pages` 브랜치 선택
-3. **Folder**: `/ (root)` 선택
-4. **Save** 클릭
+2. **Source**: Select `gh-pages` branch
+3. **Folder**: Select `/ (root)`
+4. Click **Save**
 
-### 3단계: 접속
+### Step 3: Access
 
 `https://yourusername.github.io/dure/`
 
-## 커스텀 도메인 (선택)
+## Custom Domain (Optional)
 
-### 1단계: 도메인 구입
+### Step 1: Purchase Domain
 
-예: `dure.dev`
+Example: `dure.dev`
 
-### 2단계: DNS 설정
+### Step 2: DNS Settings
 
-도메인 등록기관(GoDaddy, Namecheap 등)에서:
+At your domain registrar (GoDaddy, Namecheap, etc.):
 
-**A 레코드 추가:**
+**Add A records:**
 
 ```
 Type: A
@@ -77,12 +77,12 @@ Name: @
 Value: 185.199.108.153
 ```
 
-추가로 다음 IP들도:
+Also add these IPs:
 - 185.199.109.153
 - 185.199.110.153
 - 185.199.111.153
 
-**CNAME 레코드 추가 (www 서브도메인):**
+**Add CNAME record (www subdomain):**
 
 ```
 Type: CNAME
@@ -90,144 +90,144 @@ Name: www
 Value: yourusername.github.io
 ```
 
-### 3단계: CNAME 파일 생성
+### Step 3: Create CNAME File
 
-`docs/CNAME` 파일 수정:
+Edit `docs/CNAME` file:
 
 ```
 dure.dev
 ```
 
-### 4단계: GitHub 설정
+### Step 4: GitHub Settings
 
 1. **Settings** > **Pages**
-2. **Custom domain**: `dure.dev` 입력
-3. **Enforce HTTPS** 체크
+2. **Custom domain**: Enter `dure.dev`
+3. Check **Enforce HTTPS**
 
-### 5단계: 확인
+### Step 5: Verify
 
-DNS 전파 대기 (최대 24시간) 후 `https://dure.dev` 접속
+Wait for DNS propagation (up to 24 hours) then access `https://dure.dev`
 
-## 로컬 개발
+## Local Development
 
-문서를 로컬에서 확인하려면:
+To verify documentation locally:
 
 ```bash
-# Docsify CLI 설치
+# Install Docsify CLI
 npm install -g docsify-cli
 
-# 문서 서버 실행
+# Run documentation server
 docsify serve docs
 
-# http://localhost:3000 접속
+# Access http://localhost:3000
 ```
 
-## 문서 업데이트
+## Updating Documentation
 
-### 자동 배포 사용 시
+### When Using Automatic Deployment
 
 ```bash
-# 문서 수정
+# Edit documentation
 vi docs/guide/getting-started.md
 
-# 커밋 및 Push
+# Commit and push
 git add docs/
 git commit -m "docs: Update getting started guide"
 git push origin main
 
-# GitHub Actions가 자동으로 배포
+# GitHub Actions will deploy automatically
 ```
 
-### 수동 배포 사용 시
+### When Using Manual Deployment
 
 ```bash
-# main 브랜치에서 문서 수정
+# Edit documentation on main branch
 git add docs/
 git commit -m "docs: Update getting started guide"
 git push origin main
 
-# gh-pages 브랜치로 전환
+# Switch to gh-pages branch
 git checkout gh-pages
 
-# main에서 docs 폴더 가져오기
+# Get docs folder from main
 git checkout main -- docs
 mv docs/* .
 rm -rf docs
 
-# 커밋 및 Push
+# Commit and push
 git add .
 git commit -m "Deploy updated docs"
 git push origin gh-pages
 
-# main으로 돌아가기
+# Return to main
 git checkout main
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### 404 에러
+### 404 Error
 
-**증상:** GitHub Pages 접속 시 404
+**Symptom:** 404 when accessing GitHub Pages
 
-**해결:**
-1. **Settings** > **Pages**에서 Source 확인
-2. 브랜치가 올바른지 확인 (gh-pages 또는 main)
-3. 폴더가 올바른지 확인 (root 또는 docs)
+**Solution:**
+1. Check Source in **Settings** > **Pages**
+2. Verify the branch is correct (gh-pages or main)
+3. Verify the folder is correct (root or docs)
 
-### CSS가 적용 안 됨
+### CSS Not Applied
 
-**증상:** 스타일이 깨짐
+**Symptom:** Styles are broken
 
-**해결:**
+**Solution:**
 
-`docs/index.html`의 경로 확인:
+Check paths in `docs/index.html`:
 
 ```html
-<!-- 절대 경로 사용 -->
+<!-- Use absolute paths -->
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
 
-<!-- 상대 경로는 피하기 -->
+<!-- Avoid relative paths -->
 ```
 
-### 커스텀 도메인이 작동 안 함
+### Custom Domain Not Working
 
-**증상:** 커스텀 도메인 접속 안 됨
+**Symptom:** Cannot access custom domain
 
-**해결:**
-1. DNS 전파 대기 (최대 24시간)
-2. DNS 확인:
+**Solution:**
+1. Wait for DNS propagation (up to 24 hours)
+2. Verify DNS:
    ```bash
    dig dure.dev
    ```
-3. CNAME 파일 확인
-4. GitHub Pages 설정 재확인
+3. Check CNAME file
+4. Re-verify GitHub Pages settings
 
-### 이미지가 표시 안 됨
+### Images Not Displaying
 
-**증상:** 이미지 404 에러
+**Symptom:** Image 404 errors
 
-**해결:**
+**Solution:**
 
-상대 경로 사용:
+Use relative paths:
 
 ```markdown
-<!-- 좋음 -->
+<!-- Good -->
 ![Architecture](../assets/architecture.png)
 
-<!-- 나쁨 -->
+<!-- Bad -->
 ![Architecture](/assets/architecture.png)
 ```
 
-## 고급 설정
+## Advanced Settings
 
-### Analytics 추가
+### Adding Analytics
 
-Google Analytics를 추가하려면 `docs/index.html`:
+To add Google Analytics, edit `docs/index.html`:
 
 ```html
 <script>
   window.$docsify = {
-    // ... 기존 설정
+    // ... existing settings
     plugins: [
       function(hook, vm) {
         hook.doneEach(function() {
@@ -252,15 +252,15 @@ Google Analytics를 추가하려면 `docs/index.html`:
 </script>
 ```
 
-### 검색 엔진 최적화 (SEO)
+### Search Engine Optimization (SEO)
 
-`docs/index.html`의 meta 태그:
+Meta tags in `docs/index.html`:
 
 ```html
 <head>
   <meta charset="UTF-8">
   <title>Dure - Agentic Software Engineering</title>
-  <meta name="description" content="의도를 입력하면, 네 개의 에이전트가 순차적으로 실행되고, 인간은 증거를 보고 결정만 하는 엔지니어링 시스템">
+  <meta name="description" content="Enter your intent, four agents run sequentially, and humans only make decisions based on evidence">
   <meta name="keywords" content="dure, ai, agents, code generation, automation">
   <meta property="og:title" content="Dure">
   <meta property="og:description" content="Agentic Software Engineering System">
@@ -270,9 +270,9 @@ Google Analytics를 추가하려면 `docs/index.html`:
 </head>
 ```
 
-### 다크 모드
+### Dark Mode
 
-Docsify는 자동으로 다크 모드를 지원합니다. 테마 선택:
+Docsify automatically supports dark mode. Theme selection:
 
 ```html
 <!-- Light -->
@@ -281,16 +281,16 @@ Docsify는 자동으로 다크 모드를 지원합니다. 테마 선택:
 <!-- Dark -->
 <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/dark.css">
 
-<!-- 자동 (시스템 설정 따름) -->
+<!-- Auto (follows system settings) -->
 <style>
   @media (prefers-color-scheme: dark) {
-    /* 다크 모드 스타일 */
+    /* Dark mode styles */
   }
 </style>
 ```
 
-## 더 알아보기
+## Learn More
 
-- [GitHub Pages 공식 문서](https://docs.github.com/pages)
-- [Docsify 공식 문서](https://docsify.js.org/)
-- [커스텀 도메인 설정](https://docs.github.com/pages/configuring-a-custom-domain-for-your-github-pages-site)
+- [GitHub Pages Official Documentation](https://docs.github.com/pages)
+- [Docsify Official Documentation](https://docsify.js.org/)
+- [Custom Domain Setup](https://docs.github.com/pages/configuring-a-custom-domain-for-your-github-pages-site)

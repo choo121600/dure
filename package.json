@@ -1,7 +1,7 @@
 {
   "name": "dure",
   "version": "0.1.0",
-  "description": "Agentic Software Engineering MVP - 4 agents work cooperatively with human oversight, named after the Korean tradition of collaborative farming (두레)",
+  "description": "Agentic Software Engineering MVP - 4 agents work cooperatively with human oversight, named after the Korean tradition of collaborative farming (Dure)",
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {

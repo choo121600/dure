@@ -1,14 +1,14 @@
-# 빠른 시작
+# Quick Start
 
-이 가이드는 Dure을 처음 사용하는 분들을 위한 단계별 튜토리얼입니다.
+This guide is a step-by-step tutorial for first-time Dure users.
 
-## 사전 준비
+## Prerequisites
 
-### 1. 필수 도구 설치
+### 1. Install Required Tools
 
 #### tmux
 
-Dure은 여러 에이전트를 병렬로 실행하기 위해 tmux를 사용합니다.
+Dure uses tmux to run multiple agents in parallel.
 
 <!-- tabs:start -->
 
@@ -32,130 +32,130 @@ sudo yum install tmux
 
 <!-- tabs:end -->
 
-설치 확인:
+Verify installation:
 
 ```bash
 tmux -V
-# tmux 3.3a 또는 그 이상
+# tmux 3.3a or higher
 ```
 
 #### Claude CLI
 
-Claude CLI가 설치되어 있고 `claude` 명령어가 동작해야 합니다.
+Claude CLI must be installed and the `claude` command must work.
 
 ```bash
 claude --version
 ```
 
-?> Claude CLI 설치 방법은 [Anthropic 공식 문서](https://docs.anthropic.com/claude/docs/claude-cli)를 참고하세요.
+?> For Claude CLI installation instructions, refer to the [Anthropic official documentation](https://docs.anthropic.com/claude/docs/claude-cli).
 
-### 2. Node.js 버전 확인
+### 2. Check Node.js Version
 
 ```bash
 node --version
-# v18.0.0 이상
+# v18.0.0 or higher
 ```
 
-## 설치
+## Installation
 
-### 1. 저장소 클론
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/dure.git
 cd dure
 ```
 
-### 2. 의존성 설치
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. 빌드
+### 3. Build
 
 ```bash
 npm run build
 ```
 
-이 명령어는:
-- TypeScript 파일을 컴파일합니다
-- 웹 서버의 정적 파일을 복사합니다
-- 템플릿 파일을 복사합니다
+This command:
+- Compiles TypeScript files
+- Copies static files for the web server
+- Copies template files
 
-### 4. 전역 설치 (선택사항)
+### 4. Global Installation (Optional)
 
-전역으로 설치하면 어디서든 `dure` 명령어를 사용할 수 있습니다:
+Installing globally allows you to use the `dure` command from anywhere:
 
 ```bash
 npm link
 ```
 
-## 첫 실행
+## First Run
 
-### 1. 프로젝트 폴더 준비
+### 1. Prepare Project Folder
 
-Dure을 실행할 프로젝트 폴더로 이동합니다:
+Navigate to the project folder where you want to run Dure:
 
 ```bash
 cd /path/to/your-project
 ```
 
-!> Dure은 현재 디렉토리에 `.dure/` 폴더를 생성합니다. Git 저장소에서 실행하는 것을 권장합니다.
+!> Dure creates a `.dure/` folder in the current directory. Running in a Git repository is recommended.
 
-### 2. Dure 시작
+### 2. Start Dure
 
 ```bash
-# npx 사용 (전역 설치 안 한 경우)
+# Using npx (if not globally installed)
 npx dure start
 
-# 또는 전역 설치한 경우
+# Or if globally installed
 dure start
 ```
 
-### 3. 웹 대시보드 열기
+### 3. Open Web Dashboard
 
-브라우저가 자동으로 열리고 `http://localhost:3000`에 접속됩니다.
+The browser will automatically open and connect to `http://localhost:3000`.
 
-자동으로 열리지 않는 경우 수동으로 접속하세요:
+If it doesn't open automatically, connect manually:
 
 ```bash
 open http://localhost:3000  # macOS
 ```
 
-## 첫 Run 실행
+## First Run Execution
 
-### 1. New Run 시작
+### 1. Start New Run
 
-대시보드에서 **"New Run"** 버튼을 클릭합니다.
+Click the **"New Run"** button on the dashboard.
 
-### 2. Briefing 작성
+### 2. Write Briefing
 
-간단한 예제로 시작해봅시다:
+Let's start with a simple example:
 
 ```markdown
-# Hello World 함수 구현
+# Hello World Function Implementation
 
-## 요구사항
-- `sayHello` 함수 생성
-- 파라미터: name (string)
-- 반환값: "Hello, {name}!" (string)
+## Requirements
+- Create `sayHello` function
+- Parameter: name (string)
+- Return value: "Hello, {name}!" (string)
 
-## 제약 조건
-- TypeScript로 구현
-- src/utils/hello.ts 파일에 작성
+## Constraints
+- Implement in TypeScript
+- Write in src/utils/hello.ts file
 
-## 예상 동작
+## Expected Behavior
 sayHello("World") → "Hello, World!"
 sayHello("Alice") → "Hello, Alice!"
 ```
 
-### 3. Run 시작
+### 3. Start Run
 
-**"Start Run"** 버튼을 클릭합니다.
+Click the **"Start Run"** button.
 
-### 4. 진행 상황 모니터링
+### 4. Monitor Progress
 
-대시보드에서 실시간으로 에이전트 진행 상황을 확인할 수 있습니다:
+You can check agent progress in real-time on the dashboard:
 
 ```
 [✓ Refine] → [● Build] → [ Verify] → [ Gate]
@@ -163,35 +163,35 @@ sayHello("Alice") → "Hello, Alice!"
          "Building... (1:23)"
 ```
 
-### 5. 결과 확인
+### 5. Check Results
 
-모든 에이전트가 완료되면:
+When all agents are complete:
 
-1. **MRP(Merge-Readiness Pack)** 가 생성됩니다
-2. 변경 사항, 테스트 결과, 비용 정보를 확인할 수 있습니다
-3. **"Approve"** 또는 **"Request Changes"** 를 선택합니다
+1. **MRP (Merge-Readiness Pack)** is generated
+2. You can review changes, test results, and cost information
+3. Select **"Approve"** or **"Request Changes"**
 
-## CLI 옵션
+## CLI Options
 
-### 포트 변경
+### Change Port
 
 ```bash
 dure start --port 3001
 ```
 
-### 브라우저 자동 열기 비활성화
+### Disable Auto Browser Opening
 
 ```bash
 dure start --no-browser
 ```
 
-### 현재 상태 확인
+### Check Current Status
 
 ```bash
 dure status
 ```
 
-출력 예시:
+Example output:
 
 ```
 Current Run: run-20240126-143022
@@ -207,19 +207,19 @@ Agents:
 Usage: $0.058
 ```
 
-### Run 중지
+### Stop Run
 
 ```bash
 dure stop
 ```
 
-### 히스토리 조회
+### View History
 
 ```bash
 dure history
 ```
 
-출력 예시:
+Example output:
 
 ```
 Recent Runs:
@@ -228,22 +228,22 @@ Recent Runs:
   run-20240125-180000  PASS      $0.15   1 day ago
 ```
 
-## 폴더 구조
+## Folder Structure
 
-Dure 시작 시 프로젝트에 `.dure/` 폴더가 생성됩니다:
+When Dure starts, a `.dure/` folder is created in your project:
 
 ```
 your-project/
 ├── src/
 ├── package.json
 └── .dure/
-    ├── config/              # 설정 파일
+    ├── config/              # Configuration files
     │   ├── global.json
     │   ├── refiner.json
     │   ├── builder.json
     │   ├── verifier.json
     │   └── gatekeeper.json
-    └── runs/                # 실행 기록
+    └── runs/                # Run history
         └── run-{timestamp}/
             ├── state.json
             ├── events.log
@@ -256,11 +256,11 @@ your-project/
             └── mrp/
 ```
 
-?> `.dure/` 폴더를 `.gitignore`에 추가할 수 있지만, 실행 기록을 유지하려면 커밋하는 것도 좋습니다.
+?> You can add `.dure/` to `.gitignore`, but committing it is also good if you want to keep run history.
 
-## tmux 세션
+## tmux Session
 
-Dure은 각 Run마다 tmux 세션을 생성합니다:
+Dure creates a tmux session for each Run:
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
@@ -273,20 +273,20 @@ Dure은 각 Run마다 tmux 세션을 생성합니다:
 └────────────────────────────────────────────┘
 ```
 
-tmux 세션에 접속하여 에이전트 출력을 직접 확인할 수 있습니다:
+You can attach to the tmux session to directly view agent output:
 
 ```bash
 tmux attach-session -t dure-run-20240126-143022
 ```
 
-세션에서 나오기: `Ctrl-b` + `d` (detach)
+To exit session: `Ctrl-b` + `d` (detach)
 
-## 다음 단계
+## Next Steps
 
-- [Briefing 작성 가이드](/guide/writing-briefings.md) - 효과적인 Briefing 작성 방법
-- [에이전트 이해하기](/guide/understanding-agents.md) - 각 에이전트의 역할과 동작 원리
-- [설정 파일](/api/configuration.md) - 에이전트 설정 커스터마이징
+- [Briefing Writing Guide](/guide/writing-briefings.md) - How to write effective Briefings
+- [Understanding Agents](/guide/understanding-agents.md) - Roles and operation principles of each agent
+- [Configuration Files](/api/configuration.md) - Customizing agent settings
 
-## 문제 해결
+## Troubleshooting
 
-문제가 발생한 경우 [문제 해결 가이드](/guide/troubleshooting.md)를 참고하세요.
+If you encounter issues, refer to the [Troubleshooting Guide](/guide/troubleshooting.md).

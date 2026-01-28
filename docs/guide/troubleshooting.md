@@ -1,18 +1,18 @@
-# 문제 해결
+# Troubleshooting
 
-Dure 사용 중 발생할 수 있는 문제와 해결 방법입니다.
+Problems that may occur while using Dure and their solutions.
 
-## 설치 및 실행 문제
+## Installation and Execution Issues
 
 ### "tmux is not installed"
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: tmux is not installed
 ```
 
-**해결:**
+**Solution:**
 
 <!-- tabs:start -->
 
@@ -38,24 +38,24 @@ sudo yum install tmux
 
 ### "claude command not found"
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: claude command not found
 Please install Claude CLI first
 ```
 
-**해결:**
+**Solution:**
 
-1. Claude CLI가 설치되어 있는지 확인:
+1. Check if Claude CLI is installed:
 
 ```bash
 which claude
 ```
 
-2. 없다면 설치: [Claude CLI 공식 문서](https://docs.anthropic.com/claude/docs/claude-cli)
+2. If not found, install: [Claude CLI official documentation](https://docs.anthropic.com/claude/docs/claude-cli)
 
-3. PATH 확인:
+3. Check PATH:
 
 ```bash
 echo $PATH | grep -o '/usr/local/bin'
@@ -63,140 +63,140 @@ echo $PATH | grep -o '/usr/local/bin'
 
 ### "Port 3000 is already in use"
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: Port 3000 is already in use
 ```
 
-**해결:**
+**Solution:**
 
-다른 포트로 시작:
+Start on a different port:
 
 ```bash
 dure start --port 3001
 ```
 
-또는 3000 포트를 사용 중인 프로세스 종료:
+Or terminate the process using port 3000:
 
 ```bash
 # macOS/Linux
 lsof -ti:3000 | xargs kill
 
-# 또는 강제 종료
+# Or force terminate
 lsof -ti:3000 | xargs kill -9
 ```
 
-## 에이전트 실행 문제
+## Agent Execution Issues
 
-### 에이전트가 시작하지 않음
+### Agent Not Starting
 
-**증상:**
+**Symptom:**
 
-대시보드에서 에이전트가 `pending` 상태로 유지됨
+Agent remains in `pending` state on dashboard
 
-**진단:**
+**Diagnosis:**
 
-1. tmux 세션 확인:
+1. Check tmux session:
 
 ```bash
 tmux list-sessions | grep dure
 ```
 
-2. tmux 세션에 접속하여 에러 확인:
+2. Attach to tmux session to check errors:
 
 ```bash
 tmux attach-session -t dure-run-{timestamp}
 ```
 
-3. 에이전트 pane 확인:
+3. Check agent pane:
    - Refiner: pane 0
    - Builder: pane 1
    - Verifier: pane 2
    - Gatekeeper: pane 3
 
-**해결:**
+**Solution:**
 
-대부분 Claude CLI 권한 문제입니다:
+Usually a Claude CLI permission issue:
 
 ```bash
-# Run 중지
+# Stop run
 dure stop
 
-# 재시작
+# Restart
 dure start
 ```
 
-### 에이전트가 멈춤 (timeout)
+### Agent Stuck (timeout)
 
-**증상:**
+**Symptom:**
 
-에이전트가 `running` 상태로 오래 유지됨
+Agent remains in `running` state for a long time
 
-**기본 타임아웃:**
+**Default Timeouts:**
 
-| 에이전트 | 타임아웃 |
-|---------|---------|
-| Refiner | 5분 |
-| Builder | 10분 |
-| Verifier | 5분 |
-| Gatekeeper | 5분 |
+| Agent | Timeout |
+|-------|---------|
+| Refiner | 5 min |
+| Builder | 10 min |
+| Verifier | 5 min |
+| Gatekeeper | 5 min |
 
-**진단:**
+**Diagnosis:**
 
-1. 대시보드에서 경과 시간 확인
-2. tmux 세션 접속하여 에이전트 출력 확인:
+1. Check elapsed time on dashboard
+2. Attach to tmux session to check agent output:
 
 ```bash
 tmux attach-session -t dure-run-{timestamp}
 ```
 
-3. pane 4 (Debug Shell)에서 프로세스 확인:
+3. Check processes in pane 4 (Debug Shell):
 
 ```bash
-# pane 4로 이동 (Ctrl-b + 방향키)
+# Move to pane 4 (Ctrl-b + arrow keys)
 ps aux | grep claude
 ```
 
-**해결:**
+**Solution:**
 
-**옵션 1: 타임아웃 연장**
+**Option 1: Extend Timeout**
 
-대시보드에서 "Extend Timeout" 클릭 또는:
+Click "Extend Timeout" on dashboard or:
 
 ```bash
-# .dure/config/global.json 수정
+# Modify .dure/config/global.json
 {
   "timeouts": {
-    "builder": 1200000  // 20분
+    "builder": 1200000  // 20 min
   }
 }
 ```
 
-**옵션 2: 재시작**
+**Option 2: Restart**
 
-대시보드에서 "Retry Agent" 클릭 또는:
+Click "Retry Agent" on dashboard or:
 
 ```bash
 dure stop
 dure start
 ```
 
-### 에이전트가 크래시
+### Agent Crash
 
-**증상:**
+**Symptom:**
 
-에이전트 상태가 `failed`로 변경됨
+Agent status changes to `failed`
 
-**진단:**
+**Diagnosis:**
 
-1. error.flag 확인:
+1. Check error.flag:
 
 ```bash
 cat .dure/runs/{run_id}/{agent}/error.flag
 ```
 
-출력 예시:
+Example output:
 
 ```json
 {
@@ -208,230 +208,230 @@ cat .dure/runs/{run_id}/{agent}/error.flag
 }
 ```
 
-2. 에이전트 로그 확인:
+2. Check agent log:
 
 ```bash
 cat .dure/runs/{run_id}/{agent}/log.md
 ```
 
-**해결:**
+**Solution:**
 
-**자동 재시도:**
+**Auto Retry:**
 
-`config.global.auto_retry.enabled: true`인 경우 자동으로 최대 2회 재시도합니다.
+If `config.global.auto_retry.enabled: true`, it automatically retries up to 2 times.
 
-**수동 재시도:**
+**Manual Retry:**
 
-대시보드에서 "Retry Agent" 클릭
+Click "Retry Agent" on dashboard
 
-**근본 원인 해결:**
+**Root Cause Resolution:**
 
-- **메모리 부족**: 모델을 Haiku로 변경
-- **권한 오류**: 파일 권한 확인
-- **JSON 파싱 에러**: Briefing 형식 확인
+- **Out of memory**: Change model to Haiku
+- **Permission error**: Check file permissions
+- **JSON parsing error**: Check Briefing format
 
-## CRP 관련 문제
+## CRP Related Issues
 
-### CRP가 너무 자주 생성됨
+### CRP Generated Too Frequently
 
-**증상:**
+**Symptom:**
 
-Refiner가 계속 CRP를 생성하여 진행이 안 됨
+Refiner keeps generating CRPs and progress stalls
 
-**원인:**
+**Cause:**
 
-Briefing이 모호한 표현을 포함
+Briefing contains ambiguous expressions
 
-**해결:**
+**Solution:**
 
-Briefing에서 다음 표현을 구체적으로 수정:
+Modify the following expressions in Briefing to be specific:
 
-| 모호한 표현 | 구체적으로 |
-|------------|----------|
-| "적당히" | "60회/분" |
-| "적절한" | "8자 이상" |
-| "빠르게" | "100ms 이내" |
+| Ambiguous Expression | Specific Alternative |
+|---------------------|---------------------|
+| "appropriately" | "60/minute" |
+| "appropriate" | "8 characters or more" |
+| "quickly" | "within 100ms" |
 
-[Briefing 작성 가이드](/guide/writing-briefings.md) 참고
+See [Briefing Writing Guide](/guide/writing-briefings.md)
 
-### CRP 응답 후 에이전트가 재시작 안 됨
+### Agent Doesn't Restart After CRP Response
 
-**증상:**
+**Symptom:**
 
-VCR 작성 후 에이전트가 `waiting_human` 상태 유지
+Agent remains in `waiting_human` state after writing VCR
 
-**진단:**
+**Diagnosis:**
 
-1. VCR 파일 확인:
+1. Check VCR file:
 
 ```bash
 ls -la .dure/runs/{run_id}/vcr/
 ```
 
-2. VCR 형식 확인:
+2. Check VCR format:
 
 ```bash
 cat .dure/runs/{run_id}/vcr/vcr-001.json
 ```
 
-**해결:**
+**Solution:**
 
-VCR 파일이 올바른 형식인지 확인:
+Verify VCR file has correct format:
 
 ```json
 {
   "vcr_id": "vcr-001",
   "crp_id": "crp-001",
   "decision": "A",
-  "rationale": "이유",
+  "rationale": "reason",
   "applies_to_future": true
 }
 ```
 
-웹 UI에서 다시 제출하거나:
+Resubmit from web UI or:
 
 ```bash
-# 수동으로 에이전트 재시작
+# Manually restart agent
 tmux send-keys -t dure-run-{timestamp}:main.0 "/clear" Enter
 ```
 
-## MRP 검토 문제
+## MRP Review Issues
 
-### MRP가 생성되지 않음
+### MRP Not Generated
 
-**증상:**
+**Symptom:**
 
-Gatekeeper가 완료되었지만 MRP가 없음
+Gatekeeper completed but no MRP
 
-**원인:**
+**Cause:**
 
-Gatekeeper가 FAIL 또는 NEEDS_HUMAN 판정
+Gatekeeper gave FAIL or NEEDS_HUMAN judgment
 
-**진단:**
+**Diagnosis:**
 
-1. verdict.json 확인:
+1. Check verdict.json:
 
 ```bash
 cat .dure/runs/{run_id}/gatekeeper/verdict.json
 ```
 
-2. review.md 확인:
+2. Check review.md:
 
 ```bash
 cat .dure/runs/{run_id}/gatekeeper/review.md
 ```
 
-**해결:**
+**Solution:**
 
-**FAIL인 경우:**
+**If FAIL:**
 
-- Builder가 자동으로 재시도됩니다
-- `max_iterations` 초과 시 수동 개입 필요
+- Builder will automatically retry
+- Manual intervention needed if `max_iterations` exceeded
 
-**NEEDS_HUMAN인 경우:**
+**If NEEDS_HUMAN:**
 
-- CRP에 응답하세요
+- Respond to the CRP
 
-### 코드가 프로젝트에 반영 안 됨
+### Code Not Applied to Project
 
-**증상:**
+**Symptom:**
 
-MRP를 Approve 했지만 코드가 없음
+Approved MRP but code is missing
 
-**원인:**
+**Cause:**
 
-Dure은 자동으로 머지하지 않습니다
+Dure does not automatically merge
 
-**해결:**
+**Solution:**
 
-MRP의 코드를 수동으로 프로젝트에 적용:
+Manually apply MRP code to project:
 
 ```bash
-# MRP 코드 확인
+# Check MRP code
 ls .dure/runs/{run_id}/mrp/code/
 
-# 복사
+# Copy
 cp -r .dure/runs/{run_id}/mrp/code/* .
 ```
 
-또는 Git diff 확인:
+Or check Git diff:
 
 ```bash
 diff -r .dure/runs/{run_id}/mrp/code/ .
 ```
 
-?> 향후 버전에서 자동 머지 기능 추가 예정
+?> Auto-merge feature planned for future versions
 
-## 성능 문제
+## Performance Issues
 
-### 실행이 너무 느림
+### Execution Too Slow
 
-**증상:**
+**Symptom:**
 
-각 에이전트가 5분 이상 소요
+Each agent takes more than 5 minutes
 
-**원인:**
+**Cause:**
 
-1. 큰 코드베이스
-2. Opus 모델 사용
-3. 복잡한 Briefing
+1. Large codebase
+2. Using Opus model
+3. Complex Briefing
 
-**해결:**
+**Solution:**
 
-**1. 모델 다운그레이드**
+**1. Downgrade Model**
 
 ```bash
 # .dure/config/builder.json
 {
-  "model": "haiku"  # sonnet에서 변경
+  "model": "haiku"  # Changed from sonnet
 }
 ```
 
-| 모델 | 속도 | 품질 | 비용 |
-|------|------|------|------|
+| Model | Speed | Quality | Cost |
+|-------|-------|---------|------|
 | Haiku | ⚡⚡⚡ | ⭐⭐ | 💰 |
 | Sonnet | ⚡⚡ | ⭐⭐⭐ | 💰💰 |
 | Opus | ⚡ | ⭐⭐⭐⭐ | 💰💰💰 |
 
-**2. Briefing 단순화**
+**2. Simplify Briefing**
 
-복잡한 요구사항을 여러 Run으로 분할
+Split complex requirements into multiple Runs
 
-**3. 타임아웃 단축**
+**3. Shorten Timeout**
 
 ```json
 // .dure/config/global.json
 {
   "timeouts": {
-    "refiner": 180000,  // 3분
-    "builder": 300000   // 5분
+    "refiner": 180000,  // 3 min
+    "builder": 300000   // 5 min
   }
 }
 ```
 
-### 비용이 너무 높음
+### Cost Too High
 
-**증상:**
+**Symptom:**
 
-Run 하나에 $1 이상 소요
+More than $1 per Run
 
-**진단:**
+**Diagnosis:**
 
-대시보드에서 Usage 확인:
+Check Usage on dashboard:
 
 ```
 Usage (this run):
   Refiner:    $0.001
-  Builder:    $0.850  ← 높음
+  Builder:    $0.850  ← High
   Verifier:   $0.050
   Gatekeeper: $0.100
 ```
 
-**해결:**
+**Solution:**
 
-**1. 모델 최적화**
+**1. Optimize Models**
 
-Builder만 Sonnet, 나머지는 Haiku:
+Only Builder uses Sonnet, others use Haiku:
 
 ```json
 // builder.json
@@ -441,34 +441,34 @@ Builder만 Sonnet, 나머지는 Haiku:
 { "model": "haiku" }
 ```
 
-**2. Iteration 제한**
+**2. Limit Iterations**
 
 ```json
 // global.json
-{ "max_iterations": 2 }  // 기본 3에서 감소
+{ "max_iterations": 2 }  // Reduced from default 3
 ```
 
-**3. Briefing 품질 향상**
+**3. Improve Briefing Quality**
 
-명확한 Briefing → 재시도 감소 → 비용 절감
+Clear Briefing → Fewer retries → Cost savings
 
-## 파일 시스템 문제
+## Filesystem Issues
 
-### ".dure 폴더를 찾을 수 없음"
+### ".dure folder not found"
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: .dure directory not found
 ```
 
-**원인:**
+**Cause:**
 
-잘못된 디렉토리에서 실행
+Running from wrong directory
 
-**해결:**
+**Solution:**
 
-프로젝트 루트에서 실행:
+Run from project root:
 
 ```bash
 cd /path/to/your-project
@@ -477,63 +477,63 @@ dure start
 
 ### "Permission denied"
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: EACCES: permission denied, mkdir '.dure'
 ```
 
-**해결:**
+**Solution:**
 
-디렉토리 권한 확인:
+Check directory permissions:
 
 ```bash
 ls -la
 
-# 쓰기 권한 없으면
+# If no write permission
 chmod u+w .
 ```
 
-### 디스크 공간 부족
+### Disk Space Insufficient
 
-**증상:**
+**Symptom:**
 
 ```bash
 Error: ENOSPC: no space left on device
 ```
 
-**해결:**
+**Solution:**
 
-오래된 Run 삭제:
+Delete old Runs:
 
 ```bash
-# 30일 이전 Run 삭제
+# Delete Runs older than 30 days
 find .dure/runs -name "run-*" -mtime +30 -exec rm -rf {} \;
 
-# 또는 수동으로
+# Or manually
 rm -rf .dure/runs/run-20240101-*
 ```
 
-## tmux 문제
+## tmux Issues
 
-### tmux 세션에 접속할 수 없음
+### Cannot Attach to tmux Session
 
-**증상:**
+**Symptom:**
 
 ```bash
 tmux attach-session -t dure-run-{timestamp}
 # error: no sessions
 ```
 
-**해결:**
+**Solution:**
 
-1. 세션 목록 확인:
+1. Check session list:
 
 ```bash
 tmux list-sessions
 ```
 
-2. 정확한 세션 이름 사용:
+2. Use exact session name:
 
 ```bash
 tmux list-sessions | grep dure
@@ -542,48 +542,48 @@ tmux list-sessions | grep dure
 tmux attach-session -t dure-run-20240126-143022
 ```
 
-### tmux pane 간 이동
+### Moving Between tmux Panes
 
-tmux 세션 내에서 pane 이동:
+Move between panes within tmux session:
 
 ```bash
-# Prefix 키: Ctrl-b
+# Prefix key: Ctrl-b
 
-Ctrl-b + 방향키        # pane 이동
-Ctrl-b + o            # 다음 pane
-Ctrl-b + q            # pane 번호 표시
-Ctrl-b + q + 숫자     # 특정 pane으로 이동
-Ctrl-b + d            # 세션에서 빠져나오기 (detach)
+Ctrl-b + arrow keys    # Move pane
+Ctrl-b + o            # Next pane
+Ctrl-b + q            # Show pane numbers
+Ctrl-b + q + number   # Move to specific pane
+Ctrl-b + d            # Detach from session
 ```
 
-### tmux 세션이 남아있음
+### tmux Session Remains
 
-**증상:**
+**Symptom:**
 
-`dure stop` 후에도 tmux 세션이 남아있음
+tmux session remains after `dure stop`
 
-**해결:**
+**Solution:**
 
-수동으로 세션 종료:
+Manually terminate session:
 
 ```bash
 tmux kill-session -t dure-run-{timestamp}
 
-# 모든 dure 세션 종료
+# Terminate all dure sessions
 tmux list-sessions | grep dure | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
 ```
 
-## 디버깅 팁
+## Debugging Tips
 
-### 로그 확인
+### Check Logs
 
-모든 이벤트는 `events.log`에 기록됩니다:
+All events are recorded in `events.log`:
 
 ```bash
 tail -f .dure/runs/{run_id}/events.log
 ```
 
-출력 예시:
+Example output:
 
 ```
 2024-01-26T14:30:22Z [INFO] run.started run_id=run-20240126-143022
@@ -593,67 +593,67 @@ tail -f .dure/runs/{run_id}/events.log
 2024-01-26T14:35:00Z [ERROR] agent.failed agent=builder error_type=crash
 ```
 
-### Debug Shell 사용
+### Use Debug Shell
 
-tmux pane 4는 Debug Shell입니다:
+tmux pane 4 is the Debug Shell:
 
 ```bash
-# tmux 세션 접속
+# Attach to tmux session
 tmux attach-session -t dure-run-{timestamp}
 
-# pane 4로 이동 (Ctrl-b + q + 4)
+# Move to pane 4 (Ctrl-b + q + 4)
 
-# 상태 확인
+# Check status
 cat .dure/runs/{run_id}/state.json
 
-# 파일 확인
+# Check files
 ls -la .dure/runs/{run_id}/builder/
 cat .dure/runs/{run_id}/builder/log.md
 
-# 프로세스 확인
+# Check processes
 ps aux | grep claude
 ```
 
-### Verbose 로그
+### Verbose Logs
 
-더 상세한 로그가 필요한 경우:
+For more detailed logs:
 
 ```json
 // .dure/config/global.json
 {
-  "log_level": "debug"  // "info"에서 변경
+  "log_level": "debug"  // Changed from "info"
 }
 ```
 
-## 도움 요청
+## Getting Help
 
-위 방법으로 해결되지 않는 경우:
+If the above methods don't resolve the issue:
 
-1. **GitHub Issue 생성**
+1. **Create GitHub Issue**
    - https://github.com/yourusername/dure/issues
-   - 다음 정보 포함:
-     - 에러 메시지
-     - `events.log` 내용
-     - `state.json` 내용
-     - 실행 환경 (OS, Node 버전, tmux 버전)
+   - Include the following information:
+     - Error message
+     - `events.log` content
+     - `state.json` content
+     - Execution environment (OS, Node version, tmux version)
 
-2. **디버그 정보 수집**
+2. **Collect Debug Information**
 
 ```bash
-# 환경 정보
+# Environment info
 node --version
 tmux -V
 claude --version
 
-# Dure 버전
+# Dure version
 dure --version
 
-# 로그 수집
+# Collect logs
 tar -czf debug-logs.tar.gz .dure/runs/{run_id}/
 ```
 
-## 다음 단계
+## Next Steps
 
-- [고급 디버깅](/advanced/debugging.md) - 상세 디버깅 기법
-- [FAQ](/misc/faq.md) - 자주 묻는 질문
-- [GitHub Issues](https://github.com/yourusername/dure/issues) - 알려진 문제
+- [Advanced Debugging](/advanced/debugging.md) - Detailed debugging techniques
+- [FAQ](/misc/faq.md) - Frequently asked questions
+- [GitHub Issues](https://github.com/yourusername/dure/issues) - Known issues

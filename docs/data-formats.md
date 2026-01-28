@@ -1,15 +1,15 @@
-# Dure - 데이터 포맷
+# Dure - Data Formats
 
-## 폴더 구조
+## Folder Structure
 
-### 프로젝트 루트
+### Project Root
 
 ```
-/my-project/                    # 사용자 프로젝트
-├── src/                        # 기존 코드
+/my-project/                    # User project
+├── src/                        # Existing code
 ├── package.json
 │
-└── .dure/                # dure start 시 생성
+└── .dure/                # Created when dure start runs
     ├── config/
     │   ├── global.json
     │   ├── refiner.json
@@ -21,34 +21,34 @@
         └── run-{timestamp}/
 ```
 
-### Run 디렉토리
+### Run Directory
 
 ```
 run-{timestamp}/
-├── state.json                  # 현재 상태
-├── events.log                  # 이벤트 로그
+├── state.json                  # Current state
+├── events.log                  # Event log
 │
 ├── briefing/
-│   ├── raw.md                  # 인간 원본 입력
-│   ├── refined.md              # Refiner 출력
-│   ├── clarifications.json     # 해석/보완 내용
-│   └── log.md                  # Refiner 로그
+│   ├── raw.md                  # Human original input
+│   ├── refined.md              # Refiner output
+│   ├── clarifications.json     # Interpretations/supplements
+│   └── log.md                  # Refiner log
 │
 ├── builder/
-│   ├── output/                 # 생성된 코드
-│   ├── log.md                  # 설계 근거
-│   ├── done.flag               # 완료 신호
-│   └── error.flag              # 에러 발생 시
+│   ├── output/                 # Generated code
+│   ├── log.md                  # Design reasoning
+│   ├── done.flag               # Completion signal
+│   └── error.flag              # When error occurs
 │
 ├── verifier/
-│   ├── tests/                  # 생성된 테스트
-│   ├── results.json            # 테스트 결과
+│   ├── tests/                  # Generated tests
+│   ├── results.json            # Test results
 │   ├── log.md
 │   └── done.flag
 │
 ├── gatekeeper/
-│   ├── review.md               # 리뷰 코멘트
-│   ├── verdict.json            # 판정 결과
+│   ├── review.md               # Review comments
+│   ├── verdict.json            # Verdict result
 │   └── log.md
 │
 ├── crp/                        # Consultation Request Pack
@@ -92,11 +92,11 @@ run-{timestamp}/
   "created_at": "2024-01-15T14:35:00Z",
   "created_by": "refiner",
   "type": "clarification",
-  "question": "Rate limiting을 어떤 기준으로 적용할까요?",
-  "context": "briefing에 '적절한 rate limiting'이라고만 명시됨",
+  "question": "What criteria should rate limiting be applied with?",
+  "context": "Briefing only specifies 'appropriate rate limiting'",
   "options": [
-    { "id": "A", "label": "IP당 분당 60회", "description": "일반적인 API 기본값", "risk": "낮음" },
-    { "id": "B", "label": "사용자당 분당 100회", "description": "인증된 사용자 기준", "risk": "인증 시스템 필요" }
+    { "id": "A", "label": "60 requests per minute per IP", "description": "Common API default", "risk": "Low" },
+    { "id": "B", "label": "100 requests per minute per user", "description": "Based on authenticated users", "risk": "Requires authentication system" }
   ],
   "recommendation": "A",
   "status": "pending"
@@ -111,8 +111,8 @@ run-{timestamp}/
   "crp_id": "crp-001",
   "created_at": "2024-01-15T14:40:00Z",
   "decision": "A",
-  "rationale": "MVP에서는 단순한 방식으로 시작",
-  "additional_notes": "추후 사용자별 제한 추가 예정",
+  "rationale": "Start with simple approach for MVP",
+  "additional_notes": "Plan to add per-user limits later",
   "applies_to_future": true
 }
 ```
@@ -120,11 +120,11 @@ run-{timestamp}/
 ## MRP (Merge-Readiness Pack)
 
 **summary.md:**
-- Run 정보 (ID, iteration 수, 완료 시간)
-- 변경 사항 목록
-- 테스트 결과
-- 설계 결정 요약
-- 리뷰 통과 사유
+- Run information (ID, iteration count, completion time)
+- List of changes
+- Test results
+- Design decision summary
+- Review pass reasoning
 
 **evidence.json:**
 ```json
@@ -142,7 +142,7 @@ run-{timestamp}/
 }
 ```
 
-## 설정 파일
+## Configuration Files
 
 ### global.json
 
@@ -173,7 +173,7 @@ run-{timestamp}/
     "allowed": ["numeric_defaults", "naming", "file_paths"],
     "forbidden": ["architecture", "external_deps", "security"]
   },
-  "delegation_keywords": ["적당히", "알아서", "합리적으로"],
+  "delegation_keywords": ["appropriately", "as needed", "reasonably"],
   "max_refinement_iterations": 2
 }
 ```

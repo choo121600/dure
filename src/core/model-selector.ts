@@ -13,22 +13,18 @@ const TECHNICAL_KEYWORDS = {
   architecture: [
     'architecture', 'design pattern', 'microservice', 'monolith',
     'database', 'schema', 'api', 'rest', 'graphql', 'grpc',
-    '아키텍처', '설계', '구조', '패턴',  // Korean: architecture, design, structure, pattern
   ],
   complexity: [
     'refactor', 'migration', 'integration', 'authentication', 'authorization',
     'caching', 'queue', 'async', 'concurrent', 'parallel',
-    '리팩토링', '마이그레이션', '통합', '인증', '캐싱',  // Korean: refactoring, migration, integration, auth, caching
   ],
   risk: [
     'security', 'encryption', 'vulnerability', 'performance', 'optimization',
     'scalability', 'reliability', 'critical', 'production',
-    '보안', '암호화', '취약점', '성능', '최적화', '확장성',  // Korean: security, encryption, vulnerability, performance, optimization, scalability
   ],
   scope: [
     'multiple files', 'across', 'entire', 'all', 'whole', 'system-wide',
     'full rewrite', 'complete', 'comprehensive',
-    '여러 파일', '전체', '모든', '시스템', '완전히',  // Korean: multiple files, entire, all, system, completely
   ],
 };
 

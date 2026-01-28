@@ -1,54 +1,54 @@
-# 핵심 개념
+# Core Concepts
 
-Dure을 효과적으로 사용하기 위해 이해해야 할 핵심 개념들을 설명합니다.
+This explains the core concepts you need to understand to use Dure effectively.
 
-## 설계 원칙
+## Design Principles
 
-Dure은 다음 원칙에 따라 설계되었습니다:
+Dure is designed according to the following principles:
 
-### 1. 인간은 판단 노드다
+### 1. Humans are Decision Nodes
 
-**인간은 작업자가 아니라 결정권자입니다.**
+**Humans are decision makers, not workers.**
 
 ```mermaid
 graph LR
-    A[에이전트 실행] --> B{판단 필요?}
-    B -->|Yes| C[인간 개입]
-    B -->|No| D[계속 진행]
+    A[Agent Execution] --> B{Decision Needed?}
+    B -->|Yes| C[Human Intervention]
+    B -->|No| D[Continue]
     C --> A
-    D --> E[완료]
+    D --> E[Complete]
 ```
 
-- ✅ 에이전트가 모든 작업 수행
-- ✅ 인간은 중요한 결정만 내림
-- ❌ 인간이 직접 코드 작성하지 않음
-- ❌ 인간이 중간 과정에 개입하지 않음
+- ✅ Agents perform all work
+- ✅ Humans only make important decisions
+- ❌ Humans don't write code directly
+- ❌ Humans don't intervene in intermediate processes
 
-### 2. 궤적(Trajectory)이 1급 산출물
+### 2. Trajectory is a First-Class Artifact
 
-**결과물보다 도달 과정이 중요합니다.**
+**The journey is more important than the destination.**
 
-모든 실행은 완전히 기록되어:
+Every execution is fully recorded:
 
-- 📝 모든 에이전트 로그
-- 🔍 모든 결정 근거
-- ⏱️ 모든 이벤트 타임스탬프
-- 💰 모든 토큰 사용량
+- 📝 All agent logs
+- 🔍 All decision rationales
+- ⏱️ All event timestamps
+- 💰 All token usage
 
-이 정보는 `.dure/runs/{run_id}/` 에 영구 저장됩니다.
+This information is permanently stored in `.dure/runs/{run_id}/`.
 
-### 3. 재현 가능해야 한다
+### 3. Must be Reproducible
 
-같은 Briefing과 설정으로 실행하면 유사한 결과를 얻을 수 있어야 합니다.
+Running with the same Briefing and settings should yield similar results.
 
 ```bash
-# 과거 run 재현
+# Replay past run
 dure replay run-20240126-143022
 ```
 
-### 4. 파일 기반 조율
+### 4. File-Based Coordination
 
-에이전트 간 통신은 파일시스템으로 이루어집니다:
+Communication between agents is done through the filesystem:
 
 ```
 Refiner → briefing/refined.md → Builder
@@ -56,38 +56,38 @@ Builder → builder/done.flag → Verifier
 Verifier → verifier/done.flag → Gatekeeper
 ```
 
-이는:
-- ✅ 명확한 인터페이스
-- ✅ 디버깅 용이
-- ✅ 중간 상태 검사 가능
+This provides:
+- ✅ Clear interfaces
+- ✅ Easy debugging
+- ✅ Ability to inspect intermediate states
 
-## 주요 용어
+## Key Terms
 
 ### Run
 
-하나의 Briefing부터 최종 MRP까지의 전체 실행 단위입니다.
+A complete execution unit from a single Briefing to the final MRP.
 
-각 Run은 고유한 ID를 가집니다:
+Each Run has a unique ID:
 
 ```
 run-{timestamp}
-예: run-20240126-143022
+e.g., run-20240126-143022
 ```
 
 ### Phase
 
-Run은 4개의 Phase로 구성됩니다:
+A Run consists of 4 Phases:
 
-| Phase | 에이전트 | 역할 |
-|-------|---------|------|
-| **0: refine** | Refiner | Briefing 검토 및 개선 |
-| **1: build** | Builder | 코드 구현 |
-| **2: verify** | Verifier | 테스트 생성 및 실행 |
-| **3: gate** | Gatekeeper | 최종 판정 |
+| Phase | Agent | Role |
+|-------|-------|------|
+| **0: refine** | Refiner | Review and improve Briefing |
+| **1: build** | Builder | Implement code |
+| **2: verify** | Verifier | Generate and run tests |
+| **3: gate** | Gatekeeper | Final judgment |
 
 ### Iteration
 
-Gatekeeper가 FAIL 판정을 내리면 Builder로 돌아가 재시도합니다.
+If the Gatekeeper gives a FAIL judgment, it returns to the Builder for retry.
 
 ```
 Phase 1 (Builder) → Phase 2 (Verifier) → Phase 3 (Gatekeeper)
@@ -95,147 +95,147 @@ Phase 1 (Builder) → Phase 2 (Verifier) → Phase 3 (Gatekeeper)
                         └──────── FAIL ────────────┘
 ```
 
-기본 최대 iteration: **3회**
+Default maximum iterations: **3**
 
-?> `config.global.max_iterations`로 변경 가능
+?> Can be changed with `config.global.max_iterations`
 
 ### Briefing
 
-인간이 작성하는 **요구사항 명세서**입니다.
+A **requirements specification** written by humans.
 
-Markdown 형식으로 작성하며, 다음을 포함합니다:
+Written in Markdown format, it includes:
 
-- 📋 요구사항
-- 🚫 제약 조건
-- ✅ 예상 동작
+- 📋 Requirements
+- 🚫 Constraints
+- ✅ Expected behavior
 
-좋은 Briefing 작성법은 [Briefing 작성 가이드](/guide/writing-briefings.md)를 참고하세요.
+For good Briefing writing practices, see the [Briefing Writing Guide](/guide/writing-briefings.md).
 
 ### CRP (Consultation Request Pack)
 
-에이전트가 **인간의 판단이 필요할 때** 생성하는 질의서입니다.
+A query document generated when an agent **needs human judgment**.
 
-CRP에는 다음이 포함됩니다:
+CRP includes:
 
 ```json
 {
-  "question": "질문 내용",
-  "context": "맥락 설명",
+  "question": "Question content",
+  "context": "Context explanation",
   "options": [
-    {"id": "A", "label": "선택지A", "description": "...", "risk": "낮음"},
-    {"id": "B", "label": "선택지B", "description": "...", "risk": "높음"}
+    {"id": "A", "label": "Option A", "description": "...", "risk": "low"},
+    {"id": "B", "label": "Option B", "description": "...", "risk": "high"}
   ],
   "recommendation": "A"
 }
 ```
 
-인간이 응답하면 **VCR**이 생성됩니다.
+When a human responds, a **VCR** is generated.
 
 ### VCR (Version Controlled Resolution)
 
-CRP에 대한 **인간의 결정 기록**입니다.
+A **record of human decisions** for CRP.
 
 ```json
 {
   "crp_id": "crp-001",
   "decision": "A",
-  "rationale": "MVP에서는 단순한 방식으로 시작",
+  "rationale": "Start with simple approach for MVP",
   "applies_to_future": true
 }
 ```
 
-`applies_to_future: true`로 설정하면 유사한 상황에서 자동으로 적용됩니다.
+Setting `applies_to_future: true` automatically applies to similar situations.
 
 ### MRP (Merge-Readiness Pack)
 
-Gatekeeper가 PASS 판정을 내렸을 때 생성되는 **최종 결과물 패키지**입니다.
+A **final deliverable package** generated when the Gatekeeper gives a PASS judgment.
 
-MRP에는 다음이 포함됩니다:
+MRP includes:
 
-- 📄 `summary.md` - 변경 사항 요약
-- 💾 `code/` - 최종 코드 스냅샷
-- 🧪 `tests/` - 테스트 파일
-- 📊 `evidence.json` - 테스트 결과, 비용, 로그 링크
+- 📄 `summary.md` - Summary of changes
+- 💾 `code/` - Final code snapshot
+- 🧪 `tests/` - Test files
+- 📊 `evidence.json` - Test results, costs, log links
 
-## 에이전트 파이프라인
+## Agent Pipeline
 
-### 전체 흐름
+### Overall Flow
 
 ```mermaid
 graph TD
-    A[Briefing 작성] --> B[Refiner]
-    B -->|충분| C[Builder]
-    B -->|모호| D[CRP 생성]
-    D --> E[인간 응답]
-    E --> F[VCR 생성]
+    A[Write Briefing] --> B[Refiner]
+    B -->|Sufficient| C[Builder]
+    B -->|Ambiguous| D[Generate CRP]
+    D --> E[Human Response]
+    E --> F[Generate VCR]
     F --> B
     C --> G[Verifier]
     G --> H[Gatekeeper]
-    H -->|PASS| I[MRP 생성]
+    H -->|PASS| I[Generate MRP]
     H -->|FAIL| C
     H -->|NEEDS_HUMAN| D
-    I --> J[인간 검토]
-    J -->|Approve| K[완료]
+    I --> J[Human Review]
+    J -->|Approve| K[Complete]
     J -->|Request Changes| C
 ```
 
-### 각 에이전트의 역할
+### Role of Each Agent
 
 #### Refiner (Phase 0)
 
-**Briefing을 검토하고 개선합니다.**
+**Reviews and improves the Briefing.**
 
-- ✅ 충분한 Briefing → 다음 단계로
-- ✏️ 개선 가능 → 자동 보완 (숫자, 네이밍 등)
-- ❓ 모호함 → CRP 생성
+- ✅ Sufficient Briefing → Proceed to next step
+- ✏️ Can be improved → Auto-supplement (numbers, naming, etc.)
+- ❓ Ambiguous → Generate CRP
 
-**자동 개선 허용 항목:**
-- 숫자 기본값 (예: "적절한 제한" → "60회/분")
-- 네이밍 컨벤션
-- 파일 경로
+**Allowed Auto-improvements:**
+- Numeric defaults (e.g., "appropriate limit" → "60/minute")
+- Naming conventions
+- File paths
 
-**CRP 필수 항목:**
-- 아키텍처 결정
-- 외부 의존성 추가
-- 보안 관련 사항
+**CRP Required Items:**
+- Architecture decisions
+- Adding external dependencies
+- Security-related matters
 
 #### Builder (Phase 1)
 
-**코드를 구현합니다.**
+**Implements the code.**
 
-- 📝 `refined.md` 기반으로 코드 생성
-- 📋 설계 결정 근거를 `log.md`에 기록
-- ✅ 완료 시 `done.flag` 생성
+- 📝 Generate code based on `refined.md`
+- 📋 Record design decision rationale in `log.md`
+- ✅ Create `done.flag` upon completion
 
 #### Verifier (Phase 2)
 
-**테스트를 생성하고 실행합니다.**
+**Generates and runs tests.**
 
-- 🧪 기능 테스트 생성
-- 🔍 경계 조건 테스트
-- ⚠️ 에러 케이스 테스트
-- 🎯 반례 탐색 (adversarial testing)
+- 🧪 Generate functional tests
+- 🔍 Boundary condition tests
+- ⚠️ Error case tests
+- 🎯 Adversarial testing
 
-**출력:**
-- `tests/` - 테스트 파일
-- `results.json` - 테스트 결과
-- `log.md` - 검증 로그
+**Output:**
+- `tests/` - Test files
+- `results.json` - Test results
+- `log.md` - Verification log
 
 #### Gatekeeper (Phase 3)
 
-**최종 판정을 내립니다.**
+**Makes the final judgment.**
 
-판정 결과:
+Judgment results:
 
-| 판정 | 의미 | 다음 단계 |
-|------|------|----------|
-| **PASS** | 모든 기준 충족 | MRP 생성 |
-| **FAIL** | 기준 미충족 | Builder 재시도 |
-| **NEEDS_HUMAN** | 인간 판단 필요 | CRP 생성 |
+| Judgment | Meaning | Next Step |
+|----------|---------|-----------|
+| **PASS** | All criteria met | Generate MRP |
+| **FAIL** | Criteria not met | Retry Builder |
+| **NEEDS_HUMAN** | Human judgment needed | Generate CRP |
 
-## 상태 관리
+## State Management
 
-각 Run의 상태는 `state.json`에 저장됩니다:
+Each Run's state is stored in `state.json`:
 
 ```json
 {
@@ -252,18 +252,18 @@ graph TD
 }
 ```
 
-**에이전트 상태:**
+**Agent statuses:**
 
-- `pending` - 아직 시작 안 됨
-- `running` - 실행 중
-- `completed` - 정상 완료
-- `failed` - 에러로 실패
-- `timeout` - 시간 초과
-- `waiting_human` - 인간 입력 대기 중
+- `pending` - Not yet started
+- `running` - In progress
+- `completed` - Successfully completed
+- `failed` - Failed due to error
+- `timeout` - Timed out
+- `waiting_human` - Waiting for human input
 
-## 비용 추적
+## Cost Tracking
 
-모든 에이전트의 토큰 사용량과 비용이 실시간으로 추적됩니다:
+Token usage and costs for all agents are tracked in real-time:
 
 ```json
 {
@@ -281,10 +281,10 @@ graph TD
 }
 ```
 
-대시보드에서 실시간으로 확인할 수 있습니다.
+You can check this in real-time on the dashboard.
 
-## 다음 단계
+## Next Steps
 
-- [Briefing 작성 가이드](/guide/writing-briefings.md) - 효과적인 Briefing 작성 방법
-- [에이전트 이해하기](/guide/understanding-agents.md) - 각 에이전트의 상세 동작
-- [시스템 개요](/architecture/overview.md) - 아키텍처 상세 설명
+- [Briefing Writing Guide](/guide/writing-briefings.md) - How to write effective Briefings
+- [Understanding Agents](/guide/understanding-agents.md) - Detailed agent behavior
+- [System Overview](/architecture/overview.md) - Detailed architecture explanation
