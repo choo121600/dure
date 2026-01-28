@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# ============================================
+# Dure Pre-commit Hooks
+# ============================================
+# 이 훅은 커밋 전에 자동으로 실행됩니다.
+# 우회: git commit --no-verify (권장하지 않음)
+# ============================================
+
+set -e  # 에러 발생 시 즉시 중단
+
+echo "Running pre-commit checks..."
+echo ""
+
+# ============================================
+# CLI Screenshots & Documentation Verification
+# ============================================
+# CLI 파일 변경 시 스크린샷 검증
+if git diff --cached --name-only | grep -q "^src/cli/"; then
+  echo "CLI files changed, verifying screenshots..."
+
+  npm run screenshots:verify || {
+    echo ""
+    echo "Screenshots are out of date!"
+    echo "Run: npm run screenshots"
+    exit 1
+  }
+
+  npm run docs:cli:verify || {
+    echo ""
+    echo "CLI documentation is out of date!"
+    echo "Run: npm run docs:cli"
+    exit 1
+  }
+fi
