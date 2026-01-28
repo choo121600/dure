@@ -69,7 +69,7 @@ export function createTextInput(options: TextInputOptions): TextInputComponent {
     left: 0,
     width: '100%',
     height: 1,
-    content: '{gray-fg}Ctrl+Enter: Submit | Esc: Cancel{/gray-fg}',
+    content: '{gray-fg}Ctrl+S: Submit | Esc: Cancel{/gray-fg}',
     tags: true,
     style: {
       fg: 'gray',
