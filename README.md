@@ -64,7 +64,9 @@ dure start
 
 브라우저가 자동으로 열리고 대시보드(http://localhost:3000)가 표시됩니다.
 
-### CLI 옵션
+### CLI 명령어
+
+![dure --help](docs/images/cli/output_.svg)
 
 ```bash
 # 포트 지정
@@ -88,6 +90,8 @@ dure recover [run-id]
 # 중단된 run 목록 확인
 dure recover --list
 ```
+
+전체 CLI 레퍼런스는 [CLI Reference](docs/CLI_REFERENCE.md)를 참고하세요.
 
 ## 워크플로우
 

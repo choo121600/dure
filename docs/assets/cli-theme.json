@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dure CLI Screenshot Theme",
+  "description": "Color themes for CLI screenshot generation",
+  "themes": {
+    "dark": {
+      "name": "VS Code Dark+",
+      "foregroundColor": "#d4d4d4",
+      "backgroundColor": "#1e1e1e",
+      "colors": {
+        "black": "#1e1e1e",
+        "red": "#f44747",
+        "green": "#6a9955",
+        "yellow": "#dcdcaa",
+        "blue": "#569cd6",
+        "magenta": "#c586c0",
+        "cyan": "#4ec9b0",
+        "white": "#d4d4d4",
+        "brightBlack": "#808080",
+        "brightRed": "#f44747",
+        "brightGreen": "#6a9955",
+        "brightYellow": "#dcdcaa",
+        "brightBlue": "#569cd6",
+        "brightMagenta": "#c586c0",
+        "brightCyan": "#4ec9b0",
+        "brightWhite": "#ffffff"
+      }
+    },
+    "light": {
+      "name": "VS Code Light+",
+      "foregroundColor": "#333333",
+      "backgroundColor": "#ffffff",
+      "colors": {
+        "black": "#333333",
+        "red": "#cd3131",
+        "green": "#008000",
+        "yellow": "#795e26",
+        "blue": "#0451a5",
+        "magenta": "#bc05bc",
+        "cyan": "#0598bc",
+        "white": "#d4d4d4",
+        "brightBlack": "#666666",
+        "brightRed": "#cd3131",
+        "brightGreen": "#008000",
+        "brightYellow": "#795e26",
+        "brightBlue": "#0451a5",
+        "brightMagenta": "#bc05bc",
+        "brightCyan": "#0598bc",
+        "brightWhite": "#333333"
+      }
+    }
+  },
+  "defaults": {
+    "theme": "dark",
+    "padding": 16,
+    "fontSize": 14,
+    "lineHeight": 18,
+    "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+  }
+}

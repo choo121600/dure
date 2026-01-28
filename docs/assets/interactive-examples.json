@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dure CLI Interactive Examples",
+  "description": "Interactive CLI session scripts for documentation screenshots",
+  "examples": [
+    {
+      "id": "help-commands",
+      "name": "Help Commands Overview",
+      "description": "Demonstrates the main help output and available commands",
+      "outputFile": "interactive_help.svg",
+      "steps": [
+        {
+          "input": "dure --help",
+          "description": "Show main help",
+          "waitMs": 1000
+        }
+      ]
+    },
+    {
+      "id": "basic-workflow",
+      "name": "Basic Workflow",
+      "description": "Shows a typical workflow: init, start, and status check",
+      "outputFile": "interactive_workflow.svg",
+      "steps": [
+        {
+          "input": "dure --version",
+          "description": "Check version",
+          "waitMs": 500
+        },
+        {
+          "input": "dure --help",
+          "description": "Show available commands",
+          "waitMs": 1000
+        }
+      ]
+    },
+    {
+      "id": "screenshots-demo",
+      "name": "Screenshots Command Demo",
+      "description": "Demonstrates the screenshots management commands",
+      "outputFile": "interactive_screenshots.svg",
+      "steps": [
+        {
+          "input": "dure screenshots --help",
+          "description": "Show screenshots help",
+          "waitMs": 800
+        },
+        {
+          "input": "dure screenshots themes",
+          "description": "List available themes",
+          "waitMs": 800
+        }
+      ]
+    },
+    {
+      "id": "theme-preview",
+      "name": "Theme Preview",
+      "description": "Shows the available color themes",
+      "outputFile": "interactive_themes.svg",
+      "steps": [
+        {
+          "input": "dure screenshots themes",
+          "description": "List themes",
+          "waitMs": 1000
+        }
+      ]
+    },
+    {
+      "id": "version-archive",
+      "name": "Version Archive Demo",
+      "description": "Demonstrates version archiving workflow",
+      "outputFile": "interactive_archive.svg",
+      "steps": [
+        {
+          "input": "dure screenshots versions",
+          "description": "List archived versions",
+          "waitMs": 800
+        },
+        {
+          "input": "dure screenshots archive v0.1.0 --dry-run",
+          "description": "Dry run archive",
+          "waitMs": 1000
+        }
+      ]
+    }
+  ]
+}
