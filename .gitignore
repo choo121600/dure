@@ -45,7 +45,3 @@ temp/
 playwright-report/
 test-results/
 playwright/.cache/
-
-# Claude
-.claude/agents/
-.claude/skills/
