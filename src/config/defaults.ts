@@ -18,7 +18,7 @@ export const defaultModelSelectionConfig: ModelSelectionConfig = {
 export const defaultGlobalConfig: GlobalConfig = {
   max_iterations: 3,
   tmux_session_prefix: 'dure',
-  web_port: 3000,
+  web_port: 3873,
   log_level: 'info',
   timeouts: {
     refiner: 300000,

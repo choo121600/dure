@@ -33,7 +33,7 @@ export function createProgram(): Command {
   program
     .command('start')
     .description('Start Dure in the current project')
-    .option('-p, --port <number>', 'Web server port', '3000')
+    .option('-p, --port <number>', 'Web server port', '3873')
     .option('--no-browser', 'Do not open browser automatically')
     .option('--tui', 'Use TUI mode (Terminal User Interface) instead of web server')
     .action(startCommand);

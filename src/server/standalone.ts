@@ -11,7 +11,7 @@ import { RunManager } from '../core/run-manager.js';
 import { InterruptRecovery } from '../core/interrupt-recovery.js';
 
 const args = process.argv.slice(2);
-let port = 3000;
+let port = 3873;
 let projectRoot = process.cwd();
 let autoRecover = false;
 

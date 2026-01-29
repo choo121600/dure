@@ -131,10 +131,10 @@ Currently only one project at a time is supported. Running `dure start` separate
 Solution:
 ```bash
 cd project1
-dure start --port 3000
+dure start --port 3873
 
 cd project2
-dure start --port 3001
+dure start --port 3874
 ```
 
 ### Should I commit the .dure folder to Git?
@@ -174,7 +174,7 @@ npm install -g ccusage
 
 ## Errors and Troubleshooting
 
-### "Port 3000 is already in use"
+### "Port 3873 is already in use"
 
 Start on a different port or terminate the existing process:
 
@@ -182,8 +182,8 @@ Start on a different port or terminate the existing process:
 # Use different port
 dure start --port 3001
 
-# Or terminate process on port 3000
-lsof -ti:3000 | xargs kill
+# Or terminate process on port 3873
+lsof -ti:3873 | xargs kill
 ```
 
 ### Agent crashed

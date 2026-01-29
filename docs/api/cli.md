@@ -29,7 +29,7 @@ dure start [options]
 
 | Option | Short Form | Default | Description |
 |--------|------------|---------|-------------|
-| `--port <number>` | `-p` | 3000 | Web server port |
+| `--port <number>` | `-p` | 3873 | Web server port |
 | `--no-browser` | - | false | Disable automatic browser opening |
 | `--config <path>` | `-c` | `.dure/config` | Configuration file path |
 | `--log-level <level>` | `-l` | `info` | Log level (debug/info/warn/error) |
@@ -58,7 +58,7 @@ dure start -p 3001 --no-browser
 1. Create `.dure/` folder if it doesn't exist
 2. Create configuration files with defaults if they don't exist
 3. Create tmux session (pane structure)
-4. Start web server (port 3000)
+4. Start web server (port 3873)
 5. Open browser (depending on options)
 
 ### Output
@@ -68,7 +68,7 @@ dure start -p 3001 --no-browser
 
 ✓ Configuration initialized
 ✓ Tmux session created (dure-run-20240126-143022)
-✓ Web server started at http://localhost:3000
+✓ Web server started at http://localhost:3873
 
 Opening browser...
 
@@ -519,7 +519,7 @@ Dure supports the following environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DURE_PORT` | Web server port | 3000 |
+| `DURE_PORT` | Web server port | 3873 |
 | `DURE_LOG_LEVEL` | Log level | info |
 | `DURE_CONFIG_DIR` | Configuration directory | .dure/config |
 

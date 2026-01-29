@@ -114,12 +114,12 @@ dure start
 
 ### 3. Open Web Dashboard
 
-The browser will automatically open and connect to `http://localhost:3000`.
+The browser will automatically open and connect to `http://localhost:3873`.
 
 If it doesn't open automatically, connect manually:
 
 ```bash
-open http://localhost:3000  # macOS
+open http://localhost:3873  # macOS
 ```
 
 ## First Run Execution

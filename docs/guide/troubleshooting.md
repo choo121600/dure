@@ -61,12 +61,12 @@ which claude
 echo $PATH | grep -o '/usr/local/bin'
 ```
 
-### "Port 3000 is already in use"
+### "Port 3873 is already in use"
 
 **Symptom:**
 
 ```bash
-Error: Port 3000 is already in use
+Error: Port 3873 is already in use
 ```
 
 **Solution:**
@@ -77,14 +77,14 @@ Start on a different port:
 dure start --port 3001
 ```
 
-Or terminate the process using port 3000:
+Or terminate the process using port 3873:
 
 ```bash
 # macOS/Linux
-lsof -ti:3000 | xargs kill
+lsof -ti:3873 | xargs kill
 
 # Or force terminate
-lsof -ti:3000 | xargs kill -9
+lsof -ti:3873 | xargs kill -9
 ```
 
 ## Agent Execution Issues

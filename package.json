@@ -11,7 +11,7 @@
     "build": "tsc && npm run copy-assets",
     "copy-assets": "mkdir -p dist/server/public && cp -r src/server/public/* dist/server/public/ && mkdir -p dist/templates && cp -r templates/* dist/templates/ && cp src/server/openapi.yaml dist/server/",
     "dev": "tsx src/cli/index.ts",
-    "dev:server": "tsx src/server/standalone.ts --port 3000 --project-root .",
+    "dev:server": "tsx src/server/standalone.ts --port 3873 --project-root .",
     "start": "node dist/cli/index.js",
     "watch": "tsc --watch",
     "typecheck": "tsc --noEmit",

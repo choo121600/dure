@@ -62,7 +62,7 @@ npx dure start
 dure start
 ```
 
-The browser will automatically open and display the dashboard (http://localhost:3000).
+The browser will automatically open and display the dashboard (http://localhost:3873).
 
 ### CLI Commands
 
@@ -196,7 +196,7 @@ You can change settings via the Settings page or by directly editing `.dure/conf
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `global.max_iterations` | 3 | Maximum retry count |
-| `global.web_port` | 3000 | Web server port |
+| `global.web_port` | 3873 | Web server port |
 | `refiner.model` | haiku | Refiner model |
 | `builder.model` | sonnet | Builder model |
 | `verifier.model` | haiku | Verifier model |
@@ -272,7 +272,7 @@ npm install -g docsify-cli
 # Run documentation server
 docsify serve docs
 
-# Access http://localhost:3000
+# Access http://localhost:3873
 ```
 
 ## License

@@ -25,8 +25,8 @@ export interface PortsConfig {
  * Port constants with environment variable overrides
  */
 export const PORTS: PortsConfig = {
-  /** Default web server port */
-  DEFAULT_WEB_PORT: parseEnvInt(process.env.DURE_WEB_PORT, 3000),
+  /** Default web server port (DURE on phone keypad: D=3, U=8, R=7, E=3) */
+  DEFAULT_WEB_PORT: parseEnvInt(process.env.DURE_WEB_PORT, 3873),
 
   /** Minimum valid port */
   MIN_PORT: 1,
