@@ -10,7 +10,7 @@ your-project/
 ├── package.json
 ├── .gitignore
 │
-└── .dure/            # Dure working directory
+└── .dure/                  # Dure working directory
     ├── config/             # Configuration files
     │   ├── global.json
     │   ├── refiner.json
@@ -30,6 +30,75 @@ your-project/
             ├── vcr/
             ├── mrp/
             └── prompts/
+```
+
+## Source Code Structure
+
+```
+src/
+├── cli/                    # CLI commands
+│   ├── index.ts
+│   └── commands/
+│       ├── start.ts        # dure start (TUI 기본 실행)
+│       ├── monitor.ts      # dure monitor (실행 중 run 모니터링)
+│       ├── status.ts
+│       └── ...
+│
+├── core/                   # Core logic
+│   ├── orchestrator.ts
+│   ├── state-manager.ts
+│   ├── tmux-manager.ts
+│   ├── file-watcher.ts
+│   ├── dashboard-data-provider.ts  # 대시보드 데이터 집계 (NEW)
+│   └── ...
+│
+├── tui/                    # Terminal UI (NEW)
+│   ├── index.ts            # TUI 진입점
+│   ├── app.ts              # TUI 앱 로직
+│   │
+│   ├── ink/                # Ink (React) 컴포넌트
+│   │   ├── index.tsx       # Ink render 진입점
+│   │   ├── App.tsx         # 메인 컴포넌트, 키보드 입력 처리
+│   │   ├── Header.tsx      # Run ID, Stage, Tokens, Cost 표시
+│   │   ├── AgentPanel.tsx  # 에이전트 상태 패널
+│   │   ├── OutputView.tsx  # 선택된 에이전트 출력
+│   │   ├── ProgressBar.tsx # 진행률 바
+│   │   ├── CRPPrompt.tsx   # CRP 응답 프롬프트
+│   │   └── hooks/
+│   │       └── useDashboardData.ts  # Provider 구독 훅
+│   │
+│   ├── components/         # 레거시 컴포넌트
+│   │   ├── dashboard.ts
+│   │   ├── status-bar.ts
+│   │   ├── text-input.ts
+│   │   └── crp-notification.ts
+│   │
+│   ├── screens/            # 화면 단위 컴포넌트
+│   │   ├── new-run.ts
+│   │   ├── run-list.ts
+│   │   ├── mrp-view.ts
+│   │   └── crp-respond.ts
+│   │
+│   ├── state/              # TUI 상태 관리
+│   │   └── tui-state.ts
+│   │
+│   └── utils/              # TUI 유틸리티
+│       ├── tui-logger.ts
+│       └── keybindings.ts
+│
+├── server/                 # Web server
+│   ├── index.ts
+│   ├── routes/
+│   │   └── ...
+│   │
+│   └── dashboard/          # Dashboard API (NEW)
+│       └── socket-handler.ts  # Socket.io 이벤트 핸들러
+│
+├── agents/                 # Agent prompts
+│   └── prompt-generator.ts
+│
+└── types/                  # Type definitions
+    └── index.ts            # DashboardData, DashboardStage 등 포함
 ```
 
 ## .dure/config/
@@ -476,6 +545,7 @@ done
 
 ## Next Steps
 
+- [Dashboard System](/architecture/dashboard-system.md) - TUI/Web 대시보드 아키텍처
 - [Data Formats](/architecture/data-formats.md) - Detailed file format specifications
 - [Execution Flow](/architecture/execution-flow.md) - File creation timing
 - [Configuration Files](/api/configuration.md) - Config file details

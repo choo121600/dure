@@ -2,35 +2,77 @@
 
 ## System Overview
 
+Dure는 TUI(Terminal User Interface)를 기본 모니터링 인터페이스로 제공하며, 웹 대시보드를 통한 원격 모니터링도 지원합니다.
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         dure                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   CLI (dure start)                                     │
-│         │                                                    │
-│         ▼                                                    │
-│   ┌─────────────┐         ┌─────────────────────────────┐   │
-│   │ ACE Web     │◄───────►│ .dure/                │   │
-│   │ Server      │         │   ├─ config/                │   │
-│   │ :3873       │         │   └─ runs/                  │   │
-│   └─────────────┘         └─────────────────────────────┘   │
-│         │                              ▲                     │
-│         │ Run start                    │                     │
-│         ▼                              │                     │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │                  tmux session                        │   │
-│   │  ┌──────────┬──────────┬──────────┬──────────┐      │   │
-│   │  │ Refiner  │ Builder  │ Verifier │Gatekeeper│      │   │
-│   │  │ (pane 0) │ (pane 1) │ (pane 2) │ (pane 3) │      │   │
-│   │  └──────────┴──────────┴──────────┴──────────┘      │   │
-│   │  ┌─────────────────────┬────────────────────┐       │   │
-│   │  │ Debug Shell (pane 4)│ ACE Server (pane 5)│       │   │
-│   │  └─────────────────────┴────────────────────┘       │   │
-│   └─────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                              Dure System                              │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   ┌─────────────────────────────────────────────────────────────┐    │
+│   │                     Presentation Layer                       │    │
+│   │  ┌──────────────────────┐    ┌──────────────────────────┐   │    │
+│   │  │   TUI Dashboard      │    │    Web Dashboard         │   │    │
+│   │  │   (Ink, Primary)     │    │    (Socket.io)           │   │    │
+│   │  └──────────┬───────────┘    └─────────────┬────────────┘   │    │
+│   │             │                              │                 │    │
+│   │             └──────────────┬───────────────┘                 │    │
+│   │                            ▼                                 │    │
+│   │              ┌──────────────────────────────┐                │    │
+│   │              │    DashboardDataProvider     │                │    │
+│   │              │  (실시간 데이터 집계/구독)    │                │    │
+│   │              └──────────────┬───────────────┘                │    │
+│   └─────────────────────────────┼───────────────────────────────┘    │
+│                                 │                                     │
+│   ┌─────────────────────────────┼───────────────────────────────┐    │
+│   │                 Core Layer  │                                │    │
+│   │  ┌───────────┐     ┌───────▼────────┐     ┌──────────────┐  │    │
+│   │  │    CLI    │────▶│  Orchestrator  │◀───▶│ StateManager │  │    │
+│   │  └───────────┘     └───────┬────────┘     └──────────────┘  │    │
+│   │                            │                                 │    │
+│   │              ┌─────────────┼─────────────┐                   │    │
+│   │              ▼             ▼             ▼                   │    │
+│   │        ┌──────────┐  ┌──────────┐  ┌───────────┐            │    │
+│   │        │ Tmux     │  │ File     │  │ ACE Web   │            │    │
+│   │        │ Manager  │  │ Watcher  │  │ Server    │            │    │
+│   │        └────┬─────┘  └──────────┘  └───────────┘            │    │
+│   └─────────────┼───────────────────────────────────────────────┘    │
+│                 │                                                     │
+│   ┌─────────────┼───────────────────────────────────────────────┐    │
+│   │  Agent Layer│                                                │    │
+│   │             ▼                                                │    │
+│   │   ┌─────────────────────────────────────────────────────┐   │    │
+│   │   │                  tmux session                        │   │    │
+│   │   │  ┌──────────┬──────────┬──────────┬──────────┐      │   │    │
+│   │   │  │ Refiner  │ Builder  │ Verifier │Gatekeeper│      │   │    │
+│   │   │  │ (pane 0) │ (pane 1) │ (pane 2) │ (pane 3) │      │   │    │
+│   │   │  └──────────┴──────────┴──────────┴──────────┘      │   │    │
+│   │   │  ┌─────────────────────┬────────────────────┐       │   │    │
+│   │   │  │ Debug Shell (pane 4)│ ACE Server (pane 5)│       │   │    │
+│   │   │  └─────────────────────┴────────────────────┘       │   │    │
+│   │   └─────────────────────────────────────────────────────┘   │    │
+│   └─────────────────────────────────────────────────────────────┘    │
+│                                                                       │
+│   ┌─────────────────────────────────────────────────────────────┐    │
+│   │  Storage Layer                                               │    │
+│   │  ┌────────────────────────────────────────────────────────┐ │    │
+│   │  │ .dure/                                                  │ │    │
+│   │  │   ├─ config/   (에이전트 설정)                           │ │    │
+│   │  │   └─ runs/     (실행 기록, state.json, artifacts)       │ │    │
+│   │  └────────────────────────────────────────────────────────┘ │    │
+│   └─────────────────────────────────────────────────────────────┘    │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
+
+### UI Layer 선택 가이드
+
+| 상황 | 추천 UI | 명령어 |
+|------|---------|--------|
+| 로컬 개발 (기본) | TUI | `dure start "briefing"` |
+| TUI 없이 백그라운드 | - | `dure start "briefing" --no-tui` |
+| 실행 중인 run 모니터링 | TUI | `dure monitor <run-id>` |
+| 원격/팀 협업 | Web | `dure monitor --web` |
 
 ## Execution Flow
 
@@ -69,6 +111,62 @@
                                                                 │
      iteration < max_iterations ────────────────────────────────┘
 ```
+
+### Dashboard Data Flow (실시간 모니터링)
+
+TUI 및 Web Dashboard는 DashboardDataProvider를 통해 실시간 상태 업데이트를 받습니다:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Dashboard Data Flow                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Orchestrator Events                                                 │
+│         │                                                            │
+│         │ agent.started, agent.completed, phase.changed              │
+│         ▼                                                            │
+│  ┌────────────────────────────────────────────┐                     │
+│  │         DashboardDataProvider               │                     │
+│  │  ┌─────────────────────────────────────┐   │                     │
+│  │  │ - State polling (500ms)              │   │                     │
+│  │  │ - Tmux pane output capture           │   │                     │
+│  │  │ - CRP detection                      │   │                     │
+│  │  │ - Progress calculation               │   │                     │
+│  │  └─────────────────────────────────────┘   │                     │
+│  │              │                              │                     │
+│  │              │ emit('update', DashboardData)│                     │
+│  │              │ emit('stage-change', ...)    │                     │
+│  │              │ emit('crp', CRPData)         │                     │
+│  └──────────────┼─────────────────────────────┘                     │
+│                 │                                                    │
+│       ┌─────────┴─────────┐                                         │
+│       │                   │                                         │
+│       ▼                   ▼                                         │
+│  ┌──────────────┐   ┌─────────────────┐                             │
+│  │ TUI (Ink)    │   │ Socket Handler  │                             │
+│  │              │   │                 │                             │
+│  │ useDashboard │   │ io.emit(        │                             │
+│  │ Data() hook  │   │  'dashboard:    │                             │
+│  │              │   │   update')      │                             │
+│  └──────┬───────┘   └────────┬────────┘                             │
+│         │                    │                                       │
+│         ▼                    ▼                                       │
+│  ┌──────────────┐   ┌─────────────────┐                             │
+│  │ Terminal     │   │ Web Browser     │                             │
+│  │ (stdin/out)  │   │ (WebSocket)     │                             │
+│  └──────────────┘   └─────────────────┘                             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**이벤트 타입:**
+
+| 이벤트 | 페이로드 | 설명 |
+|--------|----------|------|
+| `update` | `DashboardData` | 전체 대시보드 상태 |
+| `stage-change` | `{ previousStage, newStage }` | 실행 단계 변경 |
+| `agent-status-change` | `{ agent, previousStatus, newStatus }` | 에이전트 상태 변경 |
+| `crp` | `DashboardCRP` | 인간 판단 요청 발생 |
 
 ### Detailed Flow
 
@@ -273,47 +371,58 @@ Orchestrator responsibilities are separated into multiple specialized classes fo
 
 ```
 src/core/
-├── orchestrator.ts           # Only coordination role (entry point)
-├── run-lifecycle-manager.ts  # Run creation/resume/stop management
-├── agent-coordinator.ts      # Agent start/completion/transition coordination
-├── error-recovery-service.ts # Error detection/retry logic
-├── verdict-handler.ts        # Gatekeeper verdict handling (PASS/FAIL/NEEDS_HUMAN)
-├── agent-lifecycle-manager.ts # Individual agent lifecycle management
+├── orchestrator.ts             # Only coordination role (entry point)
+├── run-lifecycle-manager.ts    # Run creation/resume/stop management
+├── agent-coordinator.ts        # Agent start/completion/transition coordination
+├── error-recovery-service.ts   # Error detection/retry logic
+├── verdict-handler.ts          # Gatekeeper verdict handling (PASS/FAIL/NEEDS_HUMAN)
+├── agent-lifecycle-manager.ts  # Individual agent lifecycle management
 ├── phase-transition-manager.ts # Phase transition state management
-├── event-coordinator.ts      # Event collection and coordination
-└── interrupt-recovery.ts     # Interrupted run recovery
+├── event-coordinator.ts        # Event collection and coordination
+├── interrupt-recovery.ts       # Interrupted run recovery
+└── dashboard-data-provider.ts  # TUI/Web 대시보드 데이터 집계 및 구독 (NEW)
 ```
 
 ### Class Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Orchestrator                            │
-│ - Event publishing (EventEmitter)                            │
-│ - Public API provision                                       │
-└───────────────────────────────┬─────────────────────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        │                       │                       │
-        ▼                       ▼                       ▼
-┌───────────────┐      ┌───────────────┐       ┌───────────────┐
-│ RunLifecycle  │      │    Agent      │       │    Error      │
-│   Manager     │      │  Coordinator  │       │  Recovery     │
-│               │      │               │       │   Service     │
-│ - startRun()  │      │ - handleDone()│       │ - handleError │
-│ - resumeRun() │      │ - handleCRP() │       │ - shouldRetry │
-│ - stopRun()   │      │ - transition()│       │ - executeRetry│
-└───────────────┘      └───────────────┘       └───────────────┘
-        │                       │
-        ▼                       ▼
-┌───────────────┐      ┌───────────────┐
-│   Verdict     │      │    Phase      │
-│   Handler     │      │  Transition   │
-│               │      │   Manager     │
-│ - PASS → MRP  │      │               │
-│ - FAIL → retry│      │ - validate()  │
-│ - NEEDS_HUMAN │      │ - transition()│
-└───────────────┘      └───────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                           Orchestrator                                 │
+│  - Event publishing (EventEmitter)                                     │
+│  - Public API provision                                                │
+└───────────────────────────────────┬───────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+        ▼                           ▼                           ▼
+┌───────────────┐          ┌───────────────┐           ┌───────────────┐
+│ RunLifecycle  │          │    Agent      │           │    Error      │
+│   Manager     │          │  Coordinator  │           │  Recovery     │
+│               │          │               │           │   Service     │
+│ - startRun()  │          │ - handleDone()│           │ - handleError │
+│ - resumeRun() │          │ - handleCRP() │           │ - shouldRetry │
+│ - stopRun()   │          │ - transition()│           │ - executeRetry│
+└───────────────┘          └───────┬───────┘           └───────────────┘
+        │                          │
+        │                          │ events
+        ▼                          ▼
+┌───────────────┐          ┌─────────────────────────────────────────┐
+│   Verdict     │          │        DashboardDataProvider            │
+│   Handler     │          │                                         │
+│               │          │  - getData()      → DashboardData       │
+│ - PASS → MRP  │          │  - startPolling() → emit('update')      │
+│ - FAIL → retry│          │  - subscribe()    → event callbacks     │
+│ - NEEDS_HUMAN │          │                                         │
+└───────────────┘          └──────────────────┬──────────────────────┘
+                                              │
+                                  ┌───────────┴───────────┐
+                                  ▼                       ▼
+                           ┌──────────────┐       ┌──────────────────┐
+                           │  TUI (Ink)   │       │ Socket Handler   │
+                           │              │       │                  │
+                           │ useDashboard │       │ io.emit(         │
+                           │ Data() hook  │       │  'dashboard:*')  │
+                           └──────────────┘       └──────────────────┘
 ```
 
 ### Graceful Shutdown

@@ -2,39 +2,153 @@
 
 Describes the overall architecture of Dure.
 
-## Architecture Diagram
+## Layer Architecture
+
+Dure는 4개의 레이어로 구성됩니다:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         dure                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   CLI (dure start)                                     │
-│         │                                                    │
-│         ▼                                                    │
-│   ┌─────────────┐         ┌─────────────────────────────┐   │
-│   │ ACE Web     │◄───────►│ .dure/                │   │
-│   │ Server      │         │   ├─ config/                │   │
-│   │ :3873       │         │   └─ runs/                  │   │
-│   └─────────────┘         └─────────────────────────────┘   │
-│         │                              ▲                     │
-│         │ Run start                    │                     │
-│         ▼                              │                     │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │                  tmux session                        │   │
-│   │  ┌──────────┬──────────┬──────────┬──────────┐      │   │
-│   │  │ Refiner  │ Builder  │ Verifier │Gatekeeper│      │   │
-│   │  │ (pane 0) │ (pane 1) │ (pane 2) │ (pane 3) │      │   │
-│   │  └──────────┴──────────┴──────────┴──────────┘      │   │
-│   │  ┌─────────────────────┬────────────────────┐       │   │
-│   │  │ Debug Shell (pane 4)│ ACE Server (pane 5)│       │   │
-│   │  └─────────────────────┴────────────────────┘       │   │
-│   └─────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                      PRESENTATION LAYER                              │
+│  ┌─────────────────────────┐     ┌───────────────────────────────┐  │
+│  │   TUI Dashboard         │     │   Web Dashboard               │  │
+│  │   (Primary Interface)   │     │   (Secondary Interface)       │  │
+│  │                         │     │                               │  │
+│  │   Ink React Components  │     │   Socket.io + REST API        │  │
+│  │   src/tui/ink/          │     │   src/server/dashboard/       │  │
+│  └────────────┬────────────┘     └───────────────┬───────────────┘  │
+│               │                                  │                   │
+│               └──────────────┬───────────────────┘                   │
+│                              ▼                                       │
+│               ┌──────────────────────────────┐                       │
+│               │   DashboardDataProvider      │                       │
+│               │   src/core/dashboard-data-   │                       │
+│               │   provider.ts                │                       │
+│               └──────────────┬───────────────┘                       │
+├──────────────────────────────┼──────────────────────────────────────┤
+│                      CORE LAYER                                      │
+│               ┌──────────────▼───────────────┐                       │
+│               │        Orchestrator          │                       │
+│               │    src/core/orchestrator.ts  │                       │
+│               └──────────────┬───────────────┘                       │
+│                              │                                       │
+│    ┌─────────────────────────┼─────────────────────────┐            │
+│    │                         │                         │            │
+│    ▼                         ▼                         ▼            │
+│  ┌───────────────┐   ┌───────────────┐   ┌─────────────────────┐   │
+│  │ StateManager  │   │ TmuxManager   │   │   FileWatcher       │   │
+│  │               │   │               │   │                     │   │
+│  │ state.json    │   │ tmux sessions │   │   chokidar          │   │
+│  │ read/write    │   │ pane control  │   │   event detection   │   │
+│  └───────────────┘   └───────────────┘   └─────────────────────┘   │
+│                                                                      │
+├──────────────────────────────────────────────────────────────────────┤
+│                      AGENT LAYER                                     │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                      tmux session                               │ │
+│  │  ┌──────────┬──────────┬──────────┬──────────┬──────────────┐  │ │
+│  │  │ Refiner  │ Builder  │ Verifier │Gatekeeper│ Debug Shell  │  │ │
+│  │  │ (pane 0) │ (pane 1) │ (pane 2) │ (pane 3) │ (pane 4)     │  │ │
+│  │  └──────────┴──────────┴──────────┴──────────┴──────────────┘  │ │
+│  │  각 pane에서 claude CLI가 headless 모드로 실행됨               │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+├──────────────────────────────────────────────────────────────────────┤
+│                      STORAGE LAYER                                   │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  .dure/                                                         │ │
+│  │    ├─ config/      # 에이전트별 설정                            │ │
+│  │    └─ runs/        # 실행 기록 (state.json, artifacts)          │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
+
+### 0. Presentation Layer (NEW)
+
+#### TUI Dashboard (Primary)
+
+**Role:** 기본 모니터링 인터페이스
+
+**위치:** `src/tui/`
+
+**책임:**
+- 실행 상태 실시간 표시
+- 에이전트 출력 스트리밍
+- CRP 인라인 응답
+- 키보드 단축키 처리
+
+**기술 스택:**
+- Ink (React for CLI)
+- TypeScript
+
+**주요 컴포넌트:**
+
+| 컴포넌트 | 파일 | 역할 |
+|----------|------|------|
+| App | `src/tui/ink/App.tsx` | 메인 컴포넌트, 키보드 입력 처리 |
+| Header | `src/tui/ink/Header.tsx` | Run ID, Stage, 토큰/비용 표시 |
+| AgentPanel | `src/tui/ink/AgentPanel.tsx` | 에이전트 상태 표시 |
+| OutputView | `src/tui/ink/OutputView.tsx` | 선택된 에이전트 출력 |
+| ProgressBar | `src/tui/ink/ProgressBar.tsx` | 진행률 표시 |
+| CRPPrompt | `src/tui/ink/CRPPrompt.tsx` | CRP 응답 입력 |
+
+**키보드 단축키:**
+
+| 키 | 동작 |
+|----|------|
+| `1-4` | 에이전트 선택 (Refiner, Builder, Verifier, Gatekeeper) |
+| `q` | TUI 종료 |
+| `d` | Detach (백그라운드 전환) |
+
+#### Web Dashboard (Secondary)
+
+**Role:** 원격/웹 기반 모니터링 인터페이스
+
+**위치:** `src/server/dashboard/`
+
+**책임:**
+- Socket.io를 통한 실시간 업데이트
+- REST API 엔드포인트 제공
+- CRP 웹 폼 응답
+
+**기술 스택:**
+- Socket.io
+- Express.js
+
+**Socket Events:** [docs/api/socket-events.md](/api/socket-events.md) 참조
+
+#### DashboardDataProvider
+
+**Role:** 대시보드 데이터 집계 레이어
+
+**위치:** `src/core/dashboard-data-provider.ts:100`
+
+**책임:**
+- Orchestrator 이벤트 구독
+- StateManager에서 상태 로드
+- TmuxManager에서 pane 출력 캡처
+- DashboardData 생성 및 이벤트 발행
+
+**주요 메서드:**
+
+| 메서드 | 설명 |
+|--------|------|
+| `getData()` | 현재 DashboardData 스냅샷 반환 |
+| `startPolling(intervalMs?)` | 폴링 시작 (기본 500ms) |
+| `stopPolling()` | 폴링 중지 |
+
+**발행 이벤트:**
+
+| 이벤트 | 페이로드 | 설명 |
+|--------|----------|------|
+| `update` | `DashboardData` | 전체 상태 업데이트 |
+| `stage-change` | `{ previousStage, newStage }` | 단계 변경 |
+| `agent-status-change` | `{ agent, previousStatus, newStatus }` | 에이전트 상태 변경 |
+| `crp` | `DashboardCRP` | CRP 발생 |
+
+---
 
 ### 1. CLI (Command Line Interface)
 
@@ -45,6 +159,7 @@ Describes the overall architecture of Dure.
 - Create tmux session
 - Start web server
 - Query status (`status`, `history`)
+- **TUI 대시보드 실행** (기본 동작)
 
 **Technology:**
 - Node.js + TypeScript
@@ -399,6 +514,7 @@ Currently runs on a single machine, but in the future:
 | **Runtime** | Node.js 18+ |
 | **Language** | TypeScript |
 | **CLI** | Commander.js |
+| **TUI** | Ink (React for CLI) |
 | **Web Framework** | Express.js |
 | **Real-time Communication** | Socket.io |
 | **File Watching** | chokidar |
@@ -408,6 +524,7 @@ Currently runs on a single machine, but in the future:
 
 ## Next Steps
 
+- [Dashboard System](/architecture/dashboard-system.md) - TUI/Web 대시보드 아키텍처
 - [Agent Design](/architecture/agents.md) - Detailed agent design
 - [File Structure](/architecture/file-structure.md) - Detailed folder structure
 - [Execution Flow](/architecture/execution-flow.md) - Detailed execution process
