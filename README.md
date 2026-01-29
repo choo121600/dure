@@ -66,11 +66,7 @@ The browser will automatically open and display the dashboard (http://localhost:
 
 ### CLI Commands
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
-  <img alt="dure --help" src="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
-</picture>
+![dure --help](docs/images/cli/output_.png)
 
 ```bash
 # Specify port
@@ -285,4 +281,4 @@ MIT
 
 ## Contributing
 
-Issues and PRs are welcome. For details, see the [Contributing Guide](https://yourusername.github.io/dure/#/misc/contributing).
+Issues and PRs are welcome. For details, see the [Contributing Guide](https://choo121600.github.io/dure/#/misc/contributing).
