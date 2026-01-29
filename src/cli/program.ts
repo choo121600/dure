@@ -35,6 +35,7 @@ export function createProgram(): Command {
     .command('init')
     .description('Initialize Dure in the current project')
     .option('--smart', 'Analyze project and generate custom skills/agents using Claude Code')
+    .option('--phase <phase>', 'Run specific phase only (plan|execute|finalize|resume)', '')
     .action(initCommand);
 
   program

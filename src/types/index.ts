@@ -149,6 +149,46 @@ export type AgentName = 'refiner' | 'builder' | 'verifier' | 'gatekeeper';
 export type AgentModel = 'haiku' | 'sonnet' | 'opus';
 export type AgentStatus = 'pending' | 'running' | 'waiting_test_execution' | 'completed' | 'failed' | 'timeout' | 'waiting_human';
 
+// Claude Code Headless Output (from --output-format json)
+export interface ClaudeCodeOutput {
+  type: 'result';
+  subtype: 'success' | 'error';
+  is_error: boolean;
+  duration_ms: number;
+  duration_api_ms: number;
+  num_turns: number;
+  result: string;
+  session_id: string;
+  total_cost_usd: number;
+  usage: {
+    input_tokens: number;
+    cache_creation_input_tokens: number;
+    cache_read_input_tokens: number;
+    output_tokens: number;
+    server_tool_use?: {
+      web_search_requests: number;
+      web_fetch_requests: number;
+    };
+    service_tier?: string;
+    cache_creation?: {
+      ephemeral_1h_input_tokens: number;
+      ephemeral_5m_input_tokens: number;
+    };
+  };
+  modelUsage?: Record<string, {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadInputTokens: number;
+    cacheCreationInputTokens: number;
+    webSearchRequests: number;
+    costUSD: number;
+    contextWindow: number;
+    maxOutputTokens: number;
+  }>;
+  permission_denials?: string[];
+  uuid?: string;
+}
+
 // Phase Types
 export type Phase = 'refine' | 'build' | 'verify' | 'gate' | 'waiting_human' | 'ready_for_merge' | 'completed' | 'failed';
 
@@ -880,4 +920,38 @@ export function unsafeToTypedVCR(vcr: VCR): VCRTyped {
     vcr_id: unsafeCreateVcrId(vcr.vcr_id),
     crp_id: unsafeCreateCrpId(vcr.crp_id),
   };
+}
+
+// ============================================================================
+// Init Plan Types (Multi-phase skill/agent generation)
+// ============================================================================
+
+export type InitItemStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+export type InitPhase = 'planning' | 'executing' | 'finalizing' | 'completed';
+
+export interface InitPlanItem {
+  id: string;                    // "skill-{name}" or "agent-{name}"
+  type: 'skill' | 'agent';
+  name: string;
+  description: string;
+  tier?: 'quick' | 'standard' | 'deep';  // agents only
+  model?: 'haiku' | 'sonnet';
+  dependencies?: string[];       // item IDs that must complete first
+  status: InitItemStatus;
+  error?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export interface InitPlan {
+  version: '1.0';
+  created_at: string;
+  project_analysis: {
+    type: string;
+    stack: string[];
+    patterns: string[];
+  };
+  items: InitPlanItem[];
+  current_phase: InitPhase;
+  last_updated: string;
 }
