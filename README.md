@@ -66,7 +66,11 @@ The browser will automatically open and display the dashboard (http://localhost:
 
 ### CLI Commands
 
-![dure --help](docs/images/cli/output_.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
+  <img alt="dure --help" src="https://raw.githubusercontent.com/choo121600/dure/main/docs/images/cli/output_.svg">
+</picture>
 
 ```bash
 # Specify port
