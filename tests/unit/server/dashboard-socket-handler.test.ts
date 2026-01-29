@@ -203,12 +203,16 @@ describe('DashboardSocketHandler', () => {
       const mockProvider = createMockProvider();
       handler.registerProvider('run-20260129120000', mockProvider as any);
 
+      // Set up both listeners BEFORE subscribing to avoid race condition
+      const subscribedPromise = waitForEvent(clientSocket, 'dashboard:subscribed');
+      const initialUpdatePromise = waitForEvent(clientSocket, 'dashboard:update');
+
       // Subscribe
       clientSocket.emit('dashboard:subscribe', 'run-20260129120000');
-      await waitForEvent(clientSocket, 'dashboard:subscribed');
+      await subscribedPromise;
 
       // Wait for initial update
-      await waitForEvent(clientSocket, 'dashboard:update');
+      await initialUpdatePromise;
 
       // Use a more reliable approach: collect events during a time window
       const receivedEvents: any[] = [];
@@ -322,9 +326,13 @@ describe('DashboardSocketHandler', () => {
       const mockProvider = createMockProvider();
       handler.registerProvider('run-20260129120000', mockProvider as any);
 
+      // Set up both listeners BEFORE subscribing to avoid race condition
+      const subscribedPromise = waitForEvent(clientSocket, 'dashboard:subscribed');
+      const initialUpdatePromise = waitForEvent(clientSocket, 'dashboard:update');
+
       clientSocket.emit('dashboard:subscribe', 'run-20260129120000');
-      await waitForEvent(clientSocket, 'dashboard:subscribed');
-      await waitForEvent(clientSocket, 'dashboard:update');
+      await subscribedPromise;
+      await initialUpdatePromise;
 
       // Small delay to ensure Socket.io room is fully synchronized
       await new Promise(resolve => setTimeout(resolve, 50));
