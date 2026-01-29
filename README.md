@@ -47,6 +47,22 @@ npm run build
 npm link
 ```
 
+## Quick Start
+
+```bash
+# Navigate to your project
+cd /path/to/your-project
+
+# Initialize Dure (creates .dure/ config)
+dure init
+
+# Or with smart mode: auto-generate custom skills and agents
+dure init --smart
+
+# Start Dure
+dure start
+```
+
 ## Usage
 
 ### Basic Usage
@@ -85,37 +101,33 @@ For web-based dashboard, use `dure start --web`.
 ![dure --help](docs/images/cli/output_.png)
 
 ```bash
-# Start with TUI dashboard (default)
-dure start
+# Initialize Dure in your project
+dure init                 # Basic initialization
+dure init --smart         # Auto-generate custom skills and agents
 
-# Start with web dashboard
-dure start --web
-
-# Attach to tmux session directly
-dure start --attach
-
-# Specify port
-dure start --port 3001
+# Start Dure
+dure start                # TUI dashboard (default)
+dure start --web          # Web dashboard in browser
+dure start --attach       # Attach to tmux session directly
+dure start --port 3001    # Custom port
 
 # Monitor a running/recent run
 dure monitor              # Latest run, TUI mode
 dure monitor <run-id>     # Specific run
 dure monitor --web        # Web dashboard mode
 
-# Check current run status
-dure status
+# Run management
+dure status               # Check current run status
+dure stop                 # Stop running run
+dure history              # Past run history
+dure logs                 # Real-time logs
 
-# Stop running run
-dure stop
-
-# Past run history
-dure history
-
-# Recover interrupted run
-dure recover [run-id]
-
-# List interrupted runs
-dure recover --list
+# Recovery and cleanup
+dure recover              # Recover interrupted runs
+dure recover --list       # List interrupted runs
+dure clear-run [run-id]   # Terminate Claude processes (preserves artifacts)
+dure clean                # Delete old runs
+dure delete <run-id>      # Delete specific run
 ```
 
 For the complete CLI reference, see [CLI Reference](docs/CLI_REFERENCE.md).
@@ -137,10 +149,12 @@ briefing   code       test      final
  review   generation  execution  verdict
 ```
 
-- **Refiner**: Reviews and improves the briefing
-- **Builder**: Implements code
-- **Verifier**: Generates and executes tests
-- **Gatekeeper**: Final review and verdict
+- **Refiner** (haiku): Reviews and improves the briefing
+- **Builder** (sonnet): Implements code
+- **Verifier** (haiku): Generates and executes tests
+- **Gatekeeper** (sonnet): Final review and verdict
+
+Agents run in **headless mode** using Claude Code CLI with `--output-format json` for structured output and usage tracking.
 
 ### 3. Human Intervention (CRP)
 
@@ -255,6 +269,29 @@ To directly connect to the tmux session:
 ```bash
 tmux attach-session -t dure-run-{timestamp}
 ```
+
+## Smart Initialization
+
+`dure init --smart` analyzes your project and auto-generates custom Claude Code skills and agents:
+
+```bash
+dure init --smart
+```
+
+This creates:
+- **Custom Skills** in `.claude/skills/` - Slash commands tailored to your project
+- **Custom Agents** in `.claude/agents/` - Specialized agents for code review, testing, security, etc.
+- **CLAUDE.md updates** - Documentation of available skills and agents
+
+Example generated skills:
+- `/new-agent` - Create a new Dure agent
+- `/new-command` - Generate a CLI command
+- `/add-event` - Add a typed event to the orchestrator
+
+Example generated agents:
+- `reviewer` - Code review for quality and patterns
+- `tester` - Generate Vitest unit tests
+- `security` - Security vulnerability analysis
 
 ## Troubleshooting
 
