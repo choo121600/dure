@@ -210,19 +210,28 @@ describe('DashboardSocketHandler', () => {
       // Wait for initial update
       await waitForEvent(clientSocket, 'dashboard:update');
 
-      // Small delay to ensure Socket.io room is fully synchronized
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Use a more reliable approach: collect events during a time window
+      const receivedEvents: any[] = [];
+      const eventHandler = (data: any) => receivedEvents.push(data);
+      clientSocket.on('dashboard:update', eventHandler);
 
-      // Setup listener for next update BEFORE emitting
-      const updatePromise = waitForEvent(clientSocket, 'dashboard:update', 10000);
+      // Ensure listener is registered before emitting
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Emit update from provider
       const updatedData = createMockDashboardData();
       updatedData.stage = 'VERIFY';
       mockProvider.emit('update', updatedData);
 
-      const received = await updatePromise;
-      expect(received.stage).toBe('VERIFY');
+      // Wait for event to be received
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      clientSocket.off('dashboard:update', eventHandler);
+
+      // Find the VERIFY stage update (may have received multiple updates)
+      const verifyUpdate = receivedEvents.find(e => e.stage === 'VERIFY');
+      expect(verifyUpdate).toBeDefined();
+      expect(verifyUpdate.stage).toBe('VERIFY');
     });
 
     it('should forward CRP events', async () => {
