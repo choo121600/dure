@@ -22,6 +22,7 @@ import { createRunListScreen, type RunListScreen } from './screens/run-list.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { RunManager } from '../core/run-manager.js';
 import { Orchestrator, type OrchestratorEvent } from '../core/orchestrator.js';
+import { TmuxManager } from '../core/tmux-manager.js';
 import type { RunState, CRP, OrchestraConfig } from '../types/index.js';
 
 export interface TuiAppOptions {
@@ -410,6 +411,16 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
       } catch {
         // Ignore errors during cleanup
       }
+    }
+
+    // Always kill tmux session (even if orchestrator is not running)
+    // This handles the case where a run completed but tmux session still exists
+    const tmuxManager = new TmuxManager(
+      config.global.tmux_session_prefix,
+      projectRoot
+    );
+    if (tmuxManager.sessionExists()) {
+      tmuxManager.killSession();
     }
 
     // Stop state manager (file watcher)
