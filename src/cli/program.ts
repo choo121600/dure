@@ -34,6 +34,7 @@ export function createProgram(): Command {
   program
     .command('init')
     .description('Initialize Dure in the current project')
+    .option('--smart', 'Analyze project and generate custom skills/agents using Claude Code')
     .action(initCommand);
 
   program
