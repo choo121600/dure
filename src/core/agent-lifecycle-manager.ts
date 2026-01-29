@@ -103,7 +103,9 @@ export class AgentLifecycleManager extends EventEmitter {
     this.agentMonitor.watchAgent(agent);
 
     // Get prompt file path and output directory
-    const promptFile = join(runDir, 'prompts', `${agent}.md`);
+    // Verifier uses phase1 prompt initially (phase2 is started separately after test execution)
+    const promptFilename = agent === 'verifier' ? 'verifier-phase1.md' : `${agent}.md`;
+    const promptFile = join(runDir, 'prompts', promptFilename);
     const outputDir = join(runDir, agent);
 
     // Start the agent in headless mode
