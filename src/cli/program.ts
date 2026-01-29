@@ -6,6 +6,7 @@
  */
 
 import { Command } from 'commander';
+import { initCommand } from './commands/init.js';
 import { startCommand } from './commands/start.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
@@ -29,6 +30,11 @@ export function createProgram(): Command {
       'Agentic Software Engineering - 4 agents work cooperatively with human oversight'
     )
     .version('0.1.0');
+
+  program
+    .command('init')
+    .description('Initialize Dure in the current project')
+    .action(initCommand);
 
   program
     .command('start')
