@@ -24,9 +24,11 @@ import { RunManager } from '../core/run-manager.js';
 import { Orchestrator, type OrchestratorEvent } from '../core/orchestrator.js';
 import { TmuxManager } from '../core/tmux-manager.js';
 import type { RunState, CRP, OrchestraConfig } from '../types/index.js';
+import type { TuiLogger } from './utils/tui-logger.js';
 
 export interface TuiAppOptions {
   projectRoot: string;
+  logger?: TuiLogger;
 }
 
 export interface TuiAppEvents {
@@ -58,7 +60,7 @@ interface ScreenState {
  * Create and initialize the TUI application
  */
 export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
-  const { projectRoot } = options;
+  const { projectRoot, logger } = options;
   const emitter = new EventEmitter() as TuiApp;
 
   // Initialize configuration
@@ -158,6 +160,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
   }
 
   function handleError(error: Error): void {
+    logger?.error('State manager error', error);
     statusBar.setMessage(`Error: ${error.message}`);
     setTimeout(() => statusBar.clearMessage(), 3000);
     emitter.emit('error', error);
@@ -207,6 +210,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
         break;
 
       case 'error':
+        logger?.error('Orchestrator error', new Error(event.error));
         statusBar.setMessage(`Error: ${event.error}`);
         break;
     }
@@ -253,6 +257,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
           },
           onCancel: () => returnToViewing(),
           onError: (error: Error) => {
+            logger?.error('New run error', error);
             returnToViewing();
             statusBar.setMessage(`Error: ${error.message}`);
             setTimeout(() => statusBar.clearMessage(), 5000);
@@ -328,6 +333,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
           },
           onCancel: () => returnToViewing(),
           onError: (error: Error) => {
+            logger?.error('CRP respond error', error);
             returnToViewing();
             statusBar.setMessage(`Error: ${error.message}`);
             setTimeout(() => statusBar.clearMessage(), 5000);
@@ -356,6 +362,7 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
           runManager,
           onClose: () => returnToViewing(),
           onError: (error: Error) => {
+            logger?.error('MRP view error', error);
             returnToViewing();
             statusBar.setMessage(`Error: ${error.message}`);
             setTimeout(() => statusBar.clearMessage(), 5000);
@@ -373,9 +380,12 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
           statusBar.setMessage('Stopping run...');
           try {
             await orchestrator.stopRun();
+            logger?.info('Run stopped by user');
             statusBar.setMessage('Run stopped');
           } catch (error) {
-            statusBar.setMessage(`Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger?.error('Failed to stop run', err);
+            statusBar.setMessage(`Error: ${err.message}`);
           }
         } else {
           statusBar.setMessage('No run in progress');
@@ -404,12 +414,15 @@ export async function createTuiApp(options: TuiAppOptions): Promise<TuiApp> {
   // ============ Cleanup and Destruction ============
 
   async function destroy(): Promise<void> {
+    logger?.info('TUI destroy initiated');
+
     // Stop orchestrator if running
     if (orchestrator.getIsRunning()) {
       try {
         await orchestrator.stopRun();
-      } catch {
-        // Ignore errors during cleanup
+        logger?.info('Orchestrator stopped during destroy');
+      } catch (error) {
+        logger?.warn('Error stopping orchestrator during destroy', error instanceof Error ? error : undefined);
       }
     }
 

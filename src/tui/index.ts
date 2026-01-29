@@ -7,10 +7,14 @@
  */
 
 import { createTuiApp } from './app.js';
+import { createTuiLogger, type TuiLogger } from './utils/tui-logger.js';
 
 export interface TuiOptions {
   projectRoot?: string;
 }
+
+// Module-level logger instance
+let tuiLogger: TuiLogger | null = null;
 
 /**
  * Parse CLI arguments
@@ -34,59 +38,62 @@ async function main(): Promise<void> {
   const options = parseArgs(args);
   const projectRoot = options.projectRoot || process.cwd();
 
+  // Initialize TUI logger
+  tuiLogger = createTuiLogger(projectRoot);
+  tuiLogger.info('TUI starting', { projectRoot });
+
   try {
-    const app = await createTuiApp({ projectRoot });
+    const app = await createTuiApp({ projectRoot, logger: tuiLogger });
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
+      tuiLogger?.info('Received SIGINT, shutting down');
       await app.destroy();
     });
 
     process.on('SIGTERM', async () => {
+      tuiLogger?.info('Received SIGTERM, shutting down');
       await app.destroy();
     });
 
     // Handle uncaught exceptions
     process.on('uncaughtException', async (error) => {
-      // eslint-disable-next-line no-console
-      console.error('Uncaught exception:', error);
+      tuiLogger?.fatal('Uncaught exception', error);
       await app.destroy();
       process.exit(1);
     });
 
     // Handle unhandled promise rejections
     process.on('unhandledRejection', async (reason) => {
-      // eslint-disable-next-line no-console
-      console.error('Unhandled rejection:', reason);
+      const error = reason instanceof Error ? reason : new Error(String(reason));
+      tuiLogger?.fatal('Unhandled rejection', error);
       await app.destroy();
       process.exit(1);
     });
 
     // Listen for app exit
     app.on('exit', (code: number) => {
+      tuiLogger?.info('TUI exiting', { code });
       process.exit(code);
     });
 
     // Listen for app errors
     app.on('error', (error: Error) => {
-      // Errors are handled by the TUI, just log for debugging
-      // eslint-disable-next-line no-console
-      console.error('TUI error:', error.message);
+      tuiLogger?.error('TUI error', error);
     });
 
     // Start the application
     await app.start();
+    tuiLogger.info('TUI started successfully');
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to start TUI:', error);
+    tuiLogger?.fatal('Failed to start TUI', error instanceof Error ? error : new Error(String(error)));
     process.exit(1);
   }
 }
 
 // Run as standalone
 main().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('Fatal error:', error);
+  tuiLogger?.fatal('Fatal error in main', error instanceof Error ? error : new Error(String(error)));
   process.exit(1);
 });
 
