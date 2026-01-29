@@ -13,16 +13,11 @@ export default defineConfig({
       'node_modules/**',
       'tests/benchmarks/**',
     ],
-    // Memory optimization: limit concurrent workers
+    // Memory optimization: limit concurrent workers (Vitest 4 top-level options)
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        minThreads: 1,
-        maxThreads: 2,
-      },
-    },
+    maxWorkers: 2,
     // Reduce output verbosity to minimize context accumulation
-    reporters: ['basic'],
+    reporters: ['default'],
     // Disable watch mode output noise
     outputFile: undefined,
     coverage: {
