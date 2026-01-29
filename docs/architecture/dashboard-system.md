@@ -185,6 +185,9 @@ src/tui/ink/
 ├── OutputView.tsx         # 선택된 에이전트 출력
 ├── ProgressBar.tsx        # 진행률 바
 ├── CRPPrompt.tsx          # CRP 응답 프롬프트
+├── MRPViewer.tsx          # MRP 결과 뷰어
+├── NewRunPrompt.tsx       # 새 실행 생성 프롬프트
+├── RunListScreen.tsx      # 실행 목록 화면
 └── hooks/
     └── useDashboardData.ts  # DashboardDataProvider 구독 훅
 ```

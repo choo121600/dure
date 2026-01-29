@@ -76,9 +76,7 @@ REFINE → BUILD → VERIFY → GATE
 ## Implementation Locations
 
 - CLI: `src/cli/`
-- TUI: `src/tui/`
-  - Ink components: `src/tui/ink/`
-  - TUI state: `src/tui/state/`
+- TUI: `src/tui/ink/`
 - Core logic: `src/core/`
   - Orchestrator: `src/core/orchestrator.ts`
   - Dashboard data: `src/core/dashboard-data-provider.ts`
