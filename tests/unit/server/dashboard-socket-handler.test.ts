@@ -390,9 +390,13 @@ describe('DashboardSocketHandler', () => {
         clientSocket.on('connect', resolve);
       });
 
+      // Set up both listeners BEFORE subscribing to avoid race condition
+      const subscribedPromise = waitForEvent(clientSocket, 'dashboard:subscribed');
+      const initialUpdatePromise = waitForEvent(clientSocket, 'dashboard:update');
+
       clientSocket.emit('dashboard:subscribe', 'run-20260129120000');
-      await waitForEvent(clientSocket, 'dashboard:subscribed');
-      await waitForEvent(clientSocket, 'dashboard:update');
+      await subscribedPromise;
+      await initialUpdatePromise;
 
       // Small delay to ensure Socket.io room is fully synchronized
       await new Promise(resolve => setTimeout(resolve, 50));
