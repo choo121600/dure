@@ -91,6 +91,7 @@ export class TestRunner extends EventEmitter {
       this.process = spawn(command, args, {
         cwd: this.config.cwd,
         shell: true,
+        detached: true,
         env: {
           ...process.env,
           ...this.config.env,
@@ -159,13 +160,14 @@ export class TestRunner extends EventEmitter {
       timeoutMs: this.config.timeoutMs,
     } as TestRunnerEvent);
 
-    // First, try graceful termination with SIGTERM
-    this.process.kill('SIGTERM');
+    // Kill the entire process group to ensure child processes are also killed
+    // This is necessary when shell: true creates an intermediate shell process
+    this.killProcessGroup('SIGTERM');
 
     // If process doesn't exit within 5 seconds, force kill with SIGKILL
     setTimeout(() => {
       if (this.process && !this.process.killed) {
-        this.process.kill('SIGKILL');
+        this.killProcessGroup('SIGKILL');
       }
     }, 5000);
 
@@ -175,6 +177,25 @@ export class TestRunner extends EventEmitter {
       `Test execution timed out after ${this.config.timeoutMs}ms`
     );
     reject(error);
+  }
+
+  /**
+   * Kill the process group (all child processes)
+   */
+  private killProcessGroup(signal: 'SIGTERM' | 'SIGKILL'): void {
+    if (!this.process || !this.process.pid) return;
+
+    try {
+      // Negative PID kills the entire process group
+      process.kill(-this.process.pid, signal);
+    } catch {
+      // Fallback to direct process kill if process group kill fails
+      try {
+        this.process.kill(signal);
+      } catch {
+        // Process may have already exited
+      }
+    }
   }
 
   /**
@@ -284,10 +305,10 @@ export class TestRunner extends EventEmitter {
    */
   stop(): void {
     if (this.process && !this.process.killed) {
-      this.process.kill('SIGTERM');
+      this.killProcessGroup('SIGTERM');
       setTimeout(() => {
         if (this.process && !this.process.killed) {
-          this.process.kill('SIGKILL');
+          this.killProcessGroup('SIGKILL');
         }
       }, 5000);
     }
