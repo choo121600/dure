@@ -10,6 +10,7 @@ coverage/
 
 # Dure runtime data
 .dure/runs/
+.dure/init/
 
 # Logs
 *.log
@@ -44,3 +45,7 @@ temp/
 playwright-report/
 test-results/
 playwright/.cache/
+
+# Claude
+.claude/agents/
+.claude/skills/
