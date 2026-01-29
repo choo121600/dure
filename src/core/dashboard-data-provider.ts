@@ -110,6 +110,9 @@ export class DashboardDataProvider extends EventEmitter {
   // Cached previous state for change detection
   private previousData: DashboardData | null = null;
 
+  // Cache for completed agent outputs (preserved after tmux pane is gone)
+  private outputCache: Map<AgentName, string> = new Map();
+
   constructor(
     tmuxManager: TmuxManager,
     stateManager: StateManager,
@@ -262,6 +265,8 @@ export class DashboardDataProvider extends EventEmitter {
     startedAt?: string,
     completedAt?: string
   ): Promise<DashboardAgentData> {
+    const dashboardStatus = agentStatusToDashboardStatus(status);
+
     // Capture output from tmux pane
     let output = '';
     try {
@@ -270,8 +275,20 @@ export class DashboardDataProvider extends EventEmitter {
       // Ignore capture errors (pane might not exist)
     }
 
+    // Cache output when agent has content, use cache when output is empty but agent is done
+    if (output && output.trim()) {
+      // Update cache with new output
+      this.outputCache.set(agent, output);
+    } else if (dashboardStatus === 'done' || dashboardStatus === 'error') {
+      // Agent completed but tmux output is gone - use cached output
+      const cachedOutput = this.outputCache.get(agent);
+      if (cachedOutput) {
+        output = cachedOutput;
+      }
+    }
+
     return {
-      status: agentStatusToDashboardStatus(status),
+      status: dashboardStatus,
       output,
       startedAt: startedAt ? new Date(startedAt) : undefined,
       finishedAt: completedAt ? new Date(completedAt) : undefined,
@@ -421,5 +438,6 @@ export class DashboardDataProvider extends EventEmitter {
   destroy(): void {
     this.stopPolling();
     this.removeAllListeners();
+    this.outputCache.clear();
   }
 }

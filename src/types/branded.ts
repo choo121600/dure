@@ -57,6 +57,24 @@ export type VcrId = Brand<string, 'VcrId'>;
  */
 export type SessionName = Brand<string, 'SessionName'>;
 
+/**
+ * Mission ID - identifies a multi-phase mission
+ * Format: mission-YYYYMMDDHHMMSS (14 digits)
+ */
+export type MissionId = Brand<string, 'MissionId'>;
+
+/**
+ * Phase ID - identifies a phase within a mission
+ * Format: phase-XXX where XXX is alphanumeric
+ */
+export type PhaseId = Brand<string, 'PhaseId'>;
+
+/**
+ * Task ID - identifies a task within a phase
+ * Format: task-XXX where XXX is alphanumeric
+ */
+export type TaskId = Brand<string, 'TaskId'>;
+
 // ============================================================================
 // Validation Patterns
 // ============================================================================
@@ -90,6 +108,21 @@ const MAX_ID_LENGTH = 64;
  * Maximum length for session names
  */
 const MAX_SESSION_NAME_LENGTH = 64;
+
+/**
+ * Pattern for valid mission IDs: mission-YYYYMMDDHHMMSS (14 digits)
+ */
+const MISSION_ID_PATTERN = /^mission-\d{14}$/;
+
+/**
+ * Pattern for valid phase IDs: phase-XXX where XXX is alphanumeric
+ */
+const PHASE_ID_PATTERN = /^phase-[a-zA-Z0-9_-]+$/;
+
+/**
+ * Pattern for valid task IDs: task-XXX where XXX is alphanumeric
+ */
+const TASK_ID_PATTERN = /^task-[a-zA-Z0-9_-]+$/;
 
 // ============================================================================
 // Validation Functions
@@ -143,6 +176,39 @@ export function isValidSessionName(value: string): boolean {
   );
 }
 
+/**
+ * Validate a mission ID format
+ * Mission IDs must match the pattern: mission-YYYYMMDDHHMMSS
+ */
+export function isValidMissionId(value: string): boolean {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return MISSION_ID_PATTERN.test(value);
+}
+
+/**
+ * Validate a phase ID format
+ * Phase IDs should match patterns like: phase-001, phase-setup
+ */
+export function isValidPhaseId(value: string): boolean {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return PHASE_ID_PATTERN.test(value) && value.length <= MAX_ID_LENGTH;
+}
+
+/**
+ * Validate a task ID format
+ * Task IDs should match patterns like: task-001, task-implement-feature
+ */
+export function isValidTaskId(value: string): boolean {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return TASK_ID_PATTERN.test(value) && value.length <= MAX_ID_LENGTH;
+}
+
 // ============================================================================
 // Type Guards
 // ============================================================================
@@ -177,6 +243,30 @@ export function isVcrId(value: string): value is VcrId {
  */
 export function isSessionName(value: string): value is SessionName {
   return isValidSessionName(value);
+}
+
+/**
+ * Type guard for MissionId
+ * Narrows string to MissionId if valid
+ */
+export function isMissionId(value: string): value is MissionId {
+  return isValidMissionId(value);
+}
+
+/**
+ * Type guard for PhaseId
+ * Narrows string to PhaseId if valid
+ */
+export function isPhaseId(value: string): value is PhaseId {
+  return isValidPhaseId(value);
+}
+
+/**
+ * Type guard for TaskId
+ * Narrows string to TaskId if valid
+ */
+export function isTaskId(value: string): value is TaskId {
+  return isValidTaskId(value);
 }
 
 // ============================================================================
@@ -321,6 +411,94 @@ export function createSessionName(value: string): Result<SessionName, Validation
   return ok(trimmed as SessionName);
 }
 
+/**
+ * Create a validated MissionId
+ * Returns Result<MissionId, ValidationError>
+ */
+export function createMissionId(value: string): Result<MissionId, ValidationError> {
+  if (!value || typeof value !== 'string') {
+    return err(new ValidationError(
+      'Invalid mission ID: must be a non-empty string',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'missionId', value }
+    ));
+  }
+
+  if (!MISSION_ID_PATTERN.test(value)) {
+    return err(new ValidationError(
+      'Invalid mission ID format: must match pattern mission-YYYYMMDDHHMMSS',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'missionId', value, pattern: 'mission-YYYYMMDDHHMMSS' }
+    ));
+  }
+
+  return ok(value as MissionId);
+}
+
+/**
+ * Create a validated PhaseId
+ * Returns Result<PhaseId, ValidationError>
+ */
+export function createPhaseId(value: string): Result<PhaseId, ValidationError> {
+  if (!value || typeof value !== 'string') {
+    return err(new ValidationError(
+      'Invalid phase ID: must be a non-empty string',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'phaseId', value }
+    ));
+  }
+
+  if (!PHASE_ID_PATTERN.test(value)) {
+    return err(new ValidationError(
+      'Invalid phase ID format: must match pattern phase-XXX',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'phaseId', value }
+    ));
+  }
+
+  if (value.length > MAX_ID_LENGTH) {
+    return err(new ValidationError(
+      `Invalid phase ID: exceeds maximum length of ${MAX_ID_LENGTH}`,
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'phaseId', value, maxLength: MAX_ID_LENGTH }
+    ));
+  }
+
+  return ok(value as PhaseId);
+}
+
+/**
+ * Create a validated TaskId
+ * Returns Result<TaskId, ValidationError>
+ */
+export function createTaskId(value: string): Result<TaskId, ValidationError> {
+  if (!value || typeof value !== 'string') {
+    return err(new ValidationError(
+      'Invalid task ID: must be a non-empty string',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'taskId', value }
+    ));
+  }
+
+  if (!TASK_ID_PATTERN.test(value)) {
+    return err(new ValidationError(
+      'Invalid task ID format: must match pattern task-XXX',
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'taskId', value }
+    ));
+  }
+
+  if (value.length > MAX_ID_LENGTH) {
+    return err(new ValidationError(
+      `Invalid task ID: exceeds maximum length of ${MAX_ID_LENGTH}`,
+      ErrorCodes.VALIDATION_INVALID_RUN_ID,
+      { field: 'taskId', value, maxLength: MAX_ID_LENGTH }
+    ));
+  }
+
+  return ok(value as TaskId);
+}
+
 // ============================================================================
 // Unsafe Creation Functions (for trusted sources)
 // ============================================================================
@@ -352,6 +530,27 @@ export function unsafeCreateVcrId(value: string): VcrId {
  */
 export function unsafeCreateSessionName(value: string): SessionName {
   return value as SessionName;
+}
+
+/**
+ * Create a MissionId without validation (for trusted sources)
+ */
+export function unsafeCreateMissionId(value: string): MissionId {
+  return value as MissionId;
+}
+
+/**
+ * Create a PhaseId without validation (for trusted sources)
+ */
+export function unsafeCreatePhaseId(value: string): PhaseId {
+  return value as PhaseId;
+}
+
+/**
+ * Create a TaskId without validation (for trusted sources)
+ */
+export function unsafeCreateTaskId(value: string): TaskId {
+  return value as TaskId;
 }
 
 // ============================================================================
@@ -391,4 +590,15 @@ export function generateCrpId(suffix: string | number): Result<CrpId, Validation
 export function generateVcrId(suffix: string | number): Result<VcrId, ValidationError> {
   const value = `vcr-${suffix}`;
   return createVcrId(value);
+}
+
+/**
+ * Generate a new MissionId with current timestamp
+ */
+export function generateMissionId(): MissionId {
+  const now = new Date();
+  const timestamp = now.toISOString()
+    .replace(/[-:T]/g, '')
+    .slice(0, 14);
+  return `mission-${timestamp}` as MissionId;
 }
