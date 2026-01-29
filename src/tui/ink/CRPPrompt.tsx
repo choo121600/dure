@@ -2,6 +2,7 @@
  * CRPPrompt - Human judgment input UI
  *
  * Displays when human input is required (CRP - Consultation Request Pack).
+ * When user selects an option, the parent component should create a VCR file.
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
@@ -9,8 +10,10 @@ import type { DashboardCRP, AgentName } from '../../types/index.js';
 
 interface CRPPromptProps {
   crp: DashboardCRP;
-  onSubmit: (selectedOption: number, customResponse?: string) => void;
+  crpId?: string;
+  onSubmit: (selectedOption: number, selectedOptionText: string) => void;
   onCancel: () => void;
+  submitting?: boolean;
 }
 
 const AGENT_LABELS: Record<AgentName, string> = {
@@ -20,23 +23,25 @@ const AGENT_LABELS: Record<AgentName, string> = {
   gatekeeper: 'Gatekeeper',
 };
 
-export function CRPPrompt({ crp, onSubmit, onCancel }: CRPPromptProps): React.ReactElement {
+export function CRPPrompt({ crp, crpId, onSubmit, onCancel, submitting = false }: CRPPromptProps): React.ReactElement {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useInput((input, key) => {
+    if (submitting) return;
+
     if (key.upArrow || input === 'k') {
       setSelectedIndex(prev => Math.max(0, prev - 1));
     } else if (key.downArrow || input === 'j') {
       setSelectedIndex(prev => Math.min(crp.options.length - 1, prev + 1));
     } else if (key.return) {
-      onSubmit(selectedIndex);
+      onSubmit(selectedIndex, crp.options[selectedIndex]);
     } else if (key.escape || input === 'q') {
       onCancel();
     } else if (input >= '1' && input <= '9') {
       const index = parseInt(input, 10) - 1;
       if (index < crp.options.length) {
         setSelectedIndex(index);
-        onSubmit(index);
+        onSubmit(index, crp.options[index]);
       }
     }
   });
@@ -54,10 +59,21 @@ export function CRPPrompt({ crp, onSubmit, onCancel }: CRPPromptProps): React.Re
         <Text dimColor> (from {AGENT_LABELS[crp.agent]})</Text>
       </Box>
 
+      {crpId && (
+        <Box marginBottom={1}>
+          <Text dimColor>CRP ID: {crpId}</Text>
+        </Box>
+      )}
+
       <Box marginBottom={1}>
         <Text bold>{crp.question}</Text>
       </Box>
 
+      {submitting ? (
+        <Box marginBottom={1}>
+          <Text color="blue">Submitting response...</Text>
+        </Box>
+      ) : (
       <Box flexDirection="column" marginBottom={1}>
         {crp.options.map((option, index) => {
           const isSelected = index === selectedIndex;
@@ -73,10 +89,11 @@ export function CRPPrompt({ crp, onSubmit, onCancel }: CRPPromptProps): React.Re
           );
         })}
       </Box>
+      )}
 
       <Box marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
         <Text dimColor>
-          ↑/↓ or j/k: Navigate | Enter or 1-9: Select | Esc: Cancel
+          {submitting ? 'Please wait...' : '\u2191/\u2193 or j/k: Navigate | Enter or 1-9: Select | Esc: Cancel'}
         </Text>
       </Box>
     </Box>
