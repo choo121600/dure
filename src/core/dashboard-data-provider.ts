@@ -20,6 +20,7 @@ import type {
   DashboardAgentData,
   DashboardCRP,
   CRP,
+  GatekeeperVerdict,
 } from '../types/index.js';
 
 /**
@@ -183,6 +184,12 @@ export class DashboardDataProvider extends EventEmitter {
     // Calculate progress
     const progress = this.calculateProgress(state.phase, state.iteration, state.max_iterations);
 
+    // Load verdict if run failed or completed
+    let verdict: GatekeeperVerdict | undefined;
+    if (state.phase === 'failed' || state.phase === 'completed' || state.phase === 'ready_for_merge') {
+      verdict = await this.loadVerdict();
+    }
+
     return {
       runId: state.run_id,
       stage: phaseToDashboardStage(state.phase),
@@ -190,6 +197,7 @@ export class DashboardDataProvider extends EventEmitter {
       usage,
       crp,
       progress,
+      verdict,
     };
   }
 
@@ -309,6 +317,20 @@ export class DashboardDataProvider extends EventEmitter {
       };
     } catch {
       // CRP file not found or invalid
+      return undefined;
+    }
+  }
+
+  /**
+   * Load Gatekeeper verdict from file
+   */
+  private async loadVerdict(): Promise<GatekeeperVerdict | undefined> {
+    try {
+      const verdictPath = join(this.runDir, 'gatekeeper', 'verdict.json');
+      const content = await readFile(verdictPath, 'utf-8');
+      return JSON.parse(content) as GatekeeperVerdict;
+    } catch {
+      // Verdict file not found or invalid
       return undefined;
     }
   }

@@ -62,31 +62,47 @@ export {
   type CrpId,
   type VcrId,
   type SessionName,
+  type MissionId,
+  type PhaseId,
+  type TaskId,
   // Validation functions
   isValidRunId,
   isValidCrpId,
   isValidVcrId,
   isValidSessionName,
+  isValidMissionId,
+  isValidPhaseId,
+  isValidTaskId,
   // Type guards
   isRunId,
   isCrpId,
   isVcrId,
   isSessionName,
+  isMissionId,
+  isPhaseId,
+  isTaskId,
   // Creation functions (with validation)
   createRunId,
   createCrpId,
   createVcrId,
   createSessionName,
+  createMissionId,
+  createPhaseId,
+  createTaskId,
   // Unsafe creation functions (for trusted sources)
   unsafeCreateRunId,
   unsafeCreateCrpId,
   unsafeCreateVcrId,
   unsafeCreateSessionName,
+  unsafeCreateMissionId,
+  unsafeCreatePhaseId,
+  unsafeCreateTaskId,
   // Utility functions
   unwrapBrand,
   generateRunId,
   generateCrpId,
   generateVcrId,
+  generateMissionId,
 } from './branded.js';
 
 // Re-export Event types
@@ -426,6 +442,8 @@ export interface GatekeeperVerdict {
   quality_scores?: QualityScores;
   iteration?: number;
   max_iterations?: number;
+  tests_passing?: boolean;
+  coverage?: number;
 }
 
 // Configuration Types
@@ -992,6 +1010,7 @@ export interface DashboardData {
   usage: DashboardUsage;
   crp?: DashboardCRP;
   progress: DashboardProgress;
+  verdict?: GatekeeperVerdict;
 }
 
 /**
@@ -1057,3 +1076,20 @@ export interface InitPlan {
   current_phase: InitPhase;
   last_updated: string;
 }
+
+// Re-export Mission Planning types
+export {
+  type CarryForward,
+  type Critique,
+  type MissionTaskStatus,
+  type AgentConfigOverride,
+  type MissionTask,
+  type PhaseStatus,
+  type PhaseSummary,
+  type MissionPhase,
+  type MissionStatus,
+  type PlanningStage,
+  type PlanDraft,
+  type MissionStats,
+  type Mission,
+} from './mission.js';
