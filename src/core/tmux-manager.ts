@@ -242,7 +242,8 @@ export class TmuxManager {
 
     // Start Claude in interactive mode
     // Using spawn to build the command safely
-    const startCmd = `cd "${this.projectRoot}" && claude --dangerously-skip-permissions --model ${model}`;
+    // DURE_AGENT_MODE=1 enables hook-based test command blocking
+    const startCmd = `cd "${this.projectRoot}" && DURE_AGENT_MODE=1 claude --dangerously-skip-permissions --model ${model}`;
     this.sendKeys(agent, startCmd);
 
     // Store prompt info for async sending

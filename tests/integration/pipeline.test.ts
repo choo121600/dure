@@ -613,7 +613,9 @@ describe('Pipeline Integration - Run State Persistence', () => {
     // Verify prompt files exist
     expect(existsSync(join(promptsDir, 'refiner.md'))).toBe(true);
     expect(existsSync(join(promptsDir, 'builder.md'))).toBe(true);
-    expect(existsSync(join(promptsDir, 'verifier.md'))).toBe(true);
+    // Verifier uses 2-phase prompts for external test runner
+    expect(existsSync(join(promptsDir, 'verifier-phase1.md'))).toBe(true);
+    expect(existsSync(join(promptsDir, 'verifier-phase2.md'))).toBe(true);
     expect(existsSync(join(promptsDir, 'gatekeeper.md'))).toBe(true);
 
     await orchestrator.stopRun();

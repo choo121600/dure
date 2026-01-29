@@ -157,12 +157,27 @@ const AdversarialConfigSchema = z.object({
 });
 
 /**
+ * Test framework schema
+ */
+const TestFrameworkSchema = z.enum(['vitest', 'jest', 'mocha', 'custom']);
+
+/**
+ * External runner config schema
+ */
+const ExternalRunnerConfigSchema = z.object({
+  enabled: z.boolean(),
+  default_framework: TestFrameworkSchema,
+  default_timeout_ms: z.number().int().min(1000).max(600000),
+});
+
+/**
  * Verifier config schema
  */
 export const VerifierConfigSchema = z.object({
   model: AgentModelSchema,
   test_coverage: TestCoverageConfigSchema,
   adversarial: AdversarialConfigSchema,
+  external_runner: ExternalRunnerConfigSchema.optional(),
 });
 
 /**

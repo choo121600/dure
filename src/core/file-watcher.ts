@@ -2,7 +2,7 @@ import { watch, FSWatcher } from 'chokidar';
 import { existsSync, readFileSync } from 'fs';
 import { join, basename, dirname } from 'path';
 import { EventEmitter } from 'events';
-import type { CRP, GatekeeperVerdict } from '../types/index.js';
+import type { CRP, GatekeeperVerdict, TestConfig, TestOutput } from '../types/index.js';
 
 export interface ErrorFlag {
   agent: string;
@@ -17,6 +17,8 @@ export type WatchEvent =
   | { type: 'refiner_done' }
   | { type: 'builder_done' }
   | { type: 'verifier_done' }
+  | { type: 'tests_ready'; config: TestConfig }
+  | { type: 'test_execution_done'; result: TestOutput }
   | { type: 'gatekeeper_done'; verdict: GatekeeperVerdict }
   | { type: 'crp_created'; crp: CRP }
   | { type: 'vcr_created'; vcrId: string; crpId: string }
@@ -147,6 +149,20 @@ export class FileWatcher extends EventEmitter {
       }
     }
 
+    // Check for tests-ready.flag (Verifier Phase 1 completion)
+    if (filename === 'tests-ready.flag' && parentDir === 'verifier') {
+      if (!this.isDuplicateEvent('tests_ready')) {
+        this.handleTestsReadyCreated(filePath);
+      }
+    }
+
+    // Check for test-output.json (External test execution completion)
+    if (filename === 'test-output.json' && parentDir === 'verifier') {
+      if (!this.isDuplicateEvent('test_execution_done')) {
+        this.handleTestOutputCreated(filePath);
+      }
+    }
+
     // Check for error.flag files
     if (filename === 'error.flag') {
       this.handleErrorFlagCreated(filePath, parentDir);
@@ -273,6 +289,52 @@ export class FileWatcher extends EventEmitter {
         recoverable: false,
       };
       this.emit('event', { type: 'error_flag', errorFlag: basicErrorFlag, agent } as WatchEvent);
+    }
+  }
+
+  /**
+   * Handle tests-ready.flag file creation (Verifier Phase 1 completion)
+   */
+  private handleTestsReadyCreated(filePath: string): void {
+    try {
+      // Read test-config.json from the same directory
+      const configPath = join(dirname(filePath), 'test-config.json');
+      if (!existsSync(configPath)) {
+        this.emit('event', {
+          type: 'error',
+          error: 'tests-ready.flag created but test-config.json not found',
+        } as WatchEvent);
+        return;
+      }
+
+      const content = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(content) as TestConfig;
+      this.emit('event', { type: 'tests_ready', config } as WatchEvent);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to parse test-config.json:', errMsg);
+      this.emit('event', {
+        type: 'error',
+        error: `Failed to parse test-config.json: ${errMsg}`,
+      } as WatchEvent);
+    }
+  }
+
+  /**
+   * Handle test-output.json file creation (External test execution completion)
+   */
+  private handleTestOutputCreated(filePath: string): void {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      const result = JSON.parse(content) as TestOutput;
+      this.emit('event', { type: 'test_execution_done', result } as WatchEvent);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to parse test-output.json:', errMsg);
+      this.emit('event', {
+        type: 'error',
+        error: `Failed to parse test-output.json: ${errMsg}`,
+      } as WatchEvent);
     }
   }
 

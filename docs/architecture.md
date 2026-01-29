@@ -352,3 +352,120 @@ Structure for recovering interrupted runs on server restart:
 │   - waiting_human: Continue waiting                          │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Verifier External Test Execution
+
+### Overview
+
+Verifier 에이전트의 테스트 실행을 외부 subprocess로 분리하여 CPU 리소스 경쟁을 해소하고 에이전트 안정성을 향상시킨다.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Orchestrator                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
+│  │ FileWatcher  │───▶│ TestRunner   │───▶│ Verifier Phase 2     │  │
+│  │              │    │ (subprocess) │    │ (resume with context)│  │
+│  └──────────────┘    └──────────────┘    └──────────────────────┘  │
+│         │                   │                      │                │
+│         ▼                   ▼                      ▼                │
+│  tests-ready.flag    test-output.json        results.json          │
+│                      test-log.txt            done.flag             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 2-Phase Execution Flow
+
+```
+Verifier Phase 1          External Runner           Verifier Phase 2
+(Claude Code, haiku)      (Node subprocess)         (Claude Code, haiku)
+─────────────────────     ─────────────────         ─────────────────────
+테스트 코드 생성      →   테스트 실행         →    결과 분석/판정
+tests-ready.flag          test-output.json          results.json
+                          test-log.txt              done.flag
+```
+
+### Event Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Verifier Event Flow                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  1. Builder completes (builder/done.flag)                            │
+│          │                                                           │
+│          ▼                                                           │
+│  2. Verifier Phase 1 starts                                          │
+│     - Generate test files in verifier/tests/                         │
+│     - Create test-config.json                                        │
+│     - Create tests-ready.flag                                        │
+│          │                                                           │
+│          ▼                                                           │
+│  3. FileWatcher emits 'tests_ready' event                            │
+│          │                                                           │
+│          ▼                                                           │
+│  4. Orchestrator starts TestRunner (external subprocess)             │
+│     - Execute test command from test-config.json                     │
+│     - Capture stdout/stderr to test-log.txt                          │
+│     - Parse results to test-output.json                              │
+│          │                                                           │
+│          ▼                                                           │
+│  5. FileWatcher emits 'test_execution_done' event                    │
+│          │                                                           │
+│          ▼                                                           │
+│  6. Verifier Phase 2 starts (new Claude session)                     │
+│     - Read test-output.json and test-log.txt                         │
+│     - Analyze results                                                │
+│     - Create results.json and done.flag                              │
+│          │                                                           │
+│          ▼                                                           │
+│  7. FileWatcher emits 'verifier_done' event → Gate phase starts      │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### File Structure
+
+```
+.dure/runs/run-{timestamp}/
+└── verifier/
+    ├── tests/                    # 생성된 테스트 파일들
+    ├── test-config.json          # 테스트 실행 설정
+    ├── tests-ready.flag          # Phase 1 완료 시그널
+    ├── test-output.json          # 외부 실행 결과
+    ├── test-log.txt              # 테스트 실행 로그
+    ├── results.json              # 최종 분석 결과
+    ├── log.md                    # Verifier 로그
+    └── done.flag                 # 전체 완료 시그널
+```
+
+### State Transitions
+
+```
+┌─────────────────┐     tests-ready.flag     ┌───────────────────────┐
+│    running      │ ──────────────────────▶  │ waiting_test_execution│
+│ (Verifier Ph1)  │                          │                       │
+└─────────────────┘                          └───────────┬───────────┘
+                                                         │
+                                              test-output.json
+                                                         │
+                                                         ▼
+┌─────────────────┐      done.flag           ┌───────────────────────┐
+│   completed     │ ◀────────────────────────│      running          │
+│                 │                          │   (Verifier Ph2)      │
+└─────────────────┘                          └───────────────────────┘
+```
+
+### TestRunner Subprocess
+
+TestRunner는 Orchestrator가 관리하는 외부 subprocess로 테스트를 실행한다:
+
+1. **프로세스 생성**: `child_process.spawn`으로 테스트 명령 실행
+2. **출력 캡처**: stdout/stderr를 `test-log.txt`에 저장
+3. **타임아웃 처리**: 설정된 시간 초과 시 SIGTERM → SIGKILL
+4. **결과 저장**: 실행 결과를 `test-output.json`으로 저장
+5. **이벤트 발생**: EventEmitter로 진행 상황 전달

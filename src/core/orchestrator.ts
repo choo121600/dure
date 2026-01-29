@@ -10,7 +10,10 @@ import type {
   UsageInfo,
   TotalUsage,
   ModelSelectionResult,
+  TestConfig,
+  TestOutput,
 } from '../types/index.js';
+import { TestRunner, createTestRunnerFromConfig, type TestRunnerResult } from './test-runner.js';
 import { StateManager } from './state-manager.js';
 import { RunManager } from './run-manager.js';
 import { TmuxManager } from './tmux-manager.js';
@@ -338,6 +341,8 @@ export class Orchestrator extends EventEmitter {
       case 'refiner_done': await this.handleAgentDone('refiner', 'build'); break;
       case 'builder_done': await this.handleAgentDone('builder', 'verify'); break;
       case 'verifier_done': await this.handleAgentDone('verifier', 'gate'); break;
+      case 'tests_ready': await this.handleTestsReady(event.config, runId); break;
+      case 'test_execution_done': await this.handleTestExecutionDone(event.result, runId); break;
       case 'gatekeeper_done': await this.handleGatekeeperDone(event.verdict); break;
       case 'crp_created': await this.managers.agentCoordinator.handleCRPCreated(event.crp, runId); break;
       case 'error_flag': await this.handleErrorFlag(event.agent as AgentName, event.errorFlag); break;
@@ -367,6 +372,87 @@ export class Orchestrator extends EventEmitter {
       });
       this.emitEvent({ type: 'agent_started', agent: action.nextAgent, runId: this.currentRunId });
     }
+  }
+
+  /**
+   * Handle tests_ready event (Verifier Phase 1 completion)
+   * Starts external TestRunner to execute tests
+   */
+  private async handleTestsReady(config: TestConfig, runId: string): Promise<void> {
+    if (!this.managers) return;
+
+    this.logger.info('Verifier Phase 1 completed, starting external test execution', {
+      runId,
+      testFramework: config.test_framework,
+      testCommand: config.test_command,
+    });
+
+    // Notify AgentCoordinator that Verifier Phase 1 is done
+    await this.managers.agentCoordinator.handleVerifierPhase1Done(runId, config);
+
+    // Get run directory and start TestRunner
+    const runDir = this.runManager.getRunDir(runId);
+    const verifierDir = `${runDir}/verifier`;
+
+    const testRunner = createTestRunnerFromConfig(config, runDir);
+
+    // Listen to TestRunner events
+    testRunner.on('event', (event) => {
+      if (event.type === 'start') {
+        this.logger.debug('Test execution started', { runId, command: event.command });
+      } else if (event.type === 'timeout') {
+        this.logger.warn('Test execution timed out', { runId, timeoutMs: event.timeoutMs });
+      } else if (event.type === 'error') {
+        this.logger.error('Test execution error', event.error, { runId });
+        this.emitEvent({ type: 'error', error: event.error.message, runId });
+      }
+    });
+
+    try {
+      // Execute tests
+      const result = await testRunner.run();
+
+      // Save results to verifier directory
+      await testRunner.saveResults(verifierDir, result);
+
+      this.logger.info('Test execution completed', {
+        runId,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs,
+        testResults: result.testResults,
+      });
+
+      // Note: test_execution_done event will be triggered by FileWatcher
+      // when test-output.json is written
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Test execution failed', error instanceof Error ? error : undefined, { runId });
+      this.emitEvent({ type: 'error', error: `Test execution failed: ${errorMessage}`, runId });
+
+      // Create error flag for verifier
+      if (this.stateManager) {
+        await this.stateManager.updateAgentStatus('verifier', 'failed', errorMessage);
+      }
+    }
+  }
+
+  /**
+   * Handle test_execution_done event (test-output.json written)
+   * Starts Verifier Phase 2 to analyze results
+   */
+  private async handleTestExecutionDone(testOutput: TestOutput, runId: string): Promise<void> {
+    if (!this.managers) return;
+
+    this.logger.info('Test execution done, starting Verifier Phase 2', {
+      runId,
+      exitCode: testOutput.exit_code,
+      testResults: testOutput.test_results,
+    });
+
+    // Notify AgentCoordinator to start Verifier Phase 2
+    await this.managers.agentCoordinator.handleTestExecutionDone(runId, testOutput);
+
+    this.emitEvent({ type: 'agent_started', agent: 'verifier', runId });
   }
 
   private async handleGatekeeperDone(verdict: GatekeeperVerdict): Promise<void> {

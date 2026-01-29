@@ -23,6 +23,7 @@ const AGENT_NAMES: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'
 const STATUS_COLORS: Record<AgentStatus, string> = {
   pending: 'gray',
   running: 'yellow',
+  waiting_test_execution: 'blue',
   completed: 'green',
   failed: 'red',
   timeout: 'magenta',
@@ -32,6 +33,7 @@ const STATUS_COLORS: Record<AgentStatus, string> = {
 const STATUS_LABELS: Record<AgentStatus, string> = {
   pending: 'PENDING',
   running: 'RUNNING',
+  waiting_test_execution: 'TESTING',
   completed: 'DONE',
   failed: 'FAILED',
   timeout: 'TIMEOUT',

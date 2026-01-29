@@ -73,6 +73,11 @@ export const defaultVerifierConfig: VerifierConfig = {
     enabled: true,
     max_attack_vectors: 5,
   },
+  external_runner: {
+    enabled: true,
+    default_framework: 'vitest',
+    default_timeout_ms: 120000,
+  },
 };
 
 export const defaultGatekeeperConfig: GatekeeperConfig = {

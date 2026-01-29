@@ -147,7 +147,7 @@ export {
 // Agent Types
 export type AgentName = 'refiner' | 'builder' | 'verifier' | 'gatekeeper';
 export type AgentModel = 'haiku' | 'sonnet' | 'opus';
-export type AgentStatus = 'pending' | 'running' | 'completed' | 'failed' | 'timeout' | 'waiting_human';
+export type AgentStatus = 'pending' | 'running' | 'waiting_test_execution' | 'completed' | 'failed' | 'timeout' | 'waiting_human';
 
 // Phase Types
 export type Phase = 'refine' | 'build' | 'verify' | 'gate' | 'waiting_human' | 'ready_for_merge' | 'completed' | 'failed';
@@ -436,6 +436,38 @@ export interface BuilderConfig {
   };
 }
 
+// Test Runner Types (External Test Execution)
+export type TestFramework = 'vitest' | 'jest' | 'mocha' | 'custom';
+
+export interface TestConfig {
+  test_framework: TestFramework;
+  test_command: string;
+  test_directory: string;
+  timeout_ms: number;
+  coverage: boolean;
+  created_at: string;
+}
+
+export interface TestOutput {
+  exit_code: number;
+  stdout: string;
+  stderr: string;
+  duration_ms: number;
+  executed_at: string;
+  test_results?: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+  };
+}
+
+export interface ExternalRunnerConfig {
+  enabled: boolean;
+  default_framework: TestFramework;
+  default_timeout_ms: number;
+}
+
 export interface VerifierConfig {
   model: AgentModel;
   test_coverage: {
@@ -447,6 +479,7 @@ export interface VerifierConfig {
     enabled: boolean;
     max_attack_vectors: number;
   };
+  external_runner?: ExternalRunnerConfig;
 }
 
 export interface GatekeeperConfig {

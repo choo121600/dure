@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { join } from 'path';
-import type { AgentName, AgentModel, AgentTimeoutConfig, ModelSelectionResult } from '../types/index.js';
+import type { AgentName, AgentModel, AgentTimeoutConfig, ModelSelectionResult, TestOutput } from '../types/index.js';
 import { TmuxManager } from './tmux-manager.js';
 import { StateManager } from './state-manager.js';
 import { AgentMonitor } from './agent-monitor.js';
@@ -164,6 +164,47 @@ export class AgentLifecycleManager extends EventEmitter {
     this.tmuxManager.restartAgentWithVCR(agent, runId, promptFile, vcrInfo);
 
     this.emit('lifecycle_event', { type: 'agent_started', agent } as AgentLifecycleEvent);
+  }
+
+  /**
+   * Start Verifier Phase 2 with test execution results
+   * Used when external test runner completes and Verifier needs to analyze results
+   */
+  async startVerifierPhase2(runDir: string, testOutput: TestOutput): Promise<void> {
+    const agent: AgentName = 'verifier';
+
+    if (!this.currentRunId) {
+      throw new Error('Run ID not set');
+    }
+
+    const model = this.selectedModels[agent];
+    if (!model) {
+      throw new Error(`No model selected for agent: ${agent}`);
+    }
+
+    this.emit('lifecycle_event', { type: 'agent_starting', agent } as AgentLifecycleEvent);
+
+    // Update state to running
+    await this.stateManager.updateAgentStatus(agent, 'running');
+
+    // Start monitoring this agent
+    this.agentMonitor.watchAgent(agent);
+
+    // Get Phase 2 prompt file path
+    const promptFile = join(runDir, 'prompts', 'verifier-phase2.md');
+
+    // Start the agent with Phase 2 prompt
+    await this.tmuxManager.startAgentAndWaitReady(agent, model, promptFile);
+
+    this.emit('lifecycle_event', { type: 'agent_started', agent } as AgentLifecycleEvent);
+  }
+
+  /**
+   * Mark agent as waiting for external test execution
+   */
+  async setAgentWaitingTestExecution(agent: AgentName): Promise<void> {
+    this.stopAgent(agent);
+    await this.stateManager.updateAgentStatus(agent, 'waiting_test_execution');
   }
 
   /**

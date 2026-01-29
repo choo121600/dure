@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import type { AgentName, Phase } from '../types/index.js';
+import type { AgentName, Phase, TestOutput, TestConfig } from '../types/index.js';
 import type { AgentLifecycleManager } from './agent-lifecycle-manager.js';
 import type { PhaseTransitionManager } from './phase-transition-manager.js';
 import type { RunManager } from './run-manager.js';
@@ -19,7 +19,11 @@ export type AgentCoordinatorEvent =
   | { type: 'phase_transitioned'; phase: Phase; runId: string }
   | { type: 'crp_detected'; crpId: string; agent: AgentName; runId: string }
   | { type: 'crp_created'; crpId: string; agent: AgentName; runId: string }
-  | { type: 'waiting_human'; crpId: string; runId: string };
+  | { type: 'waiting_human'; crpId: string; runId: string }
+  | { type: 'verifier_phase1_done'; runId: string }
+  | { type: 'test_execution_starting'; runId: string }
+  | { type: 'test_execution_done'; runId: string; testOutput: TestOutput }
+  | { type: 'verifier_phase2_starting'; runId: string };
 
 /**
  * AgentCoordinator handles agent completion and phase transitions:
@@ -244,6 +248,40 @@ export class AgentCoordinator extends EventEmitter {
 
     const unresolved = crps.find(crp => !vcrs.some(vcr => vcr.crp_id === crp.crp_id));
     return unresolved?.crp_id || null;
+  }
+
+  /**
+   * Handle Verifier Phase 1 completion (tests-ready.flag detected)
+   * Transitions Verifier to waiting_test_execution state
+   */
+  async handleVerifierPhase1Done(runId: string, config: TestConfig): Promise<void> {
+    // Mark verifier as waiting for test execution
+    await this.agentLifecycle.setAgentWaitingTestExecution('verifier');
+
+    this.emitEvent({ type: 'verifier_phase1_done', runId });
+    this.emitEvent({ type: 'test_execution_starting', runId });
+  }
+
+  /**
+   * Handle external test execution completion (test-output.json detected)
+   * Starts Verifier Phase 2 with test results
+   */
+  async handleTestExecutionDone(runId: string, testOutput: TestOutput): Promise<void> {
+    this.emitEvent({ type: 'test_execution_done', runId, testOutput });
+    this.emitEvent({ type: 'verifier_phase2_starting', runId });
+
+    // Start Verifier Phase 2
+    await this.startVerifierPhase2(runId, testOutput);
+  }
+
+  /**
+   * Start Verifier Phase 2 with test execution results
+   * @param runId Run ID
+   * @param testOutput Test execution output from external runner
+   */
+  async startVerifierPhase2(runId: string, testOutput: TestOutput): Promise<void> {
+    const runDir = this.runManager.getRunDir(runId);
+    await this.agentLifecycle.startVerifierPhase2(runDir, testOutput);
   }
 
   /**
