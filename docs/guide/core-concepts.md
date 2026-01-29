@@ -61,6 +61,30 @@ This provides:
 - ✅ Easy debugging
 - ✅ Ability to inspect intermediate states
 
+### 5. Real-Time Monitoring
+
+Humans observe execution through dashboards:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Agent Execution                        │
+│  REFINE ─────▶ BUILD ─────▶ VERIFY ─────▶ GATE           │
+│     │           │            │            │              │
+│     ▼           ▼            ▼            ▼              │
+│  [Dashboard: Real-time status, output, and progress]     │
+│                       │                                  │
+│                       ▼                                  │
+│                 Human Observer                           │
+│           (Intervene only when CRP)                      │
+└──────────────────────────────────────────────────────────┘
+```
+
+This provides:
+- ✅ Real-time visibility into agent progress
+- ✅ Quick response to CRP (human judgment requests)
+- ✅ Cost and token tracking
+- ✅ Ability to detach and reconnect
+
 ## Key Terms
 
 ### Run
@@ -283,8 +307,60 @@ Token usage and costs for all agents are tracked in real-time:
 
 You can check this in real-time on the dashboard.
 
+## Monitoring & Dashboards
+
+Dure provides real-time monitoring interfaces to observe agent execution.
+
+### Why Real-Time Monitoring?
+
+Since humans are decision nodes (not workers), monitoring serves to:
+
+1. **Observe Progress** - See which agent is running and what it's doing
+2. **Quick CRP Response** - Respond promptly when human judgment is needed
+3. **Track Costs** - Monitor token usage and costs in real-time
+4. **Debug Issues** - Identify problems before they escalate
+
+### Two Interfaces
+
+| Interface | Best For |
+|-----------|----------|
+| **TUI Dashboard** | Local development, fast feedback |
+| **Web Dashboard** | Remote access, team collaboration |
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    DashboardDataProvider                     │
+│              (Aggregates state and output data)              │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+      ┌──────────────┐         ┌──────────────────┐
+      │     TUI      │         │  Web Dashboard   │
+      │    (Ink)     │         │   (Socket.io)    │
+      └──────────────┘         └──────────────────┘
+              │                         │
+              ▼                         ▼
+         Terminal                   Browser
+```
+
+### Event-Driven Updates
+
+Dashboards receive updates through events:
+
+- **stage-change** - When execution moves to next phase
+- **agent-status-change** - When an agent's status changes
+- **update** - Periodic data refresh (every 500ms)
+- **crp** - When human judgment is required
+
+This event-driven architecture ensures dashboards stay synchronized with actual execution state.
+
+?> For detailed dashboard usage, see the [Monitoring Dashboard Guide](/guide/monitoring-dashboard.md).
+
 ## Next Steps
 
+- [Monitoring Dashboard Guide](/guide/monitoring-dashboard.md) - TUI and Web dashboard usage
 - [Briefing Writing Guide](/guide/writing-briefings.md) - How to write effective Briefings
 - [Understanding Agents](/guide/understanding-agents.md) - Detailed agent behavior
 - [System Overview](/architecture/overview.md) - Detailed architecture explanation

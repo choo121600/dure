@@ -112,7 +112,33 @@ npx dure start
 dure start
 ```
 
-### 3. Open Web Dashboard
+By default, Dure starts with the **TUI dashboard** directly in your terminal:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Dure Dashboard              run-2024-01-29-143022           │
+│ Stage: BUILD                Tokens: 12.5k    Cost: $0.045   │
+├─────────────────────────────────────────────────────────────┤
+│  [1] Refiner   ✓ Done                                       │
+│  [2] Builder   ● Running (45%)                              │
+│  [3] Verifier  ○ Pending                                    │
+│  [4] Gatekeeper ○ Pending                                   │
+├─────────────────────────────────────────────────────────────┤
+│ Output: Builder                                             │
+│ > Reading refined.md...                                     │
+│ > Creating src/features/rate-limiter.ts                     │
+├─────────────────────────────────────────────────────────────┤
+│ [1-4] Switch agent  [q] Quit  [d] Detach                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3. Alternative: Web Dashboard
+
+If you prefer a web-based interface:
+
+```bash
+dure start --web
+```
 
 The browser will automatically open and connect to `http://localhost:3873`.
 
@@ -122,11 +148,21 @@ If it doesn't open automatically, connect manually:
 open http://localhost:3873  # macOS
 ```
 
+?> You can also attach to the raw tmux session with `dure start --attach` for advanced debugging.
+
 ## First Run Execution
 
 ### 1. Start New Run
 
+**From Web Dashboard:**
 Click the **"New Run"** button on the dashboard.
+
+**From CLI:**
+You can also start a run directly from the command line:
+
+```bash
+dure run "Your briefing text here"
+```
 
 ### 2. Write Briefing
 
@@ -151,11 +187,45 @@ sayHello("Alice") → "Hello, Alice!"
 
 ### 3. Start Run
 
-Click the **"Start Run"** button.
+Click the **"Start Run"** button or submit via CLI.
 
 ### 4. Monitor Progress
 
-You can check agent progress in real-time on the dashboard:
+**TUI Dashboard (Default):**
+
+The TUI shows real-time progress with agent output:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Dure Dashboard              run-2024-01-29-143022           │
+│ Stage: BUILD                Tokens: 12.5k    Cost: $0.045   │
+├─────────────────────────────────────────────────────────────┤
+│  [1] Refiner   ✓ Done                                       │
+│  [2] Builder   ● Running (45%)                              │
+│  [3] Verifier  ○ Pending                                    │
+│  [4] Gatekeeper ○ Pending                                   │
+├─────────────────────────────────────────────────────────────┤
+│ Output: Builder                                             │
+│ > Building component...                                     │
+│ > Created file: src/utils/hello.ts                          │
+│ > Running type check...                                     │
+├─────────────────────────────────────────────────────────────┤
+│ [1-4] Switch agent  [q] Quit  [d] Detach                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**TUI Keyboard Shortcuts:**
+
+| Key | Action |
+|-----|--------|
+| `1-4` | Switch to agent view (Refiner/Builder/Verifier/Gatekeeper) |
+| `q` | Quit TUI (execution continues in background) |
+| `d` | Detach (same as quit) |
+| `Escape` | Close CRP modal (when responding to questions) |
+
+**Web Dashboard:**
+
+You can also monitor via web:
 
 ```
 [✓ Refine] → [● Build] → [ Verify] → [ Gate]
@@ -173,16 +243,36 @@ When all agents are complete:
 
 ## CLI Options
 
-### Change Port
+### Start Options
 
 ```bash
+# Default: Start with TUI dashboard
+dure start
+
+# Use web dashboard instead
+dure start --web
+
+# Attach to raw tmux session
+dure start --attach
+
+# Change server port
 dure start --port 3001
 ```
 
-### Disable Auto Browser Opening
+### Monitor a Run
 
 ```bash
-dure start --no-browser
+# Monitor latest run with TUI (default)
+dure monitor
+
+# Monitor specific run
+dure monitor run-20240126-143022
+
+# Monitor with web dashboard
+dure monitor --web
+
+# Monitor with custom port
+dure monitor --web --port 3001
 ```
 
 ### Check Current Status
@@ -283,6 +373,7 @@ To exit session: `Ctrl-b` + `d` (detach)
 
 ## Next Steps
 
+- [Monitoring Dashboard Guide](/guide/monitoring-dashboard.md) - TUI and Web dashboard usage
 - [Briefing Writing Guide](/guide/writing-briefings.md) - How to write effective Briefings
 - [Understanding Agents](/guide/understanding-agents.md) - Roles and operation principles of each agent
 - [Configuration Files](/api/configuration.md) - Customizing agent settings

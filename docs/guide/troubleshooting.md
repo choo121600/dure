@@ -230,6 +230,229 @@ Click "Retry Agent" on dashboard
 - **Permission error**: Check file permissions
 - **JSON parsing error**: Check Briefing format
 
+## TUI Dashboard Issues
+
+### TUI Not Displaying
+
+**Symptom:**
+
+TUI doesn't appear, falls back to tmux attach
+
+**Cause:**
+
+Terminal is not a TTY (CI/CD environment, piped output)
+
+**Solution:**
+
+Use web dashboard or tmux attach mode:
+
+```bash
+# Web dashboard
+dure start --web
+
+# Or raw tmux
+dure start --attach
+```
+
+### TUI Screen Corrupted
+
+**Symptom:**
+
+TUI display is broken, characters misaligned
+
+**Cause:**
+
+Terminal window too small or unsupported terminal emulator
+
+**Solution:**
+
+1. **Resize terminal window** - Make window larger (minimum 80x24)
+
+2. **Use web dashboard** as alternative:
+
+```bash
+dure monitor --web
+```
+
+3. **Check terminal emulator** - Use modern terminal (iTerm2, Alacritty, Kitty, Windows Terminal)
+
+### Keyboard Input Not Working
+
+**Symptom:**
+
+Pressing keys (1-4, q, d) has no effect
+
+**Cause:**
+
+Another process capturing input, or TUI lost focus
+
+**Solution:**
+
+1. **Restart TUI:**
+
+```bash
+# Exit current TUI (if possible)
+# Ctrl-C or close terminal
+
+# Restart
+dure monitor
+```
+
+2. **Check tmux** - Ensure you're not inside a nested tmux session
+
+### TUI Exits Immediately
+
+**Symptom:**
+
+TUI flashes and exits right away
+
+**Cause:**
+
+No runs found or TUI script not built
+
+**Solution:**
+
+1. **Check if runs exist:**
+
+```bash
+ls .dure/runs/
+```
+
+2. **Rebuild project:**
+
+```bash
+npm run build
+```
+
+3. **Start a run first:**
+
+```bash
+dure run "Your briefing"
+```
+
+---
+
+## Dashboard Connection Issues
+
+### Web Dashboard Not Loading
+
+**Symptom:**
+
+Browser shows connection refused or blank page
+
+**Cause:**
+
+Server not running or wrong port
+
+**Solution:**
+
+1. **Verify server is running:**
+
+```bash
+curl http://localhost:3873/health
+```
+
+2. **Check port:**
+
+```bash
+# List processes on port
+lsof -i :3873
+
+# Try different port
+dure start --web --port 3001
+```
+
+3. **Restart Dure:**
+
+```bash
+dure stop
+dure start --web
+```
+
+### Socket.io Connection Failed
+
+**Symptom:**
+
+Dashboard loads but shows "Disconnected" or no updates
+
+**Cause:**
+
+WebSocket connection blocked or server restarted
+
+**Solution:**
+
+1. **Check browser console** for connection errors (F12 → Console)
+
+2. **Refresh page:**
+
+```bash
+# Force refresh
+Ctrl-Shift-R (Windows/Linux)
+Cmd-Shift-R (macOS)
+```
+
+3. **Check firewall** - Ensure WebSocket connections are allowed
+
+4. **Restart server:**
+
+```bash
+dure stop
+dure start --web
+```
+
+### Dashboard Not Updating
+
+**Symptom:**
+
+Dashboard shows stale data, agents not progressing
+
+**Cause:**
+
+WebSocket disconnected or run finished
+
+**Solution:**
+
+1. **Check connection status** in dashboard header
+
+2. **Manual refresh** via button or page reload
+
+3. **Verify run is active:**
+
+```bash
+dure status
+```
+
+4. **Check tmux session:**
+
+```bash
+tmux list-sessions | grep dure
+```
+
+### Cannot Respond to CRP in Web Dashboard
+
+**Symptom:**
+
+CRP form doesn't submit or shows error
+
+**Cause:**
+
+API endpoint error or validation failure
+
+**Solution:**
+
+1. **Check browser console** for error messages
+
+2. **Verify VCR format** matches expected schema
+
+3. **Try TUI instead:**
+
+```bash
+dure monitor
+# Respond to CRP in TUI
+```
+
+---
+
 ## CRP Related Issues
 
 ### CRP Generated Too Frequently
@@ -654,6 +877,7 @@ tar -czf debug-logs.tar.gz .dure/runs/{run_id}/
 
 ## Next Steps
 
+- [Monitoring Dashboard Guide](/guide/monitoring-dashboard.md) - TUI and Web dashboard usage
 - [Advanced Debugging](/advanced/debugging.md) - Detailed debugging techniques
 - [FAQ](/misc/faq.md) - Frequently asked questions
 - [GitHub Issues](https://github.com/choo121600/dure/issues) - Known issues
