@@ -158,8 +158,8 @@ export async function startCommand(options: StartOptions): Promise<void> {
     return;
   }
 
-  console.log(chalk.blue('🖥️  Opening TUI dashboard...'));
-  console.log();
+  // Clear screen before launching TUI for full-screen experience
+  process.stdout.write('\x1b[2J\x1b[H');
 
   const tuiArgs = ['--project-root', projectRoot];
   if (latestRunId) {

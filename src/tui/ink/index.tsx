@@ -66,6 +66,22 @@ function findLatestRunId(projectRoot: string): string | null {
 }
 
 /**
+ * Enter alternate screen buffer for fullscreen TUI
+ */
+function enterAlternateScreen(): void {
+  process.stdout.write('\x1b[?1049h'); // Switch to alternate screen
+  process.stdout.write('\x1b[2J');     // Clear screen
+  process.stdout.write('\x1b[H');      // Move cursor to home
+}
+
+/**
+ * Exit alternate screen buffer, restore main screen
+ */
+function exitAlternateScreen(): void {
+  process.stdout.write('\x1b[?1049l'); // Switch back to main screen
+}
+
+/**
  * Main entry point
  */
 async function main(): Promise<void> {
@@ -116,10 +132,14 @@ async function main(): Promise<void> {
     }
   );
 
+  // Enter fullscreen mode (alternate screen buffer)
+  enterAlternateScreen();
+
   // Handle detach
   const handleDetach = (): void => {
     provider.destroy();
-    console.log('\nDetached from Dure TUI.');
+    exitAlternateScreen();
+    console.log('Detached from Dure TUI.');
     console.log(`Run continues in background: ${runId}`);
     console.log('To reattach: dure monitor');
   };
@@ -134,10 +154,13 @@ async function main(): Promise<void> {
 
   // Cleanup
   provider.destroy();
+  exitAlternateScreen();
 }
 
 // Run
 main().catch((error) => {
+  // Make sure to exit alternate screen on error
+  process.stdout.write('\x1b[?1049l');
   console.error('TUI Error:', error);
   process.exit(1);
 });
