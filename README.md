@@ -55,25 +55,52 @@ npm link
 # Navigate to your project folder
 cd /path/to/your-project
 
-# Start Dure
+# Start Dure (TUI dashboard is default)
 npx dure start
 
 # Or if globally installed
 dure start
 ```
 
-The browser will automatically open and display the dashboard (http://localhost:3873).
+By default, Dure launches with an **interactive TUI dashboard** in your terminal:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Dure Dashboard              run-2024-01-29-143022           │
+│ Stage: BUILD                Tokens: 12.5k    Cost: $0.045   │
+├─────────────────────────────────────────────────────────────┤
+│  [1] Refiner   ✓ Done                                       │
+│  [2] Builder   ● Running (45%)                              │
+│  [3] Verifier  ○ Pending                                    │
+│  [4] Gatekeeper ○ Pending                                   │
+├─────────────────────────────────────────────────────────────┤
+│ [1-4] Switch agent  [q] Quit  [f] Fullscreen                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+For web-based dashboard, use `dure start --web`.
 
 ### CLI Commands
 
 ![dure --help](docs/images/cli/output_.png)
 
 ```bash
+# Start with TUI dashboard (default)
+dure start
+
+# Start with web dashboard
+dure start --web
+
+# Attach to tmux session directly
+dure start --attach
+
 # Specify port
 dure start --port 3001
 
-# Disable automatic browser opening
-dure start --no-browser
+# Monitor a running/recent run
+dure monitor              # Latest run, TUI mode
+dure monitor <run-id>     # Specific run
+dure monitor --web        # Web dashboard mode
 
 # Check current run status
 dure status
@@ -259,6 +286,7 @@ dure start --port 3001
 For detailed documentation, see the [official documentation site](https://choo121600.github.io/dure/).
 
 - [Quick Start](https://choo121600.github.io/dure/#/guide/getting-started)
+- [Monitoring Dashboard](https://choo121600.github.io/dure/#/guide/monitoring-dashboard) - TUI and Web dashboard usage
 - [Briefing Writing Guide](https://choo121600.github.io/dure/#/guide/writing-briefings)
 - [Architecture](https://choo121600.github.io/dure/#/architecture/overview)
 - [API Reference](https://choo121600.github.io/dure/#/api/cli)
