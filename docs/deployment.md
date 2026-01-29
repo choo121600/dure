@@ -22,7 +22,7 @@ git push origin main
 ### Step 3: Verify Deployment
 
 1. Check workflow execution in the **Actions** tab
-2. Once complete, access `https://yourusername.github.io/dure/`
+2. Once complete, access `https://choo121600.github.io/dure/`
 
 ## Manual Deployment
 
@@ -57,7 +57,7 @@ git checkout main
 
 ### Step 3: Access
 
-`https://yourusername.github.io/dure/`
+`https://choo121600.github.io/dure/`
 
 ## Custom Domain (Optional)
 
@@ -87,7 +87,7 @@ Also add these IPs:
 ```
 Type: CNAME
 Name: www
-Value: yourusername.github.io
+Value: choo121600.github.io
 ```
 
 ### Step 3: Create CNAME File
@@ -264,8 +264,8 @@ Meta tags in `docs/index.html`:
   <meta name="keywords" content="dure, ai, agents, code generation, automation">
   <meta property="og:title" content="Dure">
   <meta property="og:description" content="Agentic Software Engineering System">
-  <meta property="og:image" content="https://yourusername.github.io/dure/assets/og-image.png">
-  <meta property="og:url" content="https://yourusername.github.io/dure/">
+  <meta property="og:image" content="https://choo121600.github.io/dure/assets/og-image.png">
+  <meta property="og:url" content="https://choo121600.github.io/dure/">
   <meta name="twitter:card" content="summary_large_image">
 </head>
 ```

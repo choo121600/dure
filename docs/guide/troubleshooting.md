@@ -630,7 +630,7 @@ For more detailed logs:
 If the above methods don't resolve the issue:
 
 1. **Create GitHub Issue**
-   - https://github.com/yourusername/dure/issues
+   - https://github.com/choo121600/dure/issues
    - Include the following information:
      - Error message
      - `events.log` content
@@ -656,4 +656,4 @@ tar -czf debug-logs.tar.gz .dure/runs/{run_id}/
 
 - [Advanced Debugging](/advanced/debugging.md) - Detailed debugging techniques
 - [FAQ](/misc/faq.md) - Frequently asked questions
-- [GitHub Issues](https://github.com/yourusername/dure/issues) - Known issues
+- [GitHub Issues](https://github.com/choo121600/dure/issues) - Known issues

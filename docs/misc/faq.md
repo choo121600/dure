@@ -317,7 +317,7 @@ Currently only community support is provided. Commercial support will be conside
 ## Problem not resolved?
 
 1. Check the [Troubleshooting Guide](/guide/troubleshooting.md)
-2. Search [GitHub Discussions](https://github.com/yourusername/dure/discussions)
+2. Search [GitHub Discussions](https://github.com/choo121600/dure/discussions)
 3. Write a new question
 
 We're here to help! 🎼

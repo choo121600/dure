@@ -61,7 +61,7 @@ node --version
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/dure.git
+git clone https://github.com/choo121600/dure.git
 cd dure
 ```
 

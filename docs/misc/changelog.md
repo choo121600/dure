@@ -101,4 +101,4 @@ and version management uses [Semantic Versioning](https://semver.org/).
 
 ---
 
-Full change history can be found at [GitHub Releases](https://github.com/yourusername/dure/releases).
+Full change history can be found at [GitHub Releases](https://github.com/choo121600/dure/releases).

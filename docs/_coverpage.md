@@ -8,5 +8,5 @@
 - 🎯 Human-centered design
 - 🌐 Real-time web dashboard
 
-[GitHub](https://github.com/yourusername/dure)
+[GitHub](https://github.com/choo121600/dure)
 [Quick Start](/guide/getting-started)

@@ -80,7 +80,7 @@ git clone https://github.com/your-username/dure.git
 cd dure
 
 # Add upstream
-git remote add upstream https://github.com/yourusername/dure.git
+git remote add upstream https://github.com/choo121600/dure.git
 ```
 
 2. **Set up development environment**
