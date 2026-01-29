@@ -16,6 +16,7 @@ Dure provides a command-line interface for managing agentic software engineering
 - [dure history](#dure-history)
 - [dure init](#dure-init)
 - [dure logs](#dure-logs)
+- [dure monitor](#dure-monitor)
 - [dure recover](#dure-recover)
 - [dure screenshots](#dure-screenshots)
   - [dure screenshots archive](#dure-screenshots-archive)
@@ -71,6 +72,10 @@ Show the history of past runs.
 Show real-time logs for the current run.
 
 ![dure logs --help](docs/images/cli/output_logs.svg)
+
+## `dure monitor`
+
+![dure monitor --help](docs/images/cli/output_monitor.svg)
 
 ## `dure recover`
 

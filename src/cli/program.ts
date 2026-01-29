@@ -8,6 +8,7 @@
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import { startCommand } from './commands/start.js';
+import { monitorCommand } from './commands/monitor.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
 import { historyCommand } from './commands/history.js';
@@ -44,7 +45,16 @@ export function createProgram(): Command {
     .option('-p, --port <number>', 'Web server port', '3873')
     .option('--no-browser', 'Do not open browser automatically')
     .option('--tui', 'Use TUI mode (Terminal User Interface) instead of web server')
+    .option('-m, --monitor', 'Open TUI monitor after start')
+    .option('-w, --web', 'Use web dashboard instead of TUI (with --monitor)')
     .action(startCommand);
+
+  program
+    .command('monitor [run-id]')
+    .description('Open dashboard to monitor a running Dure run')
+    .option('-w, --web', 'Use web dashboard instead of TUI')
+    .option('-p, --port <number>', 'Web server port (for --web)', '3873')
+    .action(monitorCommand);
 
   program
     .command('status')
