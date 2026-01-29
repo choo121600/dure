@@ -929,6 +929,108 @@ export function unsafeToTypedVCR(vcr: VCR): VCRTyped {
 export type InitItemStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 export type InitPhase = 'planning' | 'executing' | 'finalizing' | 'completed';
 
+// ============================================================================
+// Dashboard Types (Phase 1: Data Layer)
+// ============================================================================
+
+/**
+ * Dashboard stage - simplified view of Phase for dashboard display
+ */
+export type DashboardStage = 'REFINE' | 'BUILD' | 'VERIFY' | 'GATE' | 'DONE' | 'FAILED' | 'WAITING_HUMAN';
+
+/**
+ * Agent display status for dashboard
+ */
+export type DashboardAgentStatus = 'idle' | 'running' | 'done' | 'error';
+
+/**
+ * Individual agent data for dashboard
+ */
+export interface DashboardAgentData {
+  status: DashboardAgentStatus;
+  output: string;        // Last N lines of output
+  startedAt?: Date;
+  finishedAt?: Date;
+}
+
+/**
+ * Usage information for dashboard display
+ */
+export interface DashboardUsage {
+  totalTokens: number;
+  cost: number;
+}
+
+/**
+ * CRP information for dashboard when human judgment is needed
+ */
+export interface DashboardCRP {
+  agent: AgentName;
+  question: string;
+  options: string[];
+}
+
+/**
+ * Progress information for dashboard
+ */
+export interface DashboardProgress {
+  currentStep: number;
+  totalSteps: number;
+  retryCount: number;
+}
+
+/**
+ * Complete dashboard data structure
+ * Aggregates data from TmuxManager and StateManager
+ */
+export interface DashboardData {
+  runId: string;
+  stage: DashboardStage;
+  agents: {
+    [key in AgentName]: DashboardAgentData;
+  };
+  usage: DashboardUsage;
+  crp?: DashboardCRP;
+  progress: DashboardProgress;
+}
+
+/**
+ * Dashboard event types
+ */
+export type DashboardEventType = 'update' | 'crp' | 'stage-change' | 'agent-status-change';
+
+/**
+ * Dashboard event payloads
+ */
+export interface DashboardUpdateEvent {
+  type: 'update';
+  data: DashboardData;
+}
+
+export interface DashboardCRPEvent {
+  type: 'crp';
+  crp: DashboardCRP;
+}
+
+export interface DashboardStageChangeEvent {
+  type: 'stage-change';
+  previousStage: DashboardStage;
+  newStage: DashboardStage;
+}
+
+export interface DashboardAgentStatusChangeEvent {
+  type: 'agent-status-change';
+  agent: AgentName;
+  previousStatus: DashboardAgentStatus;
+  newStatus: DashboardAgentStatus;
+}
+
+export type DashboardEvent =
+  | DashboardUpdateEvent
+  | DashboardCRPEvent
+  | DashboardStageChangeEvent
+  | DashboardAgentStatusChangeEvent;
+
 export interface InitPlanItem {
   id: string;                    // "skill-{name}" or "agent-{name}"
   type: 'skill' | 'agent';
