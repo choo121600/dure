@@ -14,6 +14,8 @@ import { createApiRouter } from './routes/api.js';
 import { createCrpRouter } from './routes/crp.js';
 import { createMrpRouter } from './routes/mrp.js';
 import { createHealthRouter } from './routes/health.js';
+import { createDashboardRouter } from './routes/dashboard.js';
+import { createDashboardSocketHandler, DashboardSocketHandler } from './dashboard/socket-handler.js';
 import { GracefulShutdown, ShutdownOptions } from './shutdown.js';
 import { apiKeyAuth, socketAuth, isAuthEnabled } from './middleware/auth.js';
 import swaggerUi from 'swagger-ui-express';
@@ -75,6 +77,8 @@ interface SecurityOptions {
 export interface ExtendedServer extends Server {
   /** Graceful shutdown controller */
   gracefulShutdown: GracefulShutdown;
+  /** Dashboard socket handler for real-time updates */
+  dashboardSocketHandler: DashboardSocketHandler;
 }
 
 export function createServer(
@@ -218,6 +222,15 @@ export function createServer(
   app.use('/api', createApiRouter(projectRoot, config, orchestrator));
   app.use('/api/crp', createCrpRouter(projectRoot, orchestrator));
   app.use('/api/mrp', createMrpRouter(projectRoot));
+
+  // Dashboard API routes
+  app.use('/api/dashboard', createDashboardRouter(projectRoot, config, {
+    tmuxSessionPrefix: config.global.tmux_session_prefix,
+    outputLines: 50,
+  }));
+
+  // Dashboard Socket.io handler
+  const dashboardSocketHandler = createDashboardSocketHandler(io, { logger });
 
   // Forward orchestrator events to Socket.io
   orchestrator.on('orchestrator_event', (event: OrchestratorEvent) => {
@@ -396,9 +409,10 @@ export function createServer(
   // Setup graceful shutdown
   const gracefulShutdown = new GracefulShutdown(httpServer, orchestrator, shutdownOptions, io, logger);
 
-  // Extend httpServer with gracefulShutdown
+  // Extend httpServer with gracefulShutdown and dashboardSocketHandler
   const extendedServer = httpServer as ExtendedServer;
   extendedServer.gracefulShutdown = gracefulShutdown;
+  extendedServer.dashboardSocketHandler = dashboardSocketHandler;
 
   return extendedServer;
 }
