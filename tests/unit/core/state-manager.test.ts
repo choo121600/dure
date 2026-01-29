@@ -461,4 +461,76 @@ describe('StateManager', () => {
       expect(state).toBeNull();
     });
   });
+
+  describe('concurrent writes (race condition prevention)', () => {
+    beforeEach(async () => {
+      await stateManager.createInitialState(runId, 3);
+    });
+
+    it('should handle concurrent updateAgentUsage calls without ENOENT', async () => {
+      const usage1 = createMockUsageInfo({ input_tokens: 1000, output_tokens: 500, cost_usd: 0.01 });
+      const usage2 = createMockUsageInfo({ input_tokens: 2000, output_tokens: 1000, cost_usd: 0.02 });
+      const usage3 = createMockUsageInfo({ input_tokens: 3000, output_tokens: 1500, cost_usd: 0.03 });
+
+      // Fire all updates concurrently - this used to cause ENOENT race conditions
+      await Promise.all([
+        stateManager.updateAgentUsage('refiner', usage1),
+        stateManager.updateAgentUsage('builder', usage2),
+        stateManager.updateAgentUsage('verifier', usage3),
+      ]);
+
+      // Verify state is consistent
+      const finalState = await stateManager.loadState();
+      expect(finalState).not.toBeNull();
+      expect(finalState?.agents.refiner.usage).toEqual(usage1);
+      expect(finalState?.agents.builder.usage).toEqual(usage2);
+      expect(finalState?.agents.verifier.usage).toEqual(usage3);
+    });
+
+    it('should handle concurrent updateAgentStatus calls', async () => {
+      // Fire all status updates concurrently
+      await Promise.all([
+        stateManager.updateAgentStatus('refiner', 'running'),
+        stateManager.updateAgentStatus('builder', 'pending'),
+        stateManager.updateAgentStatus('verifier', 'pending'),
+      ]);
+
+      const finalState = await stateManager.loadState();
+      expect(finalState).not.toBeNull();
+      // One of them should be running, depending on order
+      expect(finalState?.agents.refiner.status).toBe('running');
+    });
+
+    it('should handle mixed concurrent operations', async () => {
+      const usage = createMockUsageInfo({ input_tokens: 1000, output_tokens: 500, cost_usd: 0.01 });
+
+      // Mix different types of concurrent updates
+      await Promise.all([
+        stateManager.updateAgentStatus('refiner', 'running'),
+        stateManager.updateAgentUsage('refiner', usage),
+        stateManager.addError('Test error'),
+        stateManager.updateLastEvent('agent.started', 'refiner'),
+      ]);
+
+      const finalState = await stateManager.loadState();
+      expect(finalState).not.toBeNull();
+      // State should be consistent (exact values depend on execution order)
+      expect(finalState?.errors).toContain('Test error');
+    });
+
+    it('should handle rapid sequential writes', async () => {
+      const promises: Promise<unknown>[] = [];
+
+      // Rapidly queue many writes
+      for (let i = 0; i < 10; i++) {
+        promises.push(stateManager.addError(`Error ${i}`));
+      }
+
+      await Promise.all(promises);
+
+      const finalState = await stateManager.loadState();
+      expect(finalState).not.toBeNull();
+      expect(finalState?.errors.length).toBe(10);
+    });
+  });
 });

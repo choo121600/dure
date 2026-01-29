@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { join } from 'path';
-import type { AgentName, AgentModel, AgentTimeoutConfig, ModelSelectionResult, TestOutput } from '../types/index.js';
+import type { AgentName, AgentModel, AgentTimeoutConfig, ModelSelectionResult, TestOutput, UsageInfo, ClaudeCodeOutput } from '../types/index.js';
 import { TmuxManager } from './tmux-manager.js';
 import { StateManager } from './state-manager.js';
 import { AgentMonitor } from './agent-monitor.js';
@@ -12,7 +12,6 @@ export type AgentLifecycleEvent =
   | { type: 'agent_started'; agent: AgentName }
   | { type: 'agent_stopping'; agent: AgentName }
   | { type: 'agent_stopped'; agent: AgentName }
-  | { type: 'agent_cleared'; agent: AgentName }
   | { type: 'usage_updated'; agent: AgentName; usage: UsageUpdateEvent['usage'] };
 
 export interface AgentLifecycleConfig {
@@ -24,7 +23,7 @@ export interface AgentLifecycleConfig {
 /**
  * AgentLifecycleManager handles the lifecycle of agents:
  * - Starting agents in tmux panes
- * - Stopping and clearing agents
+ * - Stopping agents
  * - Managing agent monitoring
  * - Handling agent restarts
  */
@@ -82,8 +81,8 @@ export class AgentLifecycleManager extends EventEmitter {
   }
 
   /**
-   * Start an agent in its designated tmux pane
-   * Waits for Claude Code to be ready before sending the prompt
+   * Start an agent in headless mode
+   * Runs Claude with -p --output-format json for structured output
    */
   async startAgent(agent: AgentName, runDir: string): Promise<void> {
     if (!this.currentRunId) {
@@ -103,11 +102,12 @@ export class AgentLifecycleManager extends EventEmitter {
     // Start monitoring this agent
     this.agentMonitor.watchAgent(agent);
 
-    // Get prompt file path
+    // Get prompt file path and output directory
     const promptFile = join(runDir, 'prompts', `${agent}.md`);
+    const outputDir = join(runDir, agent);
 
-    // Start the agent and send prompt after brief delay
-    await this.tmuxManager.startAgentAndWaitReady(agent, model, promptFile);
+    // Start the agent in headless mode
+    this.tmuxManager.startAgentHeadless(agent, model, promptFile, outputDir);
 
     this.emit('lifecycle_event', { type: 'agent_started', agent } as AgentLifecycleEvent);
   }
@@ -124,50 +124,36 @@ export class AgentLifecycleManager extends EventEmitter {
   }
 
   /**
-   * Clear an agent's context (send /clear command)
-   * Should be called before transitioning to next phase
-   */
-  async clearAgent(agent: AgentName): Promise<void> {
-    this.tmuxManager.clearAgent(agent);
-
-    // Fetch final usage after clearing
-    if (this.usageTracker) {
-      await this.usageTracker.fetchAgentUsage(agent);
-    }
-
-    this.emit('lifecycle_event', { type: 'agent_cleared', agent } as AgentLifecycleEvent);
-  }
-
-  /**
-   * Restart an agent with VCR response
+   * Restart an agent with VCR response (headless mode)
+   * Runs a new headless session with the continuation prompt
    */
   async restartAgentWithVCR(
     agent: AgentName,
-    runId: string,
-    promptFile: string,
-    vcrInfo?: {
-      crpQuestion: string;
-      crpContext?: string;
-      decision: string;
-      decisionLabel?: string;
-      rationale?: string;
-      additionalNotes?: string;
-    }
+    runDir: string,
+    promptFile: string
   ): Promise<void> {
+    const model = this.selectedModels[agent];
+    if (!model) {
+      throw new Error(`No model selected for agent: ${agent}`);
+    }
+
     // Update state
     await this.stateManager.updateAgentStatus(agent, 'running');
 
     // Start monitoring again
     this.agentMonitor.watchAgent(agent);
 
-    // Send VCR response to agent
-    this.tmuxManager.restartAgentWithVCR(agent, runId, promptFile, vcrInfo);
+    // Get output directory
+    const outputDir = join(runDir, agent);
+
+    // Start agent in headless mode with continuation prompt
+    this.tmuxManager.restartAgentWithVCR(agent, model, promptFile, outputDir);
 
     this.emit('lifecycle_event', { type: 'agent_started', agent } as AgentLifecycleEvent);
   }
 
   /**
-   * Start Verifier Phase 2 with test execution results
+   * Start Verifier Phase 2 with test execution results (headless mode)
    * Used when external test runner completes and Verifier needs to analyze results
    */
   async startVerifierPhase2(runDir: string, testOutput: TestOutput): Promise<void> {
@@ -190,11 +176,12 @@ export class AgentLifecycleManager extends EventEmitter {
     // Start monitoring this agent
     this.agentMonitor.watchAgent(agent);
 
-    // Get Phase 2 prompt file path
+    // Get Phase 2 prompt file path and output directory
     const promptFile = join(runDir, 'prompts', 'verifier-phase2.md');
+    const outputDir = join(runDir, agent);
 
-    // Start the agent with Phase 2 prompt
-    await this.tmuxManager.startAgentAndWaitReady(agent, model, promptFile);
+    // Start the agent in headless mode with Phase 2 prompt
+    this.tmuxManager.startAgentHeadless(agent, model, promptFile, outputDir);
 
     this.emit('lifecycle_event', { type: 'agent_started', agent } as AgentLifecycleEvent);
   }
@@ -315,6 +302,23 @@ export class AgentLifecycleManager extends EventEmitter {
   }
 
   /**
+   * Update agent usage from Claude Code JSON output
+   */
+  updateAgentUsageFromOutput(agent: AgentName, output: ClaudeCodeOutput): UsageInfo | null {
+    if (!this.usageTracker) {
+      return null;
+    }
+    return this.usageTracker.updateFromClaudeOutput(agent, output);
+  }
+
+  /**
+   * Set agent usage directly
+   */
+  setAgentUsage(agent: AgentName, usage: UsageInfo): void {
+    this.usageTracker?.setAgentUsage(agent, usage);
+  }
+
+  /**
    * Update pane borders with model information
    */
   updatePaneBordersWithModels(modelSelection: ModelSelectionResult): void {
@@ -328,17 +332,28 @@ export class AgentLifecycleManager extends EventEmitter {
     if (!this.usageTracker) return;
 
     this.usageTracker.on('usage_update', (event: UsageUpdateEvent) => {
-      // Update state with new usage (fire and forget, but log errors)
-      this.stateManager.updateAgentUsage(event.agent, event.usage).catch((err) => {
-        console.error(`Failed to update agent usage for ${event.agent}:`, err);
-      });
+      // Update state with new usage - properly handle errors to prevent unhandled rejections
+      this.stateManager.updateAgentUsage(event.agent, event.usage)
+        .then(() => {
+          // Re-emit for external listeners only after successful state update
+          this.emit('lifecycle_event', {
+            type: 'usage_updated',
+            agent: event.agent,
+            usage: event.usage,
+          } as AgentLifecycleEvent);
+        })
+        .catch((error) => {
+          // Log error but don't crash - usage tracking is non-critical
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`[AgentLifecycleManager] Failed to update agent usage for ${event.agent}: ${errorMsg}`);
 
-      // Re-emit for external listeners
-      this.emit('lifecycle_event', {
-        type: 'usage_updated',
-        agent: event.agent,
-        usage: event.usage,
-      } as AgentLifecycleEvent);
+          // Still emit the event so UI can update even if state save failed
+          this.emit('lifecycle_event', {
+            type: 'usage_updated',
+            agent: event.agent,
+            usage: event.usage,
+          } as AgentLifecycleEvent);
+        });
     });
   }
 

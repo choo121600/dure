@@ -5,8 +5,7 @@ import type { AgentName, AgentModel, AgentTimeoutConfig } from '../../../src/typ
 // Mock dependencies
 const mockTmuxManager = {
   startAgent: vi.fn(),
-  startAgentAndWaitReady: vi.fn().mockResolvedValue(undefined),
-  clearAgent: vi.fn(),
+  startAgentHeadless: vi.fn(),
   restartAgentWithVCR: vi.fn(),
   updatePaneBordersWithModels: vi.fn(),
   capturePane: vi.fn().mockReturnValue(''),
@@ -78,7 +77,14 @@ const mockUsageTracker = {
     total_cache_read_tokens: 860,
     total_cost_usd: 0.043,
   }),
-  fetchAgentUsage: vi.fn().mockResolvedValue(undefined),
+  setAgentUsage: vi.fn(),
+  updateFromClaudeOutput: vi.fn().mockReturnValue({
+    input_tokens: 1000,
+    output_tokens: 500,
+    cache_creation_tokens: 100,
+    cache_read_tokens: 200,
+    cost_usd: 0.01,
+  }),
   on: vi.fn(),
   off: vi.fn(),
 };
@@ -174,10 +180,11 @@ describe('AgentLifecycleManager', () => {
 
       expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('refiner', 'running');
       expect(mockAgentMonitor.watchAgent).toHaveBeenCalledWith('refiner');
-      expect(mockTmuxManager.startAgentAndWaitReady).toHaveBeenCalledWith(
+      expect(mockTmuxManager.startAgentHeadless).toHaveBeenCalledWith(
         'refiner',
         'haiku',
-        '/test/project/.dure/runs/run-20260126000000/prompts/refiner.md'
+        '/test/project/.dure/runs/run-20260126000000/prompts/refiner.md',
+        '/test/project/.dure/runs/run-20260126000000/refiner'
       );
     });
 
@@ -214,43 +221,20 @@ describe('AgentLifecycleManager', () => {
     });
   });
 
-  describe('clearAgent', () => {
-    it('should clear agent context', async () => {
-      manager.setUsageTracker(mockUsageTracker as any);
-      await manager.clearAgent('refiner');
-
-      expect(mockTmuxManager.clearAgent).toHaveBeenCalledWith('refiner');
-      expect(mockUsageTracker.fetchAgentUsage).toHaveBeenCalledWith('refiner');
-    });
-
-    it('should emit cleared event', async () => {
-      const events: any[] = [];
-      manager.on('lifecycle_event', (event) => events.push(event));
-
-      await manager.clearAgent('builder');
-
-      expect(events).toContainEqual({ type: 'agent_cleared', agent: 'builder' });
-    });
-  });
-
   describe('restartAgentWithVCR', () => {
-    it('should restart agent with VCR info', async () => {
-      const vcrInfo = {
-        crpQuestion: 'Test question?',
-        decision: 'A',
-        decisionLabel: 'Option A',
-        rationale: 'Because A is best',
-      };
+    it('should restart agent with continuation prompt', async () => {
+      const runDir = '/test/project/.dure/runs/run-20260126000000';
+      const promptFile = '/test/project/.dure/runs/run-20260126000000/prompts/refiner-vcr.md';
 
-      await manager.restartAgentWithVCR('refiner', 'run-123', '/test/prompt.md', vcrInfo);
+      await manager.restartAgentWithVCR('refiner', runDir, promptFile);
 
       expect(mockStateManager.updateAgentStatus).toHaveBeenCalledWith('refiner', 'running');
       expect(mockAgentMonitor.watchAgent).toHaveBeenCalledWith('refiner');
       expect(mockTmuxManager.restartAgentWithVCR).toHaveBeenCalledWith(
         'refiner',
-        'run-123',
-        '/test/prompt.md',
-        vcrInfo
+        'haiku',
+        promptFile,
+        '/test/project/.dure/runs/run-20260126000000/refiner'
       );
     });
   });

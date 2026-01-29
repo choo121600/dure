@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import type {
   OrchestraConfig,
   AgentName,
@@ -11,7 +12,7 @@ import type {
 import { RunManager } from './run-manager.js';
 import { StateManager } from './state-manager.js';
 import { TmuxManager } from './tmux-manager.js';
-import { PromptGenerator } from '../agents/prompt-generator.js';
+import { PromptGenerator, type VCRPromptInfo } from '../agents/prompt-generator.js';
 import { ModelSelector } from './model-selector.js';
 import { EventLogger } from './event-logger.js';
 
@@ -41,21 +42,12 @@ export interface RunResumeResult {
   resumeInfo: {
     agent: AgentName;
     promptFile: string;
-    vcrInfo?: VCRInfo;
+    vcrInfo?: VCRPromptInfo;
   } | null;
 }
 
-/**
- * VCR info for agent restart
- */
-export interface VCRInfo {
-  crpQuestion: string;
-  crpContext?: string;
-  decision: string;
-  decisionLabel?: string;
-  rationale?: string;
-  additionalNotes?: string;
-}
+// Re-export VCRPromptInfo as VCRInfo for backward compatibility
+export type { VCRPromptInfo as VCRInfo } from '../agents/prompt-generator.js';
 
 export type RunLifecycleEvent =
   | { type: 'run_initializing'; runId: string }
@@ -221,15 +213,40 @@ export class RunLifecycleManager extends EventEmitter {
 
       if (resolvedCrp) {
         const agent = resolvedCrp.created_by;
-        const promptFile = join(runDir, 'prompts', `${agent}.md`);
+        const promptsDir = join(runDir, 'prompts');
 
         // Find VCR and build info
         const vcrs = await this.runManager.listVCRs(runId);
         const vcr = vcrs.find(v => v.crp_id === resolvedCrp.crp_id);
-        let vcrInfo: VCRInfo | undefined;
+        let vcrInfo: VCRPromptInfo | undefined;
+        let promptFile: string;
 
         if (vcr) {
           vcrInfo = this.buildVCRInfo(resolvedCrp, vcr);
+
+          // Generate continuation prompt with VCR info
+          const context = {
+            project_root: this.projectRoot,
+            run_id: runId,
+            config: this.config,
+            iteration: state.iteration,
+            has_review: false,
+          };
+
+          promptFile = await this.promptGenerator.generateContinuationPrompt(
+            promptsDir,
+            agent,
+            context,
+            vcrInfo
+          );
+        } else {
+          // Fallback to original prompt if no VCR found
+          promptFile = join(promptsDir, `${agent}.md`);
+        }
+
+        // Verify prompt file exists
+        if (!existsSync(promptFile)) {
+          throw new Error(`Prompt file does not exist: ${promptFile}. Cannot resume agent ${agent}.`);
         }
 
         resumeInfo = { agent, promptFile, vcrInfo };
@@ -271,7 +288,7 @@ export class RunLifecycleManager extends EventEmitter {
   /**
    * Build VCR info from CRP and VCR
    */
-  private buildVCRInfo(crp: CRP, vcr: VCR): VCRInfo {
+  private buildVCRInfo(crp: CRP, vcr: VCR): VCRPromptInfo {
     // Handle both single-question and multi-question CRP formats
     const isMultiQuestion = crp.questions && Array.isArray(crp.questions);
     let decisionLabel: string;

@@ -324,19 +324,78 @@ export class TestRunner extends EventEmitter {
 }
 
 /**
+ * Default values for TestConfig fields
+ */
+const TEST_CONFIG_DEFAULTS = {
+  test_command: 'npx vitest run --reporter=json',
+  test_directory: 'verifier/tests',
+  timeout_ms: 120000,
+} as const;
+
+/**
+ * Validate and normalize TestConfig
+ * @param config Partial or malformed TestConfig from test-config.json
+ * @returns Normalized config with defaults applied
+ * @throws Error if config is completely unusable
+ */
+export function validateTestConfig(config: Partial<TestConfig> | null | undefined): TestConfig {
+  if (!config || typeof config !== 'object') {
+    throw new Error(
+      'Invalid test-config.json: config is null or not an object.\n' +
+      'Expected format:\n' +
+      JSON.stringify({
+        test_framework: 'vitest',
+        test_command: 'npx vitest run --reporter=json',
+        test_directory: 'verifier/tests',
+        timeout_ms: 120000,
+        coverage: true,
+        created_at: 'ISO timestamp',
+      }, null, 2)
+    );
+  }
+
+  const warnings: string[] = [];
+
+  if (!config.test_command) {
+    warnings.push(`test_command missing, using default: "${TEST_CONFIG_DEFAULTS.test_command}"`);
+  }
+  if (!config.test_directory) {
+    warnings.push(`test_directory missing, using default: "${TEST_CONFIG_DEFAULTS.test_directory}"`);
+  }
+  if (!config.timeout_ms) {
+    warnings.push(`timeout_ms missing, using default: ${TEST_CONFIG_DEFAULTS.timeout_ms}`);
+  }
+
+  if (warnings.length > 0) {
+    console.warn('[TestRunner] test-config.json has missing fields:\n  - ' + warnings.join('\n  - '));
+  }
+
+  return {
+    test_framework: config.test_framework ?? 'vitest',
+    test_command: config.test_command ?? TEST_CONFIG_DEFAULTS.test_command,
+    test_directory: config.test_directory ?? TEST_CONFIG_DEFAULTS.test_directory,
+    timeout_ms: config.timeout_ms ?? TEST_CONFIG_DEFAULTS.timeout_ms,
+    coverage: config.coverage ?? false,
+    created_at: config.created_at ?? new Date().toISOString(),
+  };
+}
+
+/**
  * Create TestRunner from TestConfig
- * @param config TestConfig from test-config.json
+ * @param config TestConfig from test-config.json (can be partial/malformed)
  * @param runDir Run directory path
  * @returns TestRunner instance
  */
 export function createTestRunnerFromConfig(
-  config: TestConfig,
+  config: Partial<TestConfig>,
   runDir: string
 ): TestRunner {
+  const validatedConfig = validateTestConfig(config);
+
   return new TestRunner({
-    testCommand: config.test_command,
-    testDirectory: config.test_directory,
-    timeoutMs: config.timeout_ms,
+    testCommand: validatedConfig.test_command,
+    testDirectory: validatedConfig.test_directory,
+    timeoutMs: validatedConfig.timeout_ms,
     cwd: runDir,
   });
 }

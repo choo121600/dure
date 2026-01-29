@@ -13,7 +13,6 @@ describe('AgentCoordinator', () => {
 
     mockAgentLifecycle = {
       completeAgent: vi.fn().mockResolvedValue(undefined),
-      clearAgent: vi.fn().mockResolvedValue(undefined),
       stopAgent: vi.fn(),
       startAgent: vi.fn().mockResolvedValue(undefined),
     };
@@ -112,7 +111,6 @@ describe('AgentCoordinator', () => {
       await coordinator.executeAgentCompletion('refiner', 'run-20260126000000', action);
 
       expect(mockAgentLifecycle.completeAgent).toHaveBeenCalledWith('refiner');
-      expect(mockAgentLifecycle.clearAgent).toHaveBeenCalledWith('refiner');
       expect(mockPhaseManager.transition).toHaveBeenCalledWith('build');
     });
 
@@ -172,7 +170,6 @@ describe('AgentCoordinator', () => {
       const action = await coordinator.handleAgentDone('builder', 'run-20260126000000', 'verify');
 
       expect(mockAgentLifecycle.completeAgent).toHaveBeenCalledWith('builder');
-      expect(mockAgentLifecycle.clearAgent).toHaveBeenCalledWith('builder');
       expect(mockPhaseManager.transition).toHaveBeenCalledWith('verify');
       expect(action.type).toBe('transition');
       expect((action as any).nextPhase).toBe('verify');
@@ -185,7 +182,6 @@ describe('AgentCoordinator', () => {
       const action = await coordinator.handleAgentDone('verifier', 'run-20260126000000', 'gate');
 
       expect(mockAgentLifecycle.completeAgent).toHaveBeenCalledWith('verifier');
-      expect(mockAgentLifecycle.clearAgent).toHaveBeenCalledWith('verifier');
       expect(mockPhaseManager.transition).toHaveBeenCalledWith('gate');
       expect(action.type).toBe('transition');
       expect((action as any).nextPhase).toBe('gate');
@@ -360,14 +356,6 @@ describe('AgentCoordinator', () => {
 
       await expect(coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build'))
         .rejects.toThrow('Agent completion failed');
-    }, 5000);
-
-    it('should propagate error when agentLifecycle.clearAgent fails', async () => {
-      const error = new Error('Agent clear failed');
-      mockAgentLifecycle.clearAgent.mockRejectedValue(error);
-
-      await expect(coordinator.handleAgentDone('refiner', 'run-20260126000000', 'build'))
-        .rejects.toThrow('Agent clear failed');
     }, 5000);
 
     it('should propagate error when stateManager.loadState fails', async () => {

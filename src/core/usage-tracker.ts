@@ -1,9 +1,5 @@
 import { EventEmitter } from 'events';
-import { execSync, exec } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import type { AgentName, UsageInfo, TotalUsage, AgentModel } from '../types/index.js';
+import type { AgentName, UsageInfo, TotalUsage, AgentModel, ClaudeCodeOutput } from '../types/index.js';
 
 export interface UsageUpdateEvent {
   agent: AgentName;
@@ -11,65 +7,13 @@ export interface UsageUpdateEvent {
   timestamp: string;
 }
 
-interface CCUsageSession {
-  sessionId: string;
-  projectPath: string;
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-  costUsd: number;
-}
-
-interface CCUsageOutput {
-  sessions?: CCUsageSession[];
-  totalInputTokens?: number;
-  totalOutputTokens?: number;
-  totalCacheCreationTokens?: number;
-  totalCacheReadTokens?: number;
-  totalCostUsd?: number;
-  // Alternative field names ccusage might use
-  total_input_tokens?: number;
-  total_output_tokens?: number;
-  cache_creation_tokens?: number;
-  cache_read_tokens?: number;
-  total_cost?: number;
-  cost?: number;
-}
-
 export class UsageTracker extends EventEmitter {
-  private projectPath: string;
   private agentUsage: Map<AgentName, UsageInfo> = new Map();
   private agentModels: Map<AgentName, AgentModel> = new Map();
-  private pollingInterval: NodeJS.Timeout | null = null;
-  private isTracking = false;
-  private ccusageAvailable: boolean | null = null;
-  private claudeProjectsDir: string;
 
-  constructor(projectPath: string) {
+  constructor() {
     super();
-    this.projectPath = projectPath;
-    this.claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
     this.initializeUsage();
-  }
-
-  /**
-   * Check if ccusage is installed and available
-   */
-  private checkCCUsageAvailable(): boolean {
-    if (this.ccusageAvailable !== null) {
-      return this.ccusageAvailable;
-    }
-
-    try {
-      execSync('which ccusage', { encoding: 'utf-8', stdio: 'pipe' });
-      this.ccusageAvailable = true;
-    } catch {
-      this.ccusageAvailable = false;
-      console.warn('ccusage not found. Install with: npm install -g ccusage');
-    }
-
-    return this.ccusageAvailable;
   }
 
   /**
@@ -103,145 +47,55 @@ export class UsageTracker extends EventEmitter {
   }
 
   /**
-   * Start tracking usage
+   * Start tracking usage (sets models for all agents)
    */
   startTracking(models: Record<AgentName, AgentModel>): void {
-    if (this.isTracking) return;
-
-    // Set models for all agents
     for (const [agent, model] of Object.entries(models)) {
       this.agentModels.set(agent as AgentName, model);
     }
-
-    this.isTracking = true;
-
-    // Poll for usage updates every 10 seconds
-    this.pollingInterval = setInterval(() => {
-      this.updateAllAgentsUsage();
-    }, 10000);
-
-    // Initial update
-    this.updateAllAgentsUsage();
   }
 
   /**
-   * Stop tracking
+   * Stop tracking (no-op in simplified version)
    */
   stopTracking(): void {
-    this.isTracking = false;
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
-    }
+    // No polling to stop in headless mode
   }
 
   /**
-   * Update usage for all agents using ccusage
+   * Update usage for an agent from Claude Code JSON output
    */
-  private async updateAllAgentsUsage(): Promise<void> {
-    if (!this.checkCCUsageAvailable()) {
-      return;
-    }
-
-    try {
-      const usage = await this.fetchUsageFromCCUsage();
-      if (usage) {
-        // For now, we track total usage and distribute it
-        // In the future, we could track per-session if ccusage supports it
-        this.distributeUsageToAgents(usage);
-      }
-    } catch (error) {
-      // Silently fail - usage tracking is non-critical
-      console.debug('Failed to fetch usage from ccusage:', error);
-    }
-  }
-
-  /**
-   * Fetch usage data using ccusage CLI
-   */
-  private async fetchUsageFromCCUsage(): Promise<UsageInfo | null> {
-    return new Promise((resolve) => {
-      exec('ccusage --json --daily 2>/dev/null', { encoding: 'utf-8' }, (error, stdout) => {
-        if (error || !stdout) {
-          resolve(null);
-          return;
-        }
-
-        try {
-          const data: CCUsageOutput = JSON.parse(stdout);
-          const usage = this.parseCCUsageOutput(data);
-          resolve(usage);
-        } catch {
-          resolve(null);
-        }
-      });
-    });
-  }
-
-  /**
-   * Parse ccusage output into UsageInfo
-   */
-  private parseCCUsageOutput(data: CCUsageOutput): UsageInfo {
-    // Handle various field name formats ccusage might use
-    const inputTokens = data.totalInputTokens || data.total_input_tokens || 0;
-    const outputTokens = data.totalOutputTokens || data.total_output_tokens || 0;
-    const cacheCreation = data.totalCacheCreationTokens || data.cache_creation_tokens || 0;
-    const cacheRead = data.totalCacheReadTokens || data.cache_read_tokens || 0;
-    const cost = data.totalCostUsd || data.total_cost || data.cost || 0;
-
-    return {
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cache_creation_tokens: cacheCreation,
-      cache_read_tokens: cacheRead,
-      cost_usd: cost,
+  updateFromClaudeOutput(agent: AgentName, output: ClaudeCodeOutput): UsageInfo {
+    const usage: UsageInfo = {
+      input_tokens: output.usage.input_tokens,
+      output_tokens: output.usage.output_tokens,
+      cache_creation_tokens: output.usage.cache_creation_input_tokens,
+      cache_read_tokens: output.usage.cache_read_input_tokens,
+      cost_usd: output.total_cost_usd,
     };
+
+    // Add to existing usage (agent may run multiple times, e.g., after VCR)
+    const existingUsage = this.agentUsage.get(agent) || this.createEmptyUsage();
+    const updatedUsage: UsageInfo = {
+      input_tokens: existingUsage.input_tokens + usage.input_tokens,
+      output_tokens: existingUsage.output_tokens + usage.output_tokens,
+      cache_creation_tokens: existingUsage.cache_creation_tokens + usage.cache_creation_tokens,
+      cache_read_tokens: existingUsage.cache_read_tokens + usage.cache_read_tokens,
+      cost_usd: existingUsage.cost_usd + usage.cost_usd,
+    };
+
+    this.agentUsage.set(agent, updatedUsage);
+    this.emit('usage_update', {
+      agent,
+      usage: updatedUsage,
+      timestamp: new Date().toISOString(),
+    } as UsageUpdateEvent);
+
+    return updatedUsage;
   }
 
   /**
-   * Distribute total usage to agents based on their activity
-   * This is a simplified approach - in production, you'd want per-session tracking
-   */
-  private distributeUsageToAgents(totalUsage: UsageInfo): void {
-    // Get agents that are currently running or completed
-    const activeAgents: AgentName[] = [];
-    for (const [agent, usage] of this.agentUsage.entries()) {
-      if (usage.input_tokens > 0 || usage.output_tokens > 0) {
-        activeAgents.push(agent);
-      }
-    }
-
-    // If no active agents, attribute to 'refiner' as default starting agent
-    if (activeAgents.length === 0) {
-      this.updateAgentUsageInternal('refiner', totalUsage);
-    }
-  }
-
-  /**
-   * Update usage for a specific agent (internal)
-   */
-  private updateAgentUsageInternal(agent: AgentName, usage: UsageInfo): void {
-    const currentUsage = this.agentUsage.get(agent);
-
-    // Only update if usage has changed
-    if (
-      !currentUsage ||
-      usage.input_tokens !== currentUsage.input_tokens ||
-      usage.output_tokens !== currentUsage.output_tokens ||
-      usage.cache_creation_tokens !== currentUsage.cache_creation_tokens ||
-      usage.cache_read_tokens !== currentUsage.cache_read_tokens
-    ) {
-      this.agentUsage.set(agent, usage);
-      this.emit('usage_update', {
-        agent,
-        usage,
-        timestamp: new Date().toISOString(),
-      } as UsageUpdateEvent);
-    }
-  }
-
-  /**
-   * Manually update usage for an agent
+   * Update usage for an agent directly
    */
   updateAgentUsage(
     agent: AgentName,
@@ -268,52 +122,15 @@ export class UsageTracker extends EventEmitter {
   }
 
   /**
-   * Fetch and update usage for a specific agent when it completes
+   * Set usage for an agent (from UsageInfo object)
    */
-  async fetchAgentUsage(agent: AgentName): Promise<UsageInfo | null> {
-    if (!this.checkCCUsageAvailable()) {
-      return this.agentUsage.get(agent) || null;
-    }
-
-    try {
-      const usage = await this.fetchUsageFromCCUsage();
-      if (usage) {
-        // Calculate delta from last known usage
-        const currentTotal = this.getTotalUsage();
-        const delta: UsageInfo = {
-          input_tokens: Math.max(0, usage.input_tokens - currentTotal.total_input_tokens),
-          output_tokens: Math.max(0, usage.output_tokens - currentTotal.total_output_tokens),
-          cache_creation_tokens: Math.max(
-            0,
-            usage.cache_creation_tokens - currentTotal.total_cache_creation_tokens
-          ),
-          cache_read_tokens: Math.max(
-            0,
-            usage.cache_read_tokens - currentTotal.total_cache_read_tokens
-          ),
-          cost_usd: Math.max(0, usage.cost_usd - currentTotal.total_cost_usd),
-        };
-
-        // If there's new usage, attribute it to this agent
-        if (delta.input_tokens > 0 || delta.output_tokens > 0) {
-          const existingUsage = this.agentUsage.get(agent) || this.createEmptyUsage();
-          const updatedUsage: UsageInfo = {
-            input_tokens: existingUsage.input_tokens + delta.input_tokens,
-            output_tokens: existingUsage.output_tokens + delta.output_tokens,
-            cache_creation_tokens: existingUsage.cache_creation_tokens + delta.cache_creation_tokens,
-            cache_read_tokens: existingUsage.cache_read_tokens + delta.cache_read_tokens,
-            cost_usd: existingUsage.cost_usd + delta.cost_usd,
-          };
-
-          this.updateAgentUsageInternal(agent, updatedUsage);
-          return updatedUsage;
-        }
-      }
-    } catch (error) {
-      console.debug(`Failed to fetch usage for ${agent}:`, error);
-    }
-
-    return this.agentUsage.get(agent) || null;
+  setAgentUsage(agent: AgentName, usage: UsageInfo): void {
+    this.agentUsage.set(agent, usage);
+    this.emit('usage_update', {
+      agent,
+      usage,
+      timestamp: new Date().toISOString(),
+    } as UsageUpdateEvent);
   }
 
   /**
@@ -391,12 +208,5 @@ export class UsageTracker extends EventEmitter {
       return '$' + cost.toFixed(3);
     }
     return '$' + cost.toFixed(2);
-  }
-
-  /**
-   * Check if ccusage is available (public method)
-   */
-  isCCUsageAvailable(): boolean {
-    return this.checkCCUsageAvailable();
   }
 }

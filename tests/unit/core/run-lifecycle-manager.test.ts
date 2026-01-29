@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { OrchestraConfig, AgentModel, ModelSelectionResult, CRP, VCR, RunState } from '../../../src/types/index.js';
 
+// Mock fs module
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(true),
+  };
+});
+
 // Create mock factory functions that return fresh instances
 const createMockStateManager = () => ({
   updateModelSelection: vi.fn().mockResolvedValue(undefined),
@@ -100,6 +109,7 @@ const mockModelSelector = {
 
 const mockPromptGenerator = {
   generateAllPrompts: vi.fn().mockResolvedValue(undefined),
+  generateContinuationPrompt: vi.fn().mockResolvedValue('/test/project/.dure/runs/run-20260126000000/prompts/refiner-continue.md'),
 };
 
 import { RunLifecycleManager } from '../../../src/core/run-lifecycle-manager.js';

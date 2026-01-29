@@ -122,6 +122,7 @@ export class ErrorRecoveryService extends EventEmitter {
     const recoveryContext: RecoveryContext = {
       agent,
       runId,
+      runDir,
       errorFlag,
       tmuxManager: context.tmuxManager,
       stateManager: context.stateManager,
@@ -214,6 +215,7 @@ export class ErrorRecoveryService extends EventEmitter {
     const recoveryContext: RecoveryContext = {
       agent,
       runId,
+      runDir,
       errorFlag,
       tmuxManager: context.tmuxManager,
       stateManager: context.stateManager,

@@ -160,17 +160,14 @@ Recommended: Only commit `.dure/config/`
 
 ### How does usage tracking work?
 
-Dure uses [ccusage](https://ccusage.com/) to collect usage from Claude Code's local JSONL files:
+Dure runs agents in headless mode with `--output-format json`. When each agent completes, Claude Code outputs a JSON response that includes usage information:
 
-1. Claude Code writes JSONL to `~/.claude/projects/`
-2. UsageTracker detects file changes (chokidar)
-3. Parse usage with ccusage
+1. Agent runs with `claude -p --output-format json`
+2. On completion, JSON output includes `usage` and `total_cost_usd`
+3. FileWatcher detects `output.json` and extracts usage
 4. Real-time updates to UI via WebSocket
 
-Install ccusage:
-```bash
-npm install -g ccusage
-```
+No external dependencies required - usage tracking is built into Claude Code's headless mode.
 
 ## Errors and Troubleshooting
 

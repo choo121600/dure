@@ -190,7 +190,7 @@ export class ManagerBuilder {
    * Create UsageTracker and attach to lifecycle
    */
   private createUsageTracker(agentLifecycle: AgentLifecycleManager): UsageTracker {
-    const tracker = new UsageTracker(this.config.deps.projectRoot);
+    const tracker = new UsageTracker();
     agentLifecycle.setUsageTracker(tracker);
     agentLifecycle.startUsageTracking();
     return tracker;

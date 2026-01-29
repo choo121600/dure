@@ -1,7 +1,7 @@
 import { execSync, spawn, spawnSync } from 'child_process';
 import type { AgentName, AgentModel } from '../types/index.js';
 import { sanitizePath, sanitizeSessionName, isValidModel, isValidAgentName } from '../utils/sanitize.js';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
 export interface TmuxPane {
   index: number;
@@ -116,6 +116,9 @@ export class TmuxManager {
     // Enable mouse mode for easier pane navigation
     spawnSync('tmux', ['set-option', '-t', this.sessionName, '-g', 'mouse', 'on']);
 
+    // Keep panes open after process exits (prevents session termination on agent completion)
+    spawnSync('tmux', ['set-option', '-t', this.sessionName, 'remain-on-exit', 'on']);
+
     // Enable pane border status to show pane names
     spawnSync('tmux', ['set-option', '-t', this.sessionName, 'pane-border-status', 'top']);
     spawnSync('tmux', [
@@ -216,10 +219,10 @@ export class TmuxManager {
   }
 
   /**
-   * Start Claude agent in a pane
-   * Uses tmux load-buffer to avoid shell interpretation of special characters in prompt
+   * Start Claude agent in a pane (headless mode)
+   * Runs Claude with -p --output-format json for structured output and usage tracking
    */
-  startAgent(agent: AgentName, model: AgentModel, promptFile: string): void {
+  startAgent(agent: AgentName, model: AgentModel, promptFile: string, outputDir: string): void {
     // Validate agent name
     if (!isValidAgentName(agent)) {
       throw new Error(`Invalid agent name: ${agent}`);
@@ -236,66 +239,35 @@ export class TmuxManager {
       throw new Error(`Prompt file does not exist: ${sanitizedPromptFile}`);
     }
 
-    const paneIndex = TmuxManager.PANES[agent];
-    const target = `${this.sessionName}:main.${paneIndex}`;
-    const bufferName = `prompt-${agent}`;
-
-    // Start Claude in interactive mode
-    // Using spawn to build the command safely
-    // DURE_AGENT_MODE=1 enables hook-based test command blocking
-    const startCmd = `cd "${this.projectRoot}" && DURE_AGENT_MODE=1 claude --dangerously-skip-permissions --model ${model}`;
-    this.sendKeys(agent, startCmd);
-
-    // Store prompt info for async sending
-    this._pendingPrompts.set(agent, { promptFile: sanitizedPromptFile, target, bufferName });
-  }
-
-  /**
-   * Send pending prompt to agent after Claude is ready
-   * Should be called after waitForClaudeReady returns true
-   */
-  async sendPendingPrompt(agent: AgentName): Promise<void> {
-    const pending = this._pendingPrompts.get(agent);
-    if (!pending) {
-      return;
+    // Validate and ensure output directory exists
+    const sanitizedOutputDir = sanitizePath(outputDir, this.projectRoot);
+    if (!existsSync(sanitizedOutputDir)) {
+      mkdirSync(sanitizedOutputDir, { recursive: true });
     }
 
-    const { promptFile, target, bufferName } = pending;
-
-    // Load prompt file into tmux buffer and paste it
-    spawnSync('tmux', ['load-buffer', '-b', bufferName, promptFile]);
-    spawnSync('tmux', ['paste-buffer', '-b', bufferName, '-t', target]);
-
-    // Wait for paste to complete, then send Escape + Enter to submit
-    // Escape exits multiline edit mode, Enter submits
-    await new Promise(resolve => setTimeout(resolve, 300));
-    spawnSync('tmux', ['send-keys', '-t', target, 'Escape']);
-    await new Promise(resolve => setTimeout(resolve, 100));
-    spawnSync('tmux', ['send-keys', '-t', target, 'Enter']);
-
-    this._pendingPrompts.delete(agent);
+    // Build headless command
+    // DURE_AGENT_MODE=1 enables hook-based test command blocking
+    // -p: print mode (non-interactive)
+    // --output-format json: structured output with usage info
+    // stderr goes to separate file to avoid corrupting JSON output
+    const outputFile = `${sanitizedOutputDir}/output.json`;
+    const errorFile = `${sanitizedOutputDir}/error.log`;
+    const startCmd = `cd "${this.projectRoot}" && DURE_AGENT_MODE=1 claude -p --output-format json --dangerously-skip-permissions --model ${model} < "${sanitizedPromptFile}" > "${outputFile}" 2> "${errorFile}"`;
+    this.sendKeys(agent, startCmd);
   }
 
   /**
-   * Start agent and wait for ready state, then send prompt
-   * Uses simple fixed delay instead of polling for faster startup
+   * Start agent in headless mode
+   * No need to wait for ready state since headless mode runs immediately
    */
-  async startAgentAndWaitReady(
+  startAgentHeadless(
     agent: AgentName,
     model: AgentModel,
     promptFile: string,
-    delayMs: number = 3000
-  ): Promise<boolean> {
-    this.startAgent(agent, model, promptFile);
-
-    // Simple fixed delay for Claude Code to initialize
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-    await this.sendPendingPrompt(agent);
-    return true;
+    outputDir: string
+  ): void {
+    this.startAgent(agent, model, promptFile, outputDir);
   }
-
-  // Storage for pending prompts
-  private _pendingPrompts: Map<AgentName, { promptFile: string; target: string; bufferName: string }> = new Map();
 
   /**
    * Start the web server in its pane
@@ -462,93 +434,47 @@ export class TmuxManager {
   }
 
   /**
-   * Resume an agent after VCR response
-   * Sends VCR response directly WITHOUT /clear to preserve agent context
+   * Resume an agent after VCR response (headless mode)
+   * Runs a new headless session with the VCR continuation prompt
    * @param agent - The agent to resume
-   * @param runId - The run ID
-   * @param promptFile - Path to the prompt file (for reference in message)
-   * @param vcrInfo - VCR and CRP information to include in the message
+   * @param model - The model to use
+   * @param promptFile - Path to the continuation prompt file
+   * @param outputDir - Directory to write output.json
    */
   restartAgentWithVCR(
     agent: AgentName,
-    runId: string,
+    model: AgentModel,
     promptFile: string,
-    vcrInfo?: {
-      crpQuestion: string;
-      crpContext?: string;
-      decision: string;
-      decisionLabel?: string;
-      rationale?: string;
-      additionalNotes?: string;
-    }
+    outputDir: string
   ): void {
     // Validate agent name
     if (!isValidAgentName(agent)) {
       throw new Error(`Invalid agent name: ${agent}`);
     }
 
-    const paneIndex = TmuxManager.PANES[agent];
-    const target = `${this.sessionName}:main.${paneIndex}`;
-
-    // Build message with VCR details
-    let message: string;
-    if (vcrInfo) {
-      const parts = [
-        `Human decision has arrived.`,
-        ``,
-        `## Human Decision`,
-        `Selection: ${vcrInfo.decisionLabel || vcrInfo.decision}`,
-      ];
-
-      if (vcrInfo.rationale) {
-        parts.push(`Rationale: ${vcrInfo.rationale}`);
-      }
-
-      if (vcrInfo.additionalNotes) {
-        parts.push(`Additional notes: ${vcrInfo.additionalNotes}`);
-      }
-
-      parts.push(
-        ``,
-        `Please continue with your work reflecting the above decision.`
-      );
-
-      message = parts.join('\n');
-    } else {
-      message = `VCR response has arrived. Please continue with your work.`;
+    // Validate model
+    if (!isValidModel(model)) {
+      throw new Error(`Invalid model: ${model}`);
     }
 
-    // Use spawn with array arguments and -l flag for literal text
-    // Note: Claude Code multiline input requires Escape to exit multiline mode, then Enter to submit
-    const child = spawn('sh', [
-      '-c',
-      `tmux send-keys -t "${target}" -l '${message.replace(/'/g, "'\\''")}' && ` +
-      `sleep 0.3 && ` +
-      `tmux send-keys -t "${target}" Escape && ` +
-      `sleep 0.1 && ` +
-      `tmux send-keys -t "${target}" Enter`,
-    ], { detached: true, stdio: 'ignore' });
-    child.unref();
-  }
-
-  /**
-   * Send /clear command to an agent pane to reset its context
-   * Called when transitioning to the next phase
-   * Uses spawn with array arguments for safety
-   * @param agent - The agent pane to clear
-   */
-  clearAgent(agent: AgentName): void {
-    // Validate agent name
-    if (!isValidAgentName(agent)) {
-      throw new Error(`Invalid agent name: ${agent}`);
+    // Validate prompt file exists
+    const sanitizedPromptFile = sanitizePath(promptFile, this.projectRoot);
+    if (!existsSync(sanitizedPromptFile)) {
+      throw new Error(`Prompt file does not exist: ${sanitizedPromptFile}`);
     }
 
-    const paneIndex = TmuxManager.PANES[agent];
-    const target = `${this.sessionName}:main.${paneIndex}`;
+    // Validate and ensure output directory exists
+    const sanitizedOutputDir = sanitizePath(outputDir, this.projectRoot);
+    if (!existsSync(sanitizedOutputDir)) {
+      mkdirSync(sanitizedOutputDir, { recursive: true });
+    }
 
-    // Use -l flag to send literal text, then send C-j to submit (Claude Code uses Ctrl+J)
-    spawnSync('tmux', ['send-keys', '-t', target, '-l', '/clear']);
-    spawnSync('tmux', ['send-keys', '-t', target, 'C-j']);
+    // Run headless with continuation prompt
+    // stderr goes to separate file to avoid corrupting JSON output
+    const outputFile = `${sanitizedOutputDir}/output.json`;
+    const errorFile = `${sanitizedOutputDir}/error.log`;
+    const startCmd = `cd "${this.projectRoot}" && DURE_AGENT_MODE=1 claude -p --output-format json --dangerously-skip-permissions --model ${model} < "${sanitizedPromptFile}" > "${outputFile}" 2> "${errorFile}"`;
+    this.sendKeys(agent, startCmd);
   }
 
   /**

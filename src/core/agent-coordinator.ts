@@ -37,6 +37,9 @@ export class AgentCoordinator extends EventEmitter {
   private runManager: RunManager;
   private stateManager: StateManager;
 
+  // Track agents currently being processed to prevent duplicate handling
+  private processingAgents: Set<AgentName> = new Set();
+
   constructor(
     agentLifecycle: AgentLifecycleManager,
     phaseManager: PhaseTransitionManager,
@@ -106,31 +109,46 @@ export class AgentCoordinator extends EventEmitter {
 
   /**
    * Handle agent done event - combines determineNextAction and executeAgentCompletion
+   * Includes guard against duplicate calls for the same agent
    */
   async handleAgentDone(
     agent: AgentName,
     runId: string,
     nextPhase: Phase
   ): Promise<AgentDoneAction> {
-    this.emitEvent({ type: 'agent_completing', agent, runId });
-
-    // Complete the agent
-    await this.agentLifecycle.completeAgent(agent);
-    this.emitEvent({ type: 'agent_completed', agent, runId });
-
-    // Wait for potential CRP to be written
-    await this.delay(1000);
-
-    // Determine and execute action
-    const action = await this.determineNextAction(agent, runId, nextPhase);
-
-    if (action.type === 'wait_crp') {
-      await this.handleWaitCRP(action.crpId, agent, runId);
-    } else {
-      await this.handleTransition(agent, action.nextPhase, runId);
+    // Guard against duplicate handling
+    if (this.processingAgents.has(agent)) {
+      // Return a dummy action - the real transition is already in progress
+      const nextAgent = this.phaseManager.getPhaseAgent(nextPhase);
+      return { type: 'transition', nextPhase, nextAgent: nextAgent || agent };
     }
 
-    return action;
+    this.processingAgents.add(agent);
+
+    try {
+      this.emitEvent({ type: 'agent_completing', agent, runId });
+
+      // Complete the agent
+      await this.agentLifecycle.completeAgent(agent);
+      this.emitEvent({ type: 'agent_completed', agent, runId });
+
+      // Wait for potential CRP to be written
+      await this.delay(1000);
+
+      // Determine and execute action
+      const action = await this.determineNextAction(agent, runId, nextPhase);
+
+      if (action.type === 'wait_crp') {
+        await this.handleWaitCRP(action.crpId, agent, runId);
+      } else {
+        await this.handleTransition(agent, action.nextPhase, runId);
+      }
+
+      return action;
+    } finally {
+      // Remove from processing set after completion
+      this.processingAgents.delete(agent);
+    }
   }
 
   /**
@@ -206,9 +224,6 @@ export class AgentCoordinator extends EventEmitter {
   ): Promise<void> {
     const currentPhase = await this.phaseManager.getCurrentPhase();
     this.emitEvent({ type: 'phase_transitioning', from: currentPhase!, to: nextPhase, runId });
-
-    // Clear the current agent
-    await this.agentLifecycle.clearAgent(currentAgent);
 
     // Transition to next phase
     await this.phaseManager.transition(nextPhase);

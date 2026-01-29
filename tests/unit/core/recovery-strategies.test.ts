@@ -10,7 +10,6 @@ import type { ErrorFlag } from '../../../src/core/file-watcher.js';
 
 // Mock TmuxManager
 const createMockTmuxManager = () => ({
-  clearAgent: vi.fn(),
   startAgent: vi.fn(),
   capturePane: vi.fn().mockReturnValue('some output'),
 });
@@ -71,6 +70,7 @@ describe('CrashRecoveryStrategy', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'crash',
@@ -88,9 +88,8 @@ describe('CrashRecoveryStrategy', () => {
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('restart');
-      expect(tmuxManager.clearAgent).toHaveBeenCalledWith('builder');
       expect(stateManager.updateAgentStatus).toHaveBeenCalledWith('builder', 'running');
-      expect(tmuxManager.startAgent).toHaveBeenCalledWith('builder', 'sonnet', '/path/to/prompt.md');
+      expect(tmuxManager.startAgent).toHaveBeenCalledWith('builder', 'sonnet', '/path/to/prompt.md', '/path/to/run/builder');
     });
 
     it('should return failure result on error', async () => {
@@ -103,6 +102,7 @@ describe('CrashRecoveryStrategy', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'crash',
@@ -171,6 +171,7 @@ describe('TimeoutRecoveryStrategy', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'timeout',
@@ -200,6 +201,7 @@ describe('TimeoutRecoveryStrategy', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'timeout',
@@ -217,8 +219,7 @@ describe('TimeoutRecoveryStrategy', () => {
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('restart');
-      expect(tmuxManager.clearAgent).toHaveBeenCalled();
-      expect(tmuxManager.startAgent).toHaveBeenCalled();
+      expect(tmuxManager.startAgent).toHaveBeenCalledWith('builder', 'sonnet', '/path/to/prompt.md', '/path/to/run/builder');
     });
   });
 
@@ -268,6 +269,7 @@ describe('ValidationRecoveryStrategy', () => {
       const context: RecoveryContext = {
         agent: 'verifier',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'verifier',
           error_type: 'validation',
@@ -285,8 +287,7 @@ describe('ValidationRecoveryStrategy', () => {
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('restart');
-      expect(tmuxManager.clearAgent).toHaveBeenCalledWith('verifier');
-      expect(tmuxManager.startAgent).toHaveBeenCalledWith('verifier', 'haiku', '/path/to/prompt.md');
+      expect(tmuxManager.startAgent).toHaveBeenCalledWith('verifier', 'haiku', '/path/to/prompt.md', '/path/to/run/verifier');
     });
   });
 
@@ -378,6 +379,7 @@ describe('RecoveryManager', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'crash',
@@ -404,6 +406,7 @@ describe('RecoveryManager', () => {
       const context: RecoveryContext = {
         agent: 'builder',
         runId: 'run-123',
+        runDir: '/path/to/run',
         errorFlag: {
           agent: 'builder',
           error_type: 'resource',

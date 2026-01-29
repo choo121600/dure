@@ -36,10 +36,9 @@ describe('Pipeline Integration - Full Flow', () => {
     startAgent: Mock;
     capturePane: Mock;
     updatePaneBordersWithModels: Mock;
-    clearAgent: Mock;
     isPaneActive: Mock;
-    sendPendingPrompt: Mock;
-    startAgentAndWaitReady: Mock;
+    startAgentHeadless: Mock;
+    restartAgentWithVCR: Mock;
   };
 
   beforeEach(async () => {
@@ -67,10 +66,9 @@ describe('Pipeline Integration - Full Flow', () => {
       startAgent: vi.fn(),
       capturePane: vi.fn().mockReturnValue(''),
       updatePaneBordersWithModels: vi.fn(),
-      clearAgent: vi.fn(),
       isPaneActive: vi.fn().mockReturnValue(true),
-      sendPendingPrompt: vi.fn().mockResolvedValue(undefined),
-      startAgentAndWaitReady: vi.fn().mockResolvedValue(true),
+      startAgentHeadless: vi.fn(),
+      restartAgentWithVCR: vi.fn(),
     };
 
     // Mock TmuxManager prototype methods
@@ -81,10 +79,9 @@ describe('Pipeline Integration - Full Flow', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(tmuxMock.startAgent);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockImplementation(tmuxMock.capturePane);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(tmuxMock.updatePaneBordersWithModels);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(tmuxMock.clearAgent);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockImplementation(tmuxMock.isPaneActive);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'sendPendingPrompt').mockImplementation(tmuxMock.sendPendingPrompt);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentAndWaitReady').mockImplementation(tmuxMock.startAgentAndWaitReady);
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentHeadless').mockImplementation(tmuxMock.startAgentHeadless);
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'restartAgentWithVCR').mockImplementation(tmuxMock.restartAgentWithVCR);
 
     orchestrator = new Orchestrator(tempDir, config);
     collectedEvents = [];
@@ -242,10 +239,9 @@ describe('Pipeline Integration - CRP/VCR Flow', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'sendPendingPrompt').mockResolvedValue(undefined);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentAndWaitReady').mockResolvedValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentHeadless').mockImplementation(() => {});
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'restartAgentWithVCR').mockImplementation(() => {});
 
     orchestrator = new Orchestrator(tempDir, config);
     collectedEvents = [];
@@ -501,10 +497,9 @@ describe('Pipeline Integration - Error Scenarios', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'sendPendingPrompt').mockResolvedValue(undefined);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentAndWaitReady').mockResolvedValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentHeadless').mockImplementation(() => {});
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'restartAgentWithVCR').mockImplementation(() => {});
 
     const orchestrator = new Orchestrator(tempDir, config);
 
@@ -545,10 +540,9 @@ describe('Pipeline Integration - Run State Persistence', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'sendPendingPrompt').mockResolvedValue(undefined);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentAndWaitReady').mockResolvedValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgentHeadless').mockImplementation(() => {});
+    vi.spyOn(TmuxModule.TmuxManager.prototype, 'restartAgentWithVCR').mockImplementation(() => {});
   });
 
   afterEach(() => {

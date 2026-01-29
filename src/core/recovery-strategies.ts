@@ -1,3 +1,4 @@
+import { join } from 'path';
 import type { AgentName } from '../types/index.js';
 import type { ErrorFlag } from './file-watcher.js';
 import type { TmuxManager } from './tmux-manager.js';
@@ -9,6 +10,7 @@ import type { StateManager } from './state-manager.js';
 export interface RecoveryContext {
   agent: AgentName;
   runId: string;
+  runDir: string;
   errorFlag: ErrorFlag;
   tmuxManager: TmuxManager;
   stateManager: StateManager;
@@ -60,20 +62,16 @@ export class CrashRecoveryStrategy implements RecoveryStrategy {
 
   async recover(context: RecoveryContext): Promise<RecoveryResult> {
     try {
-      // Clear the agent's tmux pane
-      context.tmuxManager.clearAgent(context.agent);
-
-      // Wait a bit for the pane to clear
-      await this.delay(1000);
-
       // Update state to running
       context.stateManager.updateAgentStatus(context.agent, 'running');
 
-      // Restart the agent
+      // Restart the agent in headless mode
+      const outputDir = join(context.runDir, context.agent);
       context.tmuxManager.startAgent(
         context.agent,
         context.model as 'haiku' | 'sonnet' | 'opus',
-        context.promptFile
+        context.promptFile,
+        outputDir
       );
 
       return {
@@ -89,10 +87,6 @@ export class CrashRecoveryStrategy implements RecoveryStrategy {
         message: `Failed to restart agent ${context.agent}: ${errMsg}`,
       };
     }
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -126,14 +120,13 @@ export class TimeoutRecoveryStrategy implements RecoveryStrategy {
       }
 
       // Agent is not active, restart it
-      context.tmuxManager.clearAgent(context.agent);
-      await this.delay(1000);
-
       context.stateManager.updateAgentStatus(context.agent, 'running');
+      const outputDir = join(context.runDir, context.agent);
       context.tmuxManager.startAgent(
         context.agent,
         context.model as 'haiku' | 'sonnet' | 'opus',
-        context.promptFile
+        context.promptFile,
+        outputDir
       );
 
       return {
@@ -164,10 +157,6 @@ export class TimeoutRecoveryStrategy implements RecoveryStrategy {
       return false;
     }
   }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
 }
 
 /**
@@ -185,19 +174,17 @@ export class ValidationRecoveryStrategy implements RecoveryStrategy {
 
   async recover(context: RecoveryContext): Promise<RecoveryResult> {
     try {
-      // Clear the agent's context
-      context.tmuxManager.clearAgent(context.agent);
-      await this.delay(1000);
-
       // Update state
       context.stateManager.updateAgentStatus(context.agent, 'running');
 
       // Restart with validation error context
       // The agent will read the error flag and understand the validation issue
+      const outputDir = join(context.runDir, context.agent);
       context.tmuxManager.startAgent(
         context.agent,
         context.model as 'haiku' | 'sonnet' | 'opus',
-        context.promptFile
+        context.promptFile,
+        outputDir
       );
 
       return {
@@ -213,10 +200,6 @@ export class ValidationRecoveryStrategy implements RecoveryStrategy {
         message: `Failed to recover agent ${context.agent} from validation error: ${errMsg}`,
       };
     }
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

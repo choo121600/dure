@@ -183,5 +183,20 @@ Returns list of interrupted runs.
 
 ## Usage Tracking
 
-Utilizes [ccusage](https://ccusage.com/) to collect usage from JSONL files in `~/.claude/projects/`.
+Usage tracking is built into the headless execution mode. When agents run with `--output-format json`, Claude Code outputs a JSON response that includes detailed usage information:
+
+```json
+{
+  "total_cost_usd": 0.04555975,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 6133,
+    "cache_read_input_tokens": 13837,
+    "output_tokens": 12
+  }
+}
+```
+
+This data is automatically extracted when each agent completes, providing accurate per-agent usage tracking without external dependencies.
+
 Implementation: `src/core/usage-tracker.ts`

@@ -66,7 +66,6 @@ describe('Orchestrator Integration', () => {
       startAgent: vi.fn(),
       capturePane: vi.fn().mockReturnValue(''),
       updatePaneBordersWithModels: vi.fn(),
-      clearAgent: vi.fn(),
       isPaneActive: vi.fn().mockReturnValue(true),
     };
 
@@ -78,7 +77,6 @@ describe('Orchestrator Integration', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(tmuxMock.startAgent);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockImplementation(tmuxMock.capturePane);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(tmuxMock.updatePaneBordersWithModels);
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(tmuxMock.clearAgent);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockImplementation(tmuxMock.isPaneActive);
 
     orchestrator = new Orchestrator(tempDir, config);
@@ -329,8 +327,7 @@ describe('Orchestrator Cleanup Behavior', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'getSessionName').mockReturnValue('test-session');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
 
     orchestrator = new Orchestrator(tempDir, config);
@@ -488,8 +485,7 @@ describe('Orchestrator Concurrent Protection', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'getSessionName').mockReturnValue('test-session');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
   });
 
@@ -552,8 +548,7 @@ describe('Orchestrator forceCapture', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('mock output');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
 
     orchestrator = new Orchestrator(tempDir, config);
   });
@@ -599,8 +594,7 @@ describe('Orchestrator Getter Methods', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('mock output');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
 
     orchestrator = new Orchestrator(tempDir, config);
   });
@@ -735,8 +729,7 @@ describe('Orchestrator Event Handling', () => {
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'startAgent').mockImplementation(() => {});
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'capturePane').mockReturnValue('');
     vi.spyOn(TmuxModule.TmuxManager.prototype, 'updatePaneBordersWithModels').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'clearAgent').mockImplementation(() => {});
-    vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
+        vi.spyOn(TmuxModule.TmuxManager.prototype, 'isPaneActive').mockReturnValue(true);
 
     orchestrator = new Orchestrator(tempDir, config);
     collectedEvents = [];

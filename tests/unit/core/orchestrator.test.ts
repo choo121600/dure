@@ -33,7 +33,6 @@ const createMockEventLogger = () => ({
 const createMockAgentLifecycle = () => ({
   startAgent: vi.fn().mockResolvedValue(undefined),
   completeAgent: vi.fn().mockResolvedValue(undefined),
-  clearAgent: vi.fn().mockResolvedValue(undefined),
   failAgent: vi.fn().mockResolvedValue(undefined),
   stopAgent: vi.fn(),
   getAllOutputs: vi.fn().mockReturnValue({}),

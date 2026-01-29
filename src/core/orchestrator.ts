@@ -12,8 +12,9 @@ import type {
   ModelSelectionResult,
   TestConfig,
   TestOutput,
+  ClaudeCodeOutput,
 } from '../types/index.js';
-import { TestRunner, createTestRunnerFromConfig, type TestRunnerResult } from './test-runner.js';
+import { TestRunner, createTestRunnerFromConfig, validateTestConfig, type TestRunnerResult } from './test-runner.js';
 import { StateManager } from './state-manager.js';
 import { RunManager } from './run-manager.js';
 import { TmuxManager } from './tmux-manager.js';
@@ -177,11 +178,11 @@ export class Orchestrator extends EventEmitter {
     this.isRunning = true;
 
     if (result.resumeInfo) {
-      const { agent, promptFile, vcrInfo } = result.resumeInfo;
+      const { agent, promptFile } = result.resumeInfo;
       const phase = this.agentToPhase(agent);
       await this.managers?.phaseManager.transition(phase);
       this.emitEvent({ type: 'phase_changed', phase, runId });
-      await this.managers?.agentLifecycle.restartAgentWithVCR(agent, runId, promptFile, vcrInfo);
+      await this.managers?.agentLifecycle.restartAgentWithVCR(agent, result.runDir, promptFile);
       this.emitEvent({ type: 'agent_started', agent, runId });
 
       this.logger.info('Run resumed', { runId, agent, phase });
@@ -277,13 +278,17 @@ export class Orchestrator extends EventEmitter {
       onFileWatchEvent: (event) => this.handleWatchEvent(event),
       onAgentMonitorEvent: (event) => {
         if (event.type === 'timeout' && this.stateManager) {
-          void this.stateManager.updateAgentStatus(event.agent, 'failed');
+          this.stateManager.updateAgentStatus(event.agent, 'failed').catch((error) => {
+            this.logger.error('Failed to update agent status on timeout', error instanceof Error ? error : undefined, {
+              agent: event.agent,
+            });
+          });
         }
       },
-      onUsageUpdateEvent: (event) => {
-        if (this.stateManager) {
-          void this.stateManager.updateAgentUsage(event.agent, event.usage as UsageInfo);
-        }
+      // Note: Usage updates are handled by AgentLifecycleManager.setupUsageTrackerListeners()
+      // to avoid duplicate calls that cause race conditions
+      onUsageUpdateEvent: () => {
+        // Intentionally empty - AgentLifecycleManager handles state updates
       },
       onCoordinatedEvent: (event) => this.emit('orchestrator_event', event),
     });
@@ -347,6 +352,7 @@ export class Orchestrator extends EventEmitter {
       case 'crp_created': await this.managers.agentCoordinator.handleCRPCreated(event.crp, runId); break;
       case 'error_flag': await this.handleErrorFlag(event.agent as AgentName, event.errorFlag); break;
       case 'error': this.emitEvent({ type: 'error', error: event.error, runId }); break;
+      case 'agent_output': await this.handleAgentOutput(event.agent, event.output, event.usage); break;
     }
   }
 
@@ -381,20 +387,41 @@ export class Orchestrator extends EventEmitter {
   private async handleTestsReady(config: TestConfig, runId: string): Promise<void> {
     if (!this.managers) return;
 
+    // Validate and normalize config with defaults for missing fields
+    let validatedConfig: TestConfig;
+    try {
+      validatedConfig = validateTestConfig(config);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('Invalid test-config.json from Verifier', error instanceof Error ? error : undefined, {
+        runId,
+        receivedConfig: config,
+      });
+      this.emitEvent({
+        type: 'error',
+        error: `Verifier generated invalid test-config.json: ${errorMessage}`,
+        runId,
+      });
+      if (this.stateManager) {
+        await this.stateManager.updateAgentStatus('verifier', 'failed', errorMessage);
+      }
+      return;
+    }
+
     this.logger.info('Verifier Phase 1 completed, starting external test execution', {
       runId,
-      testFramework: config.test_framework,
-      testCommand: config.test_command,
+      testFramework: validatedConfig.test_framework,
+      testCommand: validatedConfig.test_command,
     });
 
     // Notify AgentCoordinator that Verifier Phase 1 is done
-    await this.managers.agentCoordinator.handleVerifierPhase1Done(runId, config);
+    await this.managers.agentCoordinator.handleVerifierPhase1Done(runId, validatedConfig);
 
     // Get run directory and start TestRunner
     const runDir = this.runManager.getRunDir(runId);
     const verifierDir = `${runDir}/verifier`;
 
-    const testRunner = createTestRunnerFromConfig(config, runDir);
+    const testRunner = createTestRunnerFromConfig(validatedConfig, runDir);
 
     // Listen to TestRunner events
     testRunner.on('event', (event) => {
@@ -473,7 +500,6 @@ export class Orchestrator extends EventEmitter {
 
     await this.managers.agentLifecycle.completeAgent('gatekeeper');
     this.emitEvent({ type: 'agent_completed', agent: 'gatekeeper', runId: this.currentRunId });
-    await this.managers.agentLifecycle.clearAgent('gatekeeper');
 
     const result = await this.managers.verdictHandler.processVerdict(verdict, this.currentRunId, this.stateManager);
     await this.managers.verdictHandler.executeVerdictResult(result, this.currentRunId, this.stateManager);
@@ -504,6 +530,43 @@ export class Orchestrator extends EventEmitter {
       this.emitEvent({ type: 'phase_changed', phase: 'build', runId: this.currentRunId });
       await this.startAgent('builder');
     }
+  }
+
+  /**
+   * Handle agent output from headless mode
+   * Updates usage tracking when agent completes
+   */
+  private async handleAgentOutput(agent: AgentName, output: ClaudeCodeOutput, usage: UsageInfo): Promise<void> {
+    if (!this.currentRunId || !this.managers) return;
+
+    this.logger.debug('Agent output received', {
+      runId: this.currentRunId,
+      agent,
+      durationMs: output.duration_ms,
+      costUsd: output.total_cost_usd,
+    });
+
+    // Update usage tracking
+    this.managers.agentLifecycle.setAgentUsage(agent, usage);
+
+    // Record token metrics
+    const total = this.managers.agentLifecycle.getTotalUsage();
+    if (total) {
+      this.metrics.setGauge(MetricNames.TOKEN_USAGE, total.total_input_tokens, createTokenLabels(this.currentRunId, 'input'));
+      this.metrics.setGauge(MetricNames.TOKEN_USAGE, total.total_output_tokens, createTokenLabels(this.currentRunId, 'output'));
+
+      this.emitEvent({
+        type: 'usage_updated',
+        agent,
+        usage,
+        total,
+        runId: this.currentRunId,
+      });
+    }
+
+    // Handle agent completion based on agent type
+    // Note: refiner_done, builder_done, etc. events are still triggered by file creation
+    // This just updates the usage tracking
   }
 
   private async handleErrorFlag(agent: AgentName, errorFlag: ErrorFlag): Promise<void> {

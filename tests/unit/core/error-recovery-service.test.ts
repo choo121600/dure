@@ -83,7 +83,6 @@ describe('ErrorRecoveryService', () => {
         getRunDir: vi.fn().mockReturnValue('/test/project/.dure/runs/run-20260126000000'),
       },
       tmuxManager: {
-        clearAgent: vi.fn(),
         startAgent: vi.fn(),
         capturePane: vi.fn().mockReturnValue(''),
       },

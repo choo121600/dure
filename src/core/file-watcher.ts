@@ -1,8 +1,8 @@
 import { watch, FSWatcher } from 'chokidar';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { join, basename, dirname } from 'path';
 import { EventEmitter } from 'events';
-import type { CRP, GatekeeperVerdict, TestConfig, TestOutput } from '../types/index.js';
+import type { CRP, GatekeeperVerdict, TestConfig, TestOutput, ClaudeCodeOutput, AgentName, UsageInfo } from '../types/index.js';
 
 export interface ErrorFlag {
   agent: string;
@@ -24,7 +24,8 @@ export type WatchEvent =
   | { type: 'vcr_created'; vcrId: string; crpId: string }
   | { type: 'mrp_created' }
   | { type: 'error_flag'; errorFlag: ErrorFlag; agent: string }
-  | { type: 'error'; error: string };
+  | { type: 'error'; error: string }
+  | { type: 'agent_output'; agent: AgentName; output: ClaudeCodeOutput; usage: UsageInfo };
 
 export interface FileWatcherOptions {
   /** Use polling for more reliable file detection (slower but more compatible) */
@@ -195,6 +196,14 @@ export class FileWatcher extends EventEmitter {
     // Check for MRP creation (summary.md indicates MRP is ready)
     if (filename === 'summary.md' && parentDir === 'mrp') {
       this.emit('event', { type: 'mrp_created' } as WatchEvent);
+    }
+
+    // Check for agent output.json (headless mode completion)
+    if (filename === 'output.json') {
+      const agentDirs: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
+      if (agentDirs.includes(parentDir as AgentName)) {
+        this.handleAgentOutputCreated(filePath, parentDir as AgentName);
+      }
     }
   }
 
@@ -380,6 +389,129 @@ export class FileWatcher extends EventEmitter {
         }
       });
     });
+  }
+
+  /**
+   * Handle agent output.json file creation (headless mode)
+   * Waits for file size to stabilize before parsing
+   */
+  private handleAgentOutputCreated(filePath: string, agent: AgentName): void {
+    const eventKey = `agent_output_${agent}`;
+    if (this.isDuplicateEvent(eventKey)) {
+      return;
+    }
+
+    // Wait for file to be fully written by checking size stability
+    this.waitForFileStable(filePath, agent, 0, 0);
+  }
+
+  /**
+   * Wait for file size to stabilize before parsing
+   * Checks every 1 second, requires 2 consecutive same-size readings
+   */
+  private waitForFileStable(
+    filePath: string,
+    agent: AgentName,
+    lastSize: number,
+    stableCount: number,
+    maxWaitSeconds: number = 300 // 5 minutes max wait
+  ): void {
+    if (!existsSync(filePath)) {
+      // File doesn't exist yet, retry
+      if (maxWaitSeconds > 0) {
+        setTimeout(() => {
+          this.waitForFileStable(filePath, agent, 0, 0, maxWaitSeconds - 1);
+        }, 1000);
+      }
+      return;
+    }
+
+    try {
+      const currentSize = statSync(filePath).size;
+
+      // File is empty, keep waiting
+      if (currentSize === 0) {
+        if (maxWaitSeconds > 0) {
+          setTimeout(() => {
+            this.waitForFileStable(filePath, agent, 0, 0, maxWaitSeconds - 1);
+          }, 1000);
+        }
+        return;
+      }
+
+      // Check if size is stable (same as last check)
+      if (currentSize === lastSize) {
+        stableCount++;
+        // Require 2 consecutive stable readings
+        if (stableCount >= 2) {
+          this.parseAgentOutput(filePath, agent);
+          return;
+        }
+      } else {
+        stableCount = 0;
+      }
+
+      // Continue waiting
+      if (maxWaitSeconds > 0) {
+        setTimeout(() => {
+          this.waitForFileStable(filePath, agent, currentSize, stableCount, maxWaitSeconds - 1);
+        }, 1000);
+      } else {
+        // Timeout - try to parse anyway
+        this.parseAgentOutput(filePath, agent);
+      }
+    } catch (error) {
+      // Error checking file, retry
+      if (maxWaitSeconds > 0) {
+        setTimeout(() => {
+          this.waitForFileStable(filePath, agent, lastSize, stableCount, maxWaitSeconds - 1);
+        }, 1000);
+      }
+    }
+  }
+
+  /**
+   * Parse agent output JSON file
+   */
+  private parseAgentOutput(filePath: string, agent: AgentName): void {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      const output = JSON.parse(content) as ClaudeCodeOutput;
+
+      // Extract usage info from Claude Code output
+      const usage: UsageInfo = {
+        input_tokens: output.usage.input_tokens,
+        output_tokens: output.usage.output_tokens,
+        cache_creation_tokens: output.usage.cache_creation_input_tokens,
+        cache_read_tokens: output.usage.cache_read_input_tokens,
+        cost_usd: output.total_cost_usd,
+      };
+
+      this.emit('event', {
+        type: 'agent_output',
+        agent,
+        output,
+        usage,
+      } as WatchEvent);
+
+      // Also emit the legacy done events for backward compatibility
+      // Use isDuplicateEvent to prevent double-emit when done.flag also exists
+      if (agent === 'builder') {
+        if (!this.isDuplicateEvent('builder_done')) {
+          this.emit('event', { type: 'builder_done' } as WatchEvent);
+        }
+      } else if (agent === 'verifier') {
+        // Note: verifier_done is still triggered by done.flag or tests-ready.flag
+        // This is handled separately in the verifier workflow
+      }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to parse agent output for ${agent}:`, errMsg);
+      this.emit('event', {
+        type: 'error',
+        error: `Failed to parse agent output for ${agent}: ${errMsg}`,
+      } as WatchEvent);
+    }
   }
 
   /**

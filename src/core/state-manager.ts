@@ -1,4 +1,4 @@
-import { access, readFile, writeFile, rename, mkdir, constants } from 'fs/promises';
+import { access, readFile, writeFile, rename, mkdir, constants, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import type { RunState, Phase, AgentName, AgentStatus, HistoryEntry, UsageInfo, TotalUsage, AsyncResult } from '../types/index.js';
@@ -6,6 +6,43 @@ import type { Result } from '../types/index.js';
 import { ok, err } from '../types/index.js';
 import { StateError, ErrorCodes, createStateNotFoundError, createStateLoadError, createStateSaveError } from '../types/index.js';
 import { CACHE, PRECISION } from '../config/constants.js';
+
+/**
+ * Simple mutex implementation for async operations
+ */
+class AsyncMutex {
+  private locked = false;
+  private queue: Array<() => void> = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+
+    return new Promise<void>((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()!;
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+
+  async withLock<T>(fn: () => Promise<T>): Promise<T> {
+    await this.acquire();
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+}
 
 export class StateManager {
   private runDir: string;
@@ -15,6 +52,12 @@ export class StateManager {
   private cachedState: RunState | null = null;
   private lastReadTime: number = 0;
   private cacheTTL: number;
+
+  // Mutex for atomic save operations
+  private saveMutex = new AsyncMutex();
+
+  // Counter for unique tmp file names
+  private saveCounter = 0;
 
   constructor(runDir: string, cacheTTL: number = CACHE.STATE_CACHE_TTL_MS) {
     this.runDir = runDir;
@@ -147,48 +190,76 @@ export class StateManager {
 
   /**
    * Save state atomically using temp file + rename
+   * Protected by mutex to prevent race conditions
    */
   async saveState(state: RunState): Promise<void> {
-    state.updated_at = new Date().toISOString();
+    return this.saveMutex.withLock(async () => {
+      state.updated_at = new Date().toISOString();
 
-    // Ensure directory exists
-    await mkdir(this.runDir, { recursive: true });
+      // Ensure directory exists
+      await mkdir(this.runDir, { recursive: true });
 
-    const tempPath = `${this.statePath}.tmp`;
-    await writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
-    await rename(tempPath, this.statePath);
+      // Use unique temp file name to prevent race conditions
+      const uniqueId = `${Date.now()}-${++this.saveCounter}`;
+      const tempPath = `${this.statePath}.tmp.${uniqueId}`;
 
-    // Update cache
-    this.cachedState = state;
-    this.lastReadTime = Date.now();
+      try {
+        await writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
+        await rename(tempPath, this.statePath);
+
+        // Update cache
+        this.cachedState = state;
+        this.lastReadTime = Date.now();
+      } catch (error) {
+        // Clean up temp file on error
+        try {
+          await unlink(tempPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw error;
+      }
+    });
   }
 
   /**
    * Save state with Result pattern (safe version)
    * Returns Result<void, StateError> instead of throwing
+   * Protected by mutex to prevent race conditions
    */
   async saveStateSafe(state: RunState): AsyncResult<void, StateError> {
-    state.updated_at = new Date().toISOString();
+    return this.saveMutex.withLock(async () => {
+      state.updated_at = new Date().toISOString();
 
-    try {
-      // Ensure directory exists
-      await mkdir(this.runDir, { recursive: true });
+      // Use unique temp file name to prevent race conditions
+      const uniqueId = `${Date.now()}-${++this.saveCounter}`;
+      const tempPath = `${this.statePath}.tmp.${uniqueId}`;
 
-      const tempPath = `${this.statePath}.tmp`;
-      await writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
-      await rename(tempPath, this.statePath);
+      try {
+        // Ensure directory exists
+        await mkdir(this.runDir, { recursive: true });
 
-      // Update cache
-      this.cachedState = state;
-      this.lastReadTime = Date.now();
+        await writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
+        await rename(tempPath, this.statePath);
 
-      return ok(undefined);
-    } catch (error) {
-      return err(createStateSaveError(
-        this.statePath,
-        error instanceof Error ? error : new Error(String(error))
-      ));
-    }
+        // Update cache
+        this.cachedState = state;
+        this.lastReadTime = Date.now();
+
+        return ok(undefined);
+      } catch (error) {
+        // Clean up temp file on error
+        try {
+          await unlink(tempPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        return err(createStateSaveError(
+          this.statePath,
+          error instanceof Error ? error : new Error(String(error))
+        ));
+      }
+    });
   }
 
   /**
