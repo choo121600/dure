@@ -52,12 +52,90 @@ UI implementation: `src/server/public/`
 
 ## WebSocket Events
 
+### Orchestrator Events (Legacy)
+
 **Server→Client:**
 - `agent.started`, `agent.completed`, `agent.failed`, `agent.timeout`
 - `crp.created`, `phase.changed`, `run.completed`, `run.failed`
 
 **Client→Server:**
 - `retry.agent`, `stop.run`, `extend.timeout`, `vcr.submit`
+
+### Dashboard Socket Events
+
+Dashboard uses Socket.io with namespace `/dashboard` for real-time monitoring.
+
+> For detailed Socket.io event reference, see [Socket Events Reference](./api/socket-events.md).
+
+#### Server→Client Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `dashboard:update` | `DashboardData` | Full dashboard state update |
+| `dashboard:crp` | `DashboardCRP` | Human judgment required |
+| `dashboard:stage-change` | `{ previousStage, newStage }` | Stage transition |
+| `dashboard:agent-status-change` | `{ agent, previousStatus, newStatus }` | Agent status transition |
+| `dashboard:error` | `{ error: string }` | Error message |
+| `dashboard:subscribed` | `{ runId: string }` | Subscription confirmed |
+| `dashboard:unsubscribed` | - | Unsubscription confirmed |
+
+#### Client→Server Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `dashboard:subscribe` | `runId: string` | Subscribe to run updates |
+| `dashboard:unsubscribe` | - | Unsubscribe from current run |
+| `dashboard:crp-response` | `CRPResponse` | Submit CRP decision |
+| `dashboard:request-update` | - | Request manual state refresh |
+
+#### DashboardData Type
+
+```typescript
+interface DashboardData {
+  runId: string;
+  stage: DashboardStage;
+  agents: {
+    refiner: DashboardAgentData;
+    builder: DashboardAgentData;
+    verifier: DashboardAgentData;
+    gatekeeper: DashboardAgentData;
+  };
+  usage: DashboardUsage;
+  crp?: DashboardCRP;
+  progress: DashboardProgress;
+}
+
+type DashboardStage =
+  | 'REFINE' | 'BUILD' | 'VERIFY' | 'GATE'
+  | 'DONE' | 'FAILED' | 'WAITING_HUMAN';
+
+interface DashboardAgentData {
+  status: 'idle' | 'running' | 'done' | 'error';
+  output: string;
+  startedAt?: Date;
+  finishedAt?: Date;
+}
+
+interface DashboardCRP {
+  agent: AgentName;
+  question: string;
+  options: string[];
+}
+
+interface CRPResponse {
+  crpId: string;
+  decision: string;
+  rationale?: string;
+}
+```
+
+## Dashboard REST API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/runs/:runId` | Get run state |
+| GET | `/api/runs/:runId/crp` | Get pending CRPs |
+| POST | `/api/runs/:runId/vcr` | Submit VCR response |
 
 ## Error Handling
 

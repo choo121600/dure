@@ -37,6 +37,7 @@ REFINE → BUILD → VERIFY → GATE
 ## Tech Stack
 
 - CLI: Node.js + Commander.js
+- TUI: Ink (React for CLI)
 - Web server: Express + Socket.io
 - Agents: Claude Code CLI (headless)
 - Process management: tmux
@@ -64,17 +65,29 @@ REFINE → BUILD → VERIFY → GATE
 | Document | Content |
 |----------|---------|
 | [docs/architecture.md](docs/architecture.md) | System architecture, execution flow, tmux configuration, agent execution spec |
+| [docs/architecture/dashboard-system.md](docs/architecture/dashboard-system.md) | Dashboard data provider, TUI/Web architecture, event flow |
 | [docs/agents.md](docs/agents.md) | Detailed agent definitions, I/O, behavioral rules |
 | [docs/data-formats.md](docs/data-formats.md) | state.json, CRP, VCR, MRP formats, config files |
 | [docs/api.md](docs/api.md) | CLI commands, web server API, WebSocket events, notification system |
+| [docs/api/socket-events.md](docs/api/socket-events.md) | Socket.io event reference for dashboard |
+| [docs/guide/monitoring-dashboard.md](docs/guide/monitoring-dashboard.md) | TUI and Web dashboard usage guide |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Implementation priorities, tech stack, success criteria |
 
 ## Implementation Locations
 
 - CLI: `src/cli/`
-- Core logic: `src/core/` (orchestrator, state-manager, tmux-manager, file-watcher)
+- TUI: `src/tui/`
+  - Ink components: `src/tui/ink/`
+  - TUI state: `src/tui/state/`
+- Core logic: `src/core/`
+  - Orchestrator: `src/core/orchestrator.ts`
+  - Dashboard data: `src/core/dashboard-data-provider.ts`
+  - State manager: `src/core/state-manager.ts`
+  - Tmux manager: `src/core/tmux-manager.ts`
+  - File watcher: `src/core/file-watcher.ts`
 - Agent prompts: `src/agents/prompt-generator.ts`
 - Web server: `src/server/`
+  - Dashboard API: `src/server/dashboard/`
 - Type definitions: `src/types/`
 
 ## Available Skills & Agents

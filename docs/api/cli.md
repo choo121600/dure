@@ -17,7 +17,7 @@ npx dure [command]
 
 ## dure start
 
-Starts Dure.
+Starts Dure with TUI dashboard (default), web dashboard, or tmux attach mode.
 
 ### Basic Usage
 
@@ -30,28 +30,84 @@ dure start [options]
 | Option | Short Form | Default | Description |
 |--------|------------|---------|-------------|
 | `--port <number>` | `-p` | 3873 | Web server port |
-| `--no-browser` | - | false | Disable automatic browser opening |
+| `--web` | - | false | Open web dashboard instead of TUI |
+| `--attach` | - | false | Attach to tmux session (legacy mode) |
+| `--no-browser` | - | false | Disable automatic browser opening (with `--web`) |
 | `--config <path>` | `-c` | `.dure/config` | Configuration file path |
 | `--log-level <level>` | `-l` | `info` | Log level (debug/info/warn/error) |
 
 ### Examples
 
 ```bash
-# Default execution
+# Default execution (TUI dashboard)
 dure start
+
+# Open web dashboard in browser
+dure start --web
+
+# Attach to tmux session
+dure start --attach
 
 # Change port
 dure start --port 3001
 
-# Disable automatic browser opening
-dure start --no-browser
+# Web dashboard without auto browser
+dure start --web --no-browser
 
 # Debug logs
 dure start --log-level debug
-
-# Combined
-dure start -p 3001 --no-browser
 ```
+
+### Execution Modes
+
+#### 1. TUI Dashboard (Default)
+
+```bash
+dure start
+```
+
+기본 실행 모드입니다. 터미널에 Ink 기반 TUI 대시보드가 표시됩니다.
+
+```
+┌────────────────────────────────────────┐
+│ Dure Dashboard          run-xxx        │
+├────────────────────────────────────────┤
+│ Phase: BUILD              Progress: 45%│
+│ ┌──────────────────────────────────┐   │
+│ │ Agent: Builder                   │   │
+│ │ Status: Running                  │   │
+│ │ Output: Implementing feature...  │   │
+│ └──────────────────────────────────┘   │
+│                                        │
+│ [q] Quit  [f] Fullscreen  [Tab] Switch │
+└────────────────────────────────────────┘
+```
+
+**Keyboard Shortcuts:**
+| Key | Action |
+|-----|--------|
+| `q` | TUI 종료 (Dure는 백그라운드에서 계속 실행) |
+| `f` | 풀스크린 모드 토글 |
+| `Tab` | 패널 간 이동 |
+| `↑/↓` | 출력 스크롤 |
+
+#### 2. Web Dashboard Mode
+
+```bash
+dure start --web
+```
+
+웹 브라우저에서 대시보드를 엽니다. 원격 접속이나 팀 협업에 유용합니다.
+
+#### 3. Tmux Attach Mode (Legacy)
+
+```bash
+dure start --attach
+```
+
+tmux 세션에 직접 연결합니다. 에이전트 패널을 직접 확인해야 할 때 사용합니다.
+
+- `Ctrl+B, D`: tmux 세션에서 분리
 
 ### Behavior
 
@@ -59,20 +115,145 @@ dure start -p 3001 --no-browser
 2. Create configuration files with defaults if they don't exist
 3. Create tmux session (pane structure)
 4. Start web server (port 3873)
-5. Open browser (depending on options)
+5. Launch UI based on mode:
+   - Default: TUI dashboard
+   - `--web`: Open browser
+   - `--attach`: Attach to tmux
 
 ### Output
 
 ```
-🎼 Dure starting...
+🎼 Dure
+Project: /path/to/project
 
-✓ Configuration initialized
-✓ Tmux session created (dure-run-20240126-143022)
-✓ Web server started at http://localhost:3873
+Initializing configuration...
+Creating tmux session...
+Starting server on port 3873...
 
-Opening browser...
+✓ Dure is running
+  Server: http://localhost:3873
 
-Press Ctrl+C to stop
+```
+
+## dure monitor
+
+실행 중인 Run을 모니터링합니다. TUI 또는 웹 대시보드로 실시간 진행 상황을 확인할 수 있습니다.
+
+### Basic Usage
+
+```bash
+dure monitor [run-id] [options]
+```
+
+### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `run-id` | No | 모니터링할 Run ID (생략 시 최신 run 사용) |
+
+### Options
+
+| Option | Short Form | Default | Description |
+|--------|------------|---------|-------------|
+| `--web` | - | false | 웹 대시보드로 열기 |
+| `--port <number>` | `-p` | 3873 | 웹 서버 포트 |
+
+### Examples
+
+```bash
+# 최신 run의 TUI 모니터
+dure monitor
+
+# 특정 run의 TUI 모니터
+dure monitor run-2024-01-26-143022
+
+# 최신 run을 웹 대시보드로 모니터
+dure monitor --web
+
+# 특정 run을 웹 대시보드로 모니터
+dure monitor run-2024-01-26-143022 --web
+
+# 다른 포트에서 웹 대시보드 열기
+dure monitor --web --port 3001
+```
+
+### TUI Mode (Default)
+
+```bash
+dure monitor
+```
+
+터미널에서 직접 실행 상태를 모니터링합니다.
+
+**TUI Layout:**
+```
+┌─ Header ─────────────────────────────────┐
+│ Run ID: run-xxx    Phase: BUILD          │
+├─ Agent Panel ────────────────────────────┤
+│ [Refiner]  ✓ Done                        │
+│ [Builder]  ● Running (45%)               │
+│ [Verifier] ○ Pending                     │
+│ [Gatekeeper] ○ Pending                   │
+├─ Output View ────────────────────────────┤
+│ > Building component...                  │
+│ > Created file: src/feature.ts           │
+│ > Running tests...                       │
+├─ Status Bar ─────────────────────────────┤
+│ [q] Quit [f] Fullscreen [Tab] Switch     │
+└──────────────────────────────────────────┘
+```
+
+**Keyboard Shortcuts:**
+| Key | Action |
+|-----|--------|
+| `q` | TUI 종료 |
+| `f` | 풀스크린 토글 |
+| `Tab` | 패널 간 이동 |
+| `↑/↓` | 출력 스크롤 |
+| `Enter` | CRP 응답 입력 (프롬프트 시) |
+
+### Web Mode
+
+```bash
+dure monitor --web
+```
+
+브라우저에서 대시보드를 엽니다. 다음 상황에 유용합니다:
+- 원격 서버에서 실행 중인 Run 모니터링 (SSH 포워딩)
+- 팀원과 URL 공유
+- 여러 Run을 탭으로 관리
+
+**URL Format:**
+```
+http://localhost:{port}/run/{run-id}
+```
+
+### Use Cases
+
+| 상황 | 추천 모드 |
+|------|----------|
+| 로컬 개발 | TUI (빠른 피드백) |
+| 원격 서버 | Web (SSH 포워딩) |
+| 팀 협업 | Web (공유 URL) |
+| CI/CD | Neither (headless) |
+
+### Output
+
+**TUI Mode:**
+```
+🖥️  Opening TUI dashboard...
+Run: run-2024-01-26-143022
+
+[TUI 화면 표시]
+```
+
+**Web Mode:**
+```
+🌐 Opening web dashboard...
+Run: run-2024-01-26-143022
+URL: http://localhost:3873/run/run-2024-01-26-143022
+
+✓ Browser opened
 ```
 
 ## dure status

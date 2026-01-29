@@ -17,10 +17,21 @@ docsify serve docs
 ## Documentation Structure
 
 - `guide/` - Usage guides
+  - [Getting Started](guide/getting-started.md)
+  - [Monitoring Dashboard](guide/monitoring-dashboard.md) - TUI and Web dashboard usage
+  - [Writing Briefings](guide/writing-briefings.md)
+  - [Troubleshooting](guide/troubleshooting.md)
 - `architecture/` - Architecture documentation
+  - [System Architecture](architecture.md)
+  - [Dashboard System](architecture/dashboard-system.md) - Real-time monitoring architecture
+  - [File Structure](architecture/file-structure.md)
 - `api/` - API reference
+  - [API Overview](api.md)
+  - [CLI Commands](api/cli.md)
+  - [Socket Events](api/socket-events.md) - Socket.io event reference
+  - [Configuration](api/configuration.md)
 - `advanced/` - Advanced topics
-- `misc/` - FAQ, contributing guide, etc.
+- `misc/` - FAQ, contributing guide, changelog
 
 ## Contributing
 
