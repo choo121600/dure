@@ -41,12 +41,10 @@ export function createProgram(): Command {
 
   program
     .command('start')
-    .description('Start Dure in the current project')
+    .description('Start Dure in the current project (TUI by default)')
     .option('-p, --port <number>', 'Web server port', '3873')
-    .option('--no-browser', 'Do not open browser automatically')
-    .option('--tui', 'Use TUI mode (Terminal User Interface) instead of web server')
-    .option('-m, --monitor', 'Open TUI monitor after start')
-    .option('-w, --web', 'Use web dashboard instead of TUI (with --monitor)')
+    .option('-w, --web', 'Open web dashboard instead of TUI')
+    .option('-a, --attach', 'Attach to tmux session (legacy mode)')
     .action(startCommand);
 
   program

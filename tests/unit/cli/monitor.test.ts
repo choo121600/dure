@@ -161,24 +161,23 @@ describe('Monitor Command', () => {
   });
 });
 
-describe('Start Command Monitor Options', () => {
+describe('Start Command Options', () => {
   describe('Options parsing', () => {
-    it('should support -m flag for monitor', () => {
-      const options = { monitor: true };
-      expect(options.monitor).toBe(true);
-    });
-
     it('should support -w flag for web dashboard', () => {
-      const options = { monitor: true, web: true };
-      expect(options.monitor).toBe(true);
+      const options = { web: true };
       expect(options.web).toBe(true);
     });
 
-    it('should support combined -mw flags', () => {
-      // When using Commander.js, -mw expands to { monitor: true, web: true }
-      const options = { monitor: true, web: true, port: '3873' };
-      expect(options.monitor).toBe(true);
-      expect(options.web).toBe(true);
+    it('should support -a flag for tmux attach', () => {
+      const options = { attach: true };
+      expect(options.attach).toBe(true);
+    });
+
+    it('should default to TUI when no options specified', () => {
+      // When no options, TUI is the default
+      const options = { port: '3873' };
+      expect(options.web).toBeUndefined();
+      expect(options.attach).toBeUndefined();
     });
   });
 });
