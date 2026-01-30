@@ -127,6 +127,14 @@ export {
   type UsageUpdatedEvent,
   type ModelsSelectedEvent,
   type ErrorEvent,
+  type MissionCreatedEvent,
+  type PlanningStageStartedEvent,
+  type PlanningStageCompletedEvent,
+  type PlanApprovedEvent,
+  type MissionPhaseStartedEvent,
+  type MissionPhaseCompletedEvent,
+  type MissionTaskUpdateEvent,
+  type MissionCompletedEvent,
   type OrchestratorEventTyped,
   type OrchestratorEventType,
   type ExtractEvent,
@@ -154,10 +162,22 @@ export {
   createUsageUpdatedEvent,
   createModelsSelectedEvent,
   createErrorEvent,
+  createMissionCreatedEvent,
+  createPlanningStageStartedEvent,
+  createPlanningStageCompletedEvent,
+  createPlanApprovedEvent,
+  createMissionPhaseStartedEvent,
+  createMissionPhaseCompletedEvent,
+  createMissionTaskUpdateEvent,
+  createMissionCompletedEvent,
+  // Constants
+  MissionEventTypes,
   // Type guards
   isEventType,
   isAgentEvent,
   isRunEvent,
+  isMissionEvent,
+  isPlanningEvent,
 } from './events.js';
 
 // Agent Types
@@ -209,7 +229,7 @@ export interface ClaudeCodeOutput {
 export type Phase = 'refine' | 'build' | 'verify' | 'gate' | 'waiting_human' | 'ready_for_merge' | 'completed' | 'failed';
 
 // Verdict Types
-export type Verdict = 'PASS' | 'FAIL' | 'NEEDS_HUMAN';
+export type Verdict = 'PASS' | 'FAIL' | 'MINOR_FAIL' | 'NEEDS_HUMAN';
 
 // Usage Info
 export interface UsageInfo {
@@ -252,6 +272,8 @@ export interface RunState {
   phase: Phase;
   iteration: number;
   max_iterations: number;
+  minor_fix_attempts: number;
+  max_minor_fix_attempts: number;
   started_at: string;
   updated_at: string;
   agents: {
@@ -761,6 +783,8 @@ export interface RunStateTyped {
   phase: Phase;
   iteration: number;
   max_iterations: number;
+  minor_fix_attempts: number;
+  max_minor_fix_attempts: number;
   started_at: string;
   updated_at: string;
   agents: {
@@ -1079,14 +1103,25 @@ export interface InitPlan {
 
 // Re-export Mission Planning types
 export {
-  type CarryForward,
+  // Critique types
+  type CritiqueSeverity,
+  type CritiqueCategory,
+  type CritiqueItem,
   type Critique,
+  CRITIQUE_AUTO_APPROVE_THRESHOLD,
+  // CarryForward types
+  type CarryForward,
+  type PhaseContext,
+  type MissionGatekeeperVerdict,
+  // Task types
   type MissionTaskStatus,
   type AgentConfigOverride,
   type MissionTask,
+  // Phase types
   type PhaseStatus,
   type PhaseSummary,
   type MissionPhase,
+  // Mission types
   type MissionStatus,
   type PlanningStage,
   type PlanDraft,

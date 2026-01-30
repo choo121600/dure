@@ -17,7 +17,7 @@ const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   refine: ['build', 'waiting_human'],
   build: ['verify', 'waiting_human'],
   verify: ['gate', 'waiting_human'],
-  gate: ['ready_for_merge', 'build', 'waiting_human', 'failed'],
+  gate: ['ready_for_merge', 'build', 'verify', 'waiting_human', 'failed'],
   waiting_human: ['refine', 'build', 'verify', 'gate'],
   ready_for_merge: ['completed'],
   completed: [],
@@ -117,6 +117,16 @@ export class PhaseTransitionManager extends EventEmitter {
       case 'gate':
         if (verdict === 'PASS') {
           return 'ready_for_merge';
+        } else if (verdict === 'MINOR_FAIL') {
+          // Check if minor fix attempts exceeded
+          if (await this.stateManager.isMinorFixExceeded()) {
+            // Fall back to BUILD retry
+            if (await this.stateManager.isMaxIterationsExceeded()) {
+              return 'failed';
+            }
+            return 'build';
+          }
+          return 'verify'; // Re-run verifier after gatekeeper fix
         } else if (verdict === 'FAIL') {
           // Check if max iterations exceeded
           if (await this.stateManager.isMaxIterationsExceeded()) {
@@ -173,7 +183,7 @@ export class PhaseTransitionManager extends EventEmitter {
   /**
    * Handle gatekeeper verdict and determine appropriate action
    */
-  async handleVerdict(verdict: GatekeeperVerdict): Promise<{ nextPhase: Phase; shouldRetry: boolean }> {
+  async handleVerdict(verdict: GatekeeperVerdict): Promise<{ nextPhase: Phase; shouldRetry: boolean; isMinorFix?: boolean }> {
     const state = await this.stateManager.loadState();
     if (!state) {
       throw new Error('No state available');
@@ -182,6 +192,17 @@ export class PhaseTransitionManager extends EventEmitter {
     switch (verdict.verdict) {
       case 'PASS':
         return { nextPhase: 'ready_for_merge', shouldRetry: false };
+
+      case 'MINOR_FAIL':
+        // Check if minor fix attempts exceeded
+        if (await this.stateManager.isMinorFixExceeded()) {
+          // Fall back to BUILD retry if max iterations not exceeded
+          if (await this.stateManager.isMaxIterationsExceeded()) {
+            return { nextPhase: 'failed', shouldRetry: false };
+          }
+          return { nextPhase: 'build', shouldRetry: true };
+        }
+        return { nextPhase: 'verify', shouldRetry: false, isMinorFix: true };
 
       case 'FAIL':
         if (await this.stateManager.isMaxIterationsExceeded()) {

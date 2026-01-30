@@ -76,6 +76,8 @@ export class StateManager {
       phase: 'refine',
       iteration: 1,
       max_iterations: maxIterations,
+      minor_fix_attempts: 0,
+      max_minor_fix_attempts: 2,
       started_at: now,
       updated_at: now,
       agents: {
@@ -474,6 +476,57 @@ export class StateManager {
     }
 
     return ok(state);
+  }
+
+  /**
+   * Increment minor fix attempt counter
+   */
+  async incrementMinorFixAttempt(): Promise<RunState> {
+    const state = await this.loadState();
+    if (!state) {
+      throw new Error('No state found');
+    }
+
+    state.minor_fix_attempts += 1;
+
+    // Reset verifier and gatekeeper statuses for re-run
+    state.agents.verifier.status = 'pending';
+    state.agents.verifier.started_at = undefined;
+    state.agents.verifier.completed_at = undefined;
+    state.agents.verifier.error = undefined;
+
+    state.agents.gatekeeper.status = 'pending';
+    state.agents.gatekeeper.started_at = undefined;
+    state.agents.gatekeeper.completed_at = undefined;
+    state.agents.gatekeeper.error = undefined;
+
+    await this.saveState(state);
+    return state;
+  }
+
+  /**
+   * Reset minor fix attempts (called when iteration increments for BUILD retry)
+   */
+  async resetMinorFixAttempts(): Promise<RunState> {
+    const state = await this.loadState();
+    if (!state) {
+      throw new Error('No state found');
+    }
+
+    state.minor_fix_attempts = 0;
+    await this.saveState(state);
+    return state;
+  }
+
+  /**
+   * Check if minor fix attempts exceeded
+   */
+  async isMinorFixExceeded(): Promise<boolean> {
+    const state = await this.loadState();
+    if (!state) {
+      return false;
+    }
+    return state.minor_fix_attempts >= state.max_minor_fix_attempts;
   }
 
   /**

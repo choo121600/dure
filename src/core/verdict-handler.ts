@@ -17,6 +17,7 @@ import type { StateManager } from './state-manager.js';
 export type VerdictResult =
   | { action: 'complete'; mrpPath: string }
   | { action: 'retry'; iteration: number }
+  | { action: 'minor_fix'; attempt: number }
   | { action: 'fail'; reason: string }
   | { action: 'wait_human'; crpId: string };
 
@@ -68,11 +69,14 @@ export class VerdictHandler extends EventEmitter {
   ): Promise<VerdictResult> {
     this.emitEvent({ type: 'verdict_processing', verdict, runId });
 
-    const { nextPhase, shouldRetry } = await this.phaseManager.handleVerdict(verdict);
+    const { nextPhase, shouldRetry, isMinorFix } = await this.phaseManager.handleVerdict(verdict);
 
     switch (verdict.verdict) {
       case 'PASS':
         return this.handlePass(runId);
+
+      case 'MINOR_FAIL':
+        return this.handleMinorFail(runId, nextPhase, shouldRetry, isMinorFix, stateManager);
 
       case 'FAIL':
         return this.handleFail(runId, nextPhase, shouldRetry, stateManager);
@@ -104,6 +108,11 @@ export class VerdictHandler extends EventEmitter {
         await this.phaseManager.transition('build');
         break;
 
+      case 'minor_fix':
+        // Transition to verify phase - verifier will be started by orchestrator
+        await this.phaseManager.transition('verify');
+        break;
+
       case 'fail':
         await this.phaseManager.transition('failed');
         break;
@@ -132,6 +141,46 @@ export class VerdictHandler extends EventEmitter {
   }
 
   /**
+   * Handle MINOR_FAIL verdict
+   * Gatekeeper made small fixes, re-run verifier to confirm
+   */
+  private async handleMinorFail(
+    runId: string,
+    nextPhase: Phase,
+    shouldRetry: boolean,
+    isMinorFix: boolean | undefined,
+    stateManager: StateManager
+  ): Promise<VerdictResult> {
+    // If minor fix attempts exceeded, fall back to regular retry logic
+    if (!isMinorFix) {
+      if (nextPhase === 'failed') {
+        const reason = 'Max iterations exceeded after minor fix attempts';
+        this.emitEvent({ type: 'verdict_fail', runId, reason, maxIterations: true });
+        return { action: 'fail', reason };
+      }
+
+      if (shouldRetry) {
+        // Reset minor fix attempts when going to BUILD retry
+        await stateManager.resetMinorFixAttempts();
+        const { iteration } = await this.phaseManager.incrementIteration();
+        this.emitEvent({ action: 'verdict_retry', runId, iteration });
+        return { action: 'retry', iteration };
+      }
+
+      const reason = 'Minor fix attempts exhausted and retry not allowed';
+      this.emitEvent({ type: 'verdict_fail', runId, reason, maxIterations: false });
+      return { action: 'fail', reason };
+    }
+
+    // Increment minor fix attempt and re-run verifier
+    await stateManager.incrementMinorFixAttempt();
+    const state = await stateManager.loadState();
+    const attempt = state?.minor_fix_attempts || 1;
+
+    return { action: 'minor_fix', attempt };
+  }
+
+  /**
    * Handle FAIL verdict
    */
   private async handleFail(
@@ -147,6 +196,8 @@ export class VerdictHandler extends EventEmitter {
     }
 
     if (shouldRetry) {
+      // Reset minor fix attempts when going to BUILD retry
+      await stateManager.resetMinorFixAttempts();
       const { iteration } = await this.phaseManager.incrementIteration();
       this.emitEvent({ action: 'verdict_retry', runId, iteration });
       return { action: 'retry', iteration };

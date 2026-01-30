@@ -14,12 +14,11 @@ import { CRPPrompt } from './CRPPrompt.js';
 import { NewRunPrompt } from './NewRunPrompt.js';
 import { RunListScreen } from './RunListScreen.js';
 import { MRPViewer } from './MRPViewer.js';
-import { FailureViewer } from './FailureViewer.js';
 import { useDashboardData } from './hooks/useDashboardData.js';
-import type { AgentName, DashboardData, RunListItem, MRPEvidence, VCR, CRP, GatekeeperVerdict } from '../../types/index.js';
+import type { AgentName, DashboardData, RunListItem, MRPEvidence, VCR, CRP } from '../../types/index.js';
 import type { DashboardDataProvider } from '../../core/dashboard-data-provider.js';
 
-type AppMode = 'view' | 'newrun' | 'list' | 'mrp' | 'failure';
+type AppMode = 'view' | 'newrun' | 'list' | 'mrp';
 
 interface AppProps {
   provider: DashboardDataProvider | null;
@@ -32,7 +31,6 @@ interface AppProps {
   runs?: RunListItem[];
   mrpEvidence?: MRPEvidence | null;
   currentCRP?: CRP | null;
-  verdict?: GatekeeperVerdict | null;
 }
 
 const AGENT_ORDER: AgentName[] = ['refiner', 'builder', 'verifier', 'gatekeeper'];
@@ -87,7 +85,6 @@ export function App({
   runs = [],
   mrpEvidence = null,
   currentCRP = null,
-  verdict = null,
 }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const { data, loading, error, selectedAgent, selectAgent } = useDashboardData(provider);
@@ -149,12 +146,6 @@ export function App({
     if (input === 'm') {
       setMode('mrp');
       setMrpLoading(false);
-      return;
-    }
-
-    // 'f' to view failure details
-    if (input === 'f') {
-      setMode('failure');
       return;
     }
 
@@ -237,11 +228,6 @@ export function App({
     setMode('view');
   }, []);
 
-  // Handle Failure close
-  const handleFailureClose = useCallback(() => {
-    setMode('view');
-  }, []);
-
   // Handle CRP submit
   const handleCRPSubmit = useCallback(async (selectedOption: number, selectedOptionText: string) => {
     if (!onSubmitVCR || !currentCRP) {
@@ -282,13 +268,6 @@ export function App({
     }
   }, [data?.crp, showingCRP, mode]);
 
-  // Auto-show failure details when run fails
-  useEffect(() => {
-    if (data?.stage === 'FAILED' && mode === 'view' && (verdict || data?.verdict)) {
-      setMode('failure');
-    }
-  }, [data?.stage, data?.verdict, verdict, mode]);
-
   // Use actual data or empty data
   const displayData = data ?? createEmptyData();
 
@@ -326,18 +305,6 @@ export function App({
           evidence={mrpEvidence}
           onClose={handleMRPClose}
           loading={mrpLoading}
-        />
-      </Box>
-    );
-  }
-
-  if (mode === 'failure') {
-    return (
-      <Box flexDirection="column" width="100%">
-        <FailureViewer
-          verdict={verdict ?? displayData.verdict ?? null}
-          runId={displayData.runId}
-          onClose={handleFailureClose}
         />
       </Box>
     );
@@ -411,7 +378,7 @@ export function App({
       {/* Footer: Key bindings */}
       <Box paddingX={1} marginTop={1}>
         <Text dimColor>
-          [1-4] Agent  [n] New  [l] List  [m] MRP  {displayData.stage === 'FAILED' && '[f] Failure  '}[s] Stop  [r] Refresh  [d] Detach  [q] Quit
+          [1-4] Agent  [n] New  [l] List  [m] MRP  [s] Stop  [r] Refresh  [d] Detach  [q] Quit
         </Text>
       </Box>
     </Box>

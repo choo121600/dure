@@ -529,6 +529,14 @@ export class Orchestrator extends EventEmitter {
       this.logger.info('Retrying build phase', { runId: this.currentRunId });
       this.emitEvent({ type: 'phase_changed', phase: 'build', runId: this.currentRunId });
       await this.startAgent('builder');
+    } else if (result.action === 'minor_fix') {
+      // Gatekeeper made small fixes, re-run verifier to confirm
+      this.logger.info('Minor fix applied, re-running verifier', {
+        runId: this.currentRunId,
+        attempt: result.attempt,
+      });
+      this.emitEvent({ type: 'phase_changed', phase: 'verify', runId: this.currentRunId });
+      await this.startAgent('verifier');
     }
   }
 

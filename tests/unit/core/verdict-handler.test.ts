@@ -40,7 +40,11 @@ describe('VerdictHandler', () => {
         phase: 'gate',
         iteration: 1,
         max_iterations: 3,
+        minor_fix_attempts: 0,
+        max_minor_fix_attempts: 2,
       }),
+      resetMinorFixAttempts: vi.fn().mockResolvedValue(undefined),
+      incrementMinorFixAttempt: vi.fn().mockResolvedValue(undefined),
     };
 
     mockConfig = {
@@ -226,6 +230,61 @@ describe('VerdictHandler', () => {
         expect(events.some(e => e.type === 'verdict_needs_human')).toBe(true);
       });
     });
+
+    describe('MINOR_FAIL verdict', () => {
+      it('should return minor_fix action when minor fix is allowed', async () => {
+        mockPhaseManager.handleVerdict.mockResolvedValue({ nextPhase: 'verify', shouldRetry: false, isMinorFix: true });
+        mockStateManager.loadState.mockResolvedValue({
+          run_id: 'run-20260126000000',
+          phase: 'gate',
+          iteration: 1,
+          max_iterations: 3,
+          minor_fix_attempts: 1,
+          max_minor_fix_attempts: 2,
+        });
+
+        const verdict: GatekeeperVerdict = {
+          verdict: 'MINOR_FAIL',
+          reason: '2 tests failed, applying targeted fix',
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await handler.processVerdict(verdict, 'run-20260126000000', mockStateManager);
+
+        expect(result.action).toBe('minor_fix');
+        expect((result as any).attempt).toBe(1);
+        expect(mockStateManager.incrementMinorFixAttempt).toHaveBeenCalled();
+      });
+
+      it('should fall back to retry when minor fix attempts exceeded', async () => {
+        mockPhaseManager.handleVerdict.mockResolvedValue({ nextPhase: 'build', shouldRetry: true, isMinorFix: false });
+
+        const verdict: GatekeeperVerdict = {
+          verdict: 'MINOR_FAIL',
+          reason: 'Minor fix attempts exhausted',
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await handler.processVerdict(verdict, 'run-20260126000000', mockStateManager);
+
+        expect(result.action).toBe('retry');
+        expect(mockStateManager.resetMinorFixAttempts).toHaveBeenCalled();
+      });
+
+      it('should fail when minor fix exhausted and max iterations exceeded', async () => {
+        mockPhaseManager.handleVerdict.mockResolvedValue({ nextPhase: 'failed', shouldRetry: false, isMinorFix: false });
+
+        const verdict: GatekeeperVerdict = {
+          verdict: 'MINOR_FAIL',
+          reason: 'Minor fix attempts exhausted',
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await handler.processVerdict(verdict, 'run-20260126000000', mockStateManager);
+
+        expect(result.action).toBe('fail');
+      });
+    });
   });
 
   describe('executeVerdictResult', () => {
@@ -260,6 +319,14 @@ describe('VerdictHandler', () => {
       await handler.executeVerdictResult(result, 'run-20260126000000', mockStateManager);
 
       expect(mockPhaseManager.transition).not.toHaveBeenCalled();
+    });
+
+    it('should transition to verify on minor_fix', async () => {
+      const result = { action: 'minor_fix' as const, attempt: 1 };
+
+      await handler.executeVerdictResult(result, 'run-20260126000000', mockStateManager);
+
+      expect(mockPhaseManager.transition).toHaveBeenCalledWith('verify');
     });
   });
 

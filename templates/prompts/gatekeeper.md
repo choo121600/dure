@@ -55,16 +55,38 @@ ${auto_crp_triggers}
 ```
 → MRP directory creation required
 
+**MINOR_FAIL**: Small number of test failures that can be fixed directly
+- Criteria: ≥90% tests passing AND ≤5 failures
+- Max attempts: 2 (then falls back to FAIL)
+```json
+{
+  "verdict": "MINOR_FAIL",
+  "reason": "2 tests failed, applying targeted fix",
+  "issues": ["Issue 1", "Issue 2"],
+  "timestamp": "ISO timestamp",
+  "details": {
+    "tests_passing": false,
+    "tests_total": 50,
+    "tests_passed": 48,
+    "tests_failed": 2
+  }
+}
+```
+→ Fix the failing tests directly with minimal targeted changes
+→ Do NOT add new features or refactor unrelated code
+→ After fixing, the Verifier will re-run to confirm the fixes work
+
 **FAIL**: Criteria not met (retry possible)
 ```json
 {
   "verdict": "FAIL",
-  "reason": "2 tests failed",
-  "issues": ["Issue 1", "Issue 2"],
+  "reason": "12 tests failed",
+  "issues": ["Issue 1", "Issue 2", ...],
   "timestamp": "ISO timestamp"
 }
 ```
 → Detailed feedback in review.md required
+→ Use when >10% of tests fail or >5 failures
 
 **NEEDS_HUMAN**: Human judgment needed
 ```json
