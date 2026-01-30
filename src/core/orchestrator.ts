@@ -326,8 +326,16 @@ export class Orchestrator extends EventEmitter {
       onFileWatchEvent: (event) => this.handleWatchEvent(event),
       onAgentMonitorEvent: (event) => {
         if (event.type === 'timeout' && this.stateManager) {
-          this.stateManager.updateAgentStatus(event.agent, 'failed').catch((error) => {
-            this.logger.error('Failed to update agent status on timeout', error instanceof Error ? error : undefined, {
+          // Create timeout error flag and trigger error recovery
+          const errorFlag: ErrorFlag = {
+            agent: event.agent,
+            error_type: 'timeout',
+            message: `Agent ${event.agent} timed out`,
+            timestamp: new Date().toISOString(),
+            recoverable: true,
+          };
+          this.handleErrorFlag(event.agent, errorFlag).catch((error) => {
+            this.logger.error('Failed to handle agent timeout', error instanceof Error ? error : undefined, {
               agent: event.agent,
             });
           });
