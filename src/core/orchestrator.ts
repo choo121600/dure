@@ -458,9 +458,15 @@ export class Orchestrator extends EventEmitter {
         error: `Verifier generated invalid test-config.json: ${errorMessage}`,
         runId,
       });
-      if (this.stateManager) {
-        await this.stateManager.updateAgentStatus('verifier', 'failed', errorMessage);
-      }
+      // Trigger error recovery for validation error
+      const errorFlag: ErrorFlag = {
+        agent: 'verifier',
+        error_type: 'validation',
+        message: `Invalid test-config.json: ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+        recoverable: true,
+      };
+      await this.handleErrorFlag('verifier', errorFlag);
       return;
     }
 
@@ -513,10 +519,15 @@ export class Orchestrator extends EventEmitter {
       this.logger.error('Test execution failed', error instanceof Error ? error : undefined, { runId });
       this.emitEvent({ type: 'error', error: `Test execution failed: ${errorMessage}`, runId });
 
-      // Create error flag for verifier
-      if (this.stateManager) {
-        await this.stateManager.updateAgentStatus('verifier', 'failed', errorMessage);
-      }
+      // Trigger error recovery for test execution crash
+      const errorFlag: ErrorFlag = {
+        agent: 'verifier',
+        error_type: 'crash',
+        message: `Test execution failed: ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+        recoverable: true,
+      };
+      await this.handleErrorFlag('verifier', errorFlag);
     }
   }
 
