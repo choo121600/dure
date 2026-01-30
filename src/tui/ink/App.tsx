@@ -37,7 +37,6 @@ interface AppProps {
   onNewRun?: (briefing: string) => Promise<string>;
   onSelectRun?: (runId: string) => void;
   onStopRun?: () => Promise<void>;
-  onRefresh?: () => void;
   onSubmitVCR?: (vcr: VCR) => Promise<void>;
   onRerunAgent?: (agent: AgentName) => Promise<void>;
   runs?: RunListItem[];
@@ -93,7 +92,6 @@ export function App({
   onNewRun,
   onSelectRun,
   onStopRun,
-  onRefresh,
   onSubmitVCR,
   onRerunAgent,
   runs = [],
@@ -184,14 +182,8 @@ export function App({
       return;
     }
 
-    // 'r' to refresh
+    // 'r' to rerun selected agent
     if (input === 'r') {
-      onRefresh?.();
-      return;
-    }
-
-    // 'R' (uppercase) to rerun selected agent
-    if (input === 'R') {
       handleRerunAgent();
       return;
     }
@@ -463,7 +455,7 @@ export function App({
       {/* Footer: Key bindings */}
       <Box paddingX={1} marginTop={1}>
         <Text dimColor>
-          [1-4] Agent  [n] New  [l] List  [m] MRP  [s] Stop  [r] Refresh  [R] Rerun  [d] Detach  [q] Quit
+          [1-4] Agent  [n] New  [l] List  [m] MRP  [s] Stop  [r] Rerun  [d] Detach  [q] Quit
         </Text>
       </Box>
     </Box>

@@ -183,7 +183,6 @@ function rerenderApp(state: TUIState): void {
       onNewRun={(briefing) => handleNewRun(state, briefing)}
       onSelectRun={(runId) => handleSelectRun(state, runId)}
       onStopRun={() => handleStopRun(state)}
-      onRefresh={() => handleRefresh(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
       onRerunAgent={(agent) => handleRerunAgent(state, agent)}
       runs={state.runs}
@@ -250,16 +249,6 @@ async function handleStopRun(state: TUIState): Promise<void> {
     await state.orchestrator.stopRun();
   }
   await loadRuns(state);
-  rerenderApp(state);
-}
-
-/**
- * Handle refresh
- */
-async function handleRefresh(state: TUIState): Promise<void> {
-  await loadRuns(state);
-  await loadMRPEvidence(state);
-  await loadCurrentCRP(state);
   rerenderApp(state);
 }
 
@@ -363,7 +352,6 @@ async function main(): Promise<void> {
       onNewRun={(briefing) => handleNewRun(state, briefing)}
       onSelectRun={(runId) => handleSelectRun(state, runId)}
       onStopRun={() => handleStopRun(state)}
-      onRefresh={() => handleRefresh(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
       onRerunAgent={(agent) => handleRerunAgent(state, agent)}
       runs={state.runs}
