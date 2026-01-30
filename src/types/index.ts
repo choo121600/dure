@@ -127,6 +127,7 @@ export {
   type UsageUpdatedEvent,
   type ModelsSelectedEvent,
   type ErrorEvent,
+  type AgentManualRerunEvent,
   type MissionCreatedEvent,
   type PlanningStageStartedEvent,
   type PlanningStageCompletedEvent,
@@ -162,6 +163,7 @@ export {
   createUsageUpdatedEvent,
   createModelsSelectedEvent,
   createErrorEvent,
+  createAgentManualRerunEvent,
   createMissionCreatedEvent,
   createPlanningStageStartedEvent,
   createPlanningStageCompletedEvent,
@@ -986,6 +988,17 @@ export type DashboardStage = 'REFINE' | 'BUILD' | 'VERIFY' | 'GATE' | 'DONE' | '
 export type DashboardAgentStatus = 'idle' | 'running' | 'done' | 'error';
 
 /**
+ * Error information for dashboard display
+ */
+export interface DashboardErrorInfo {
+  error_type: string;
+  message: string;
+  stack?: string;
+  timestamp: string;
+  recoverable: boolean;
+}
+
+/**
  * Individual agent data for dashboard
  */
 export interface DashboardAgentData {
@@ -994,6 +1007,7 @@ export interface DashboardAgentData {
   startedAt?: Date;
   finishedAt?: Date;
   model?: AgentModel;    // Model used by this agent (haiku, sonnet, opus)
+  errorInfo?: DashboardErrorInfo;  // Error details when status is 'error'
 }
 
 /**
@@ -1020,6 +1034,7 @@ export interface DashboardProgress {
   currentStep: number;
   totalSteps: number;
   retryCount: number;
+  maxIterations: number;
 }
 
 /**

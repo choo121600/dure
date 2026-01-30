@@ -1,4 +1,4 @@
-import { access, mkdir, readdir, readFile, writeFile, rm, constants } from 'fs/promises';
+import { access, mkdir, readdir, readFile, writeFile, rm, unlink, constants } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import type { RunState, CRP, VCR, RunListItem, MRPEvidence, VerifierResults, GatekeeperVerdict, ModelSelectionResult } from '../types/index.js';
@@ -488,6 +488,68 @@ export class RunManager {
     }
 
     return { deleted, count: deleted.length };
+  }
+
+  /**
+   * Reset verifier directory for retry (MINOR_FAIL scenario)
+   * Removes flag files and output files so verifier can run fresh
+   */
+  async resetVerifierForRetry(runId: string): Promise<void> {
+    const runDir = this.getRunDir(runId);
+    const verifierDir = join(runDir, 'verifier');
+
+    // Files to remove for a clean retry
+    const filesToRemove = [
+      'done.flag',
+      'tests-ready.flag',
+      'test-config.json',
+      'test-output.json',
+      'results.json',
+      'error.flag',
+    ];
+
+    for (const file of filesToRemove) {
+      const filePath = join(verifierDir, file);
+      try {
+        await unlink(filePath);
+      } catch {
+        // File doesn't exist, ignore
+      }
+    }
+  }
+
+  /**
+   * Delete error.flag for a specific agent
+   */
+  async deleteAgentErrorFlag(runId: string, agent: string): Promise<void> {
+    const runDir = this.getRunDir(runId);
+    const errorFlagPath = join(runDir, agent, 'error.flag');
+    try {
+      await unlink(errorFlagPath);
+    } catch {
+      // File doesn't exist, ignore
+    }
+  }
+
+  /**
+   * Reset agent directory for rerun
+   * Removes error.flag and done.flag so agent can run fresh
+   */
+  async resetAgentForRerun(runId: string, agent: string): Promise<void> {
+    const runDir = this.getRunDir(runId);
+    const agentDir = join(runDir, agent);
+
+    // Files to remove for a clean rerun
+    const filesToRemove = ['error.flag', 'done.flag'];
+
+    for (const file of filesToRemove) {
+      const filePath = join(agentDir, file);
+      try {
+        await unlink(filePath);
+      } catch {
+        // File doesn't exist, ignore
+      }
+    }
   }
 
   /**

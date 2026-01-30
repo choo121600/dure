@@ -39,6 +39,7 @@ interface AppProps {
   onStopRun?: () => Promise<void>;
   onRefresh?: () => void;
   onSubmitVCR?: (vcr: VCR) => Promise<void>;
+  onRerunAgent?: (agent: AgentName) => Promise<void>;
   runs?: RunListItem[];
   mrpEvidence?: MRPEvidence | null;
   currentCRP?: CRP | null;
@@ -72,6 +73,7 @@ function createEmptyData(): DashboardData {
       currentStep: 0,
       totalSteps: 4,
       retryCount: 0,
+      maxIterations: 3,
     },
   };
 }
@@ -93,6 +95,7 @@ export function App({
   onStopRun,
   onRefresh,
   onSubmitVCR,
+  onRerunAgent,
   runs = [],
   mrpEvidence = null,
   currentCRP = null,
@@ -125,6 +128,10 @@ export function App({
 
   // MRP states
   const [mrpLoading, setMrpLoading] = useState(false);
+
+  // Rerun states
+  const [rerunLoading, setRerunLoading] = useState(false);
+  const [rerunMessage, setRerunMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -180,6 +187,12 @@ export function App({
     // 'r' to refresh
     if (input === 'r') {
       onRefresh?.();
+      return;
+    }
+
+    // 'R' (uppercase) to rerun selected agent
+    if (input === 'R') {
+      handleRerunAgent();
       return;
     }
 
@@ -283,6 +296,46 @@ export function App({
     setShowingCRP(false);
   }, []);
 
+  // Handle agent rerun
+  const handleRerunAgent = useCallback(async () => {
+    if (!onRerunAgent || rerunLoading) return;
+
+    // Check if selected agent can be rerun (failed/completed/timeout status)
+    const currentData = data ?? createEmptyData();
+    const agentData = currentData.agents[selectedAgent];
+    if (agentData.status !== 'error' && agentData.status !== 'done') {
+      setRerunMessage({
+        type: 'error',
+        text: `Cannot rerun ${selectedAgent}: status is '${agentData.status}'. Only error/done agents can be rerun.`,
+      });
+      // Clear message after 3 seconds
+      setTimeout(() => setRerunMessage(null), 3000);
+      return;
+    }
+
+    setRerunLoading(true);
+    setRerunMessage(null);
+
+    try {
+      await onRerunAgent(selectedAgent);
+      setRerunMessage({
+        type: 'success',
+        text: `Restarted ${selectedAgent}`,
+      });
+      // Clear success message after 2 seconds
+      setTimeout(() => setRerunMessage(null), 2000);
+    } catch (err) {
+      setRerunMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : `Failed to rerun ${selectedAgent}`,
+      });
+      // Clear error message after 5 seconds
+      setTimeout(() => setRerunMessage(null), 5000);
+    } finally {
+      setRerunLoading(false);
+    }
+  }, [onRerunAgent, selectedAgent, data, rerunLoading]);
+
   // Show CRP modal when CRP is available (from either polling or prop)
   useEffect(() => {
     if (effectiveCRP && !showingCRP && mode === 'view') {
@@ -378,6 +431,7 @@ export function App({
         agent={selectedAgent}
         output={selectedAgentData.output}
         maxLines={15}
+        errorInfo={selectedAgentData.errorInfo}
       />
 
       {/* Progress Bar */}
@@ -397,10 +451,19 @@ export function App({
         />
       )}
 
+      {/* Rerun status message */}
+      {rerunMessage && (
+        <Box paddingX={1}>
+          <Text color={rerunMessage.type === 'success' ? 'green' : 'red'}>
+            {rerunMessage.text}
+          </Text>
+        </Box>
+      )}
+
       {/* Footer: Key bindings */}
       <Box paddingX={1} marginTop={1}>
         <Text dimColor>
-          [1-4] Agent  [n] New  [l] List  [m] MRP  [s] Stop  [r] Refresh  [d] Detach  [q] Quit
+          [1-4] Agent  [n] New  [l] List  [m] MRP  [s] Stop  [r] Refresh  [R] Rerun  [d] Detach  [q] Quit
         </Text>
       </Box>
     </Box>

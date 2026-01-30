@@ -17,7 +17,7 @@ import { DashboardDataProvider } from '../../core/dashboard-data-provider.js';
 import { ConfigManager } from '../../config/config-manager.js';
 import { join } from 'path';
 import { existsSync, readdirSync } from 'fs';
-import type { RunListItem, MRPEvidence, VCR, CRP } from '../../types/index.js';
+import type { RunListItem, MRPEvidence, VCR, CRP, AgentName } from '../../types/index.js';
 
 interface TUIOptions {
   projectRoot: string;
@@ -185,6 +185,7 @@ function rerenderApp(state: TUIState): void {
       onStopRun={() => handleStopRun(state)}
       onRefresh={() => handleRefresh(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
+      onRerunAgent={(agent) => handleRerunAgent(state, agent)}
       runs={state.runs}
       mrpEvidence={state.mrpEvidence}
       currentCRP={state.currentCRP}
@@ -283,6 +284,20 @@ async function handleSubmitVCR(state: TUIState, vcr: VCR): Promise<void> {
 }
 
 /**
+ * Handle agent rerun
+ */
+async function handleRerunAgent(state: TUIState, agent: AgentName): Promise<void> {
+  if (!state.orchestrator) {
+    // Need orchestrator to rerun - create one if we have a config
+    const config = state.configManager.loadConfig();
+    state.orchestrator = new Orchestrator(state.projectRoot, config);
+  }
+
+  await state.orchestrator.rerunAgent(agent);
+  rerenderApp(state);
+}
+
+/**
  * Main entry point
  */
 async function main(): Promise<void> {
@@ -350,6 +365,7 @@ async function main(): Promise<void> {
       onStopRun={() => handleStopRun(state)}
       onRefresh={() => handleRefresh(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
+      onRerunAgent={(agent) => handleRerunAgent(state, agent)}
       runs={state.runs}
       mrpEvidence={state.mrpEvidence}
       currentCRP={state.currentCRP}

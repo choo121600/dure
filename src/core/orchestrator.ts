@@ -196,6 +196,54 @@ export class Orchestrator extends EventEmitter {
     this.logger.info('Run stopped');
   }
 
+  /**
+   * Manually rerun a failed or completed agent
+   * Only allows rerun for agents in 'failed', 'timeout', or 'completed' status
+   */
+  async rerunAgent(agent: AgentName): Promise<void> {
+    if (!this.currentRunId || !this.stateManager || !this.managers) {
+      throw new Error('No active run');
+    }
+
+    const state = await this.stateManager.loadState();
+    if (!state) {
+      throw new Error('Failed to load run state');
+    }
+
+    const agentState = state.agents[agent];
+    const allowedStatuses = ['failed', 'timeout', 'completed'];
+
+    if (!allowedStatuses.includes(agentState.status)) {
+      throw new Error(
+        `Cannot rerun agent '${agent}' with status '${agentState.status}'. ` +
+        `Only agents with status: ${allowedStatuses.join(', ')} can be rerun.`
+      );
+    }
+
+    this.logger.info('Manual agent rerun requested', {
+      runId: this.currentRunId,
+      agent,
+      previousStatus: agentState.status,
+    });
+
+    // Reset agent directory (delete error.flag, done.flag)
+    await this.runManager.resetAgentForRerun(this.currentRunId, agent);
+
+    // Update agent status to pending, then start
+    await this.stateManager.updateAgentStatus(agent, 'pending');
+
+    // Transition to agent's phase
+    const phase = this.agentToPhase(agent);
+    await this.managers.phaseManager.transition(phase);
+    await this.stateManager.updatePhase(phase);
+    this.emitEvent({ type: 'phase_changed', phase, runId: this.currentRunId });
+
+    // Start the agent
+    await this.startAgent(agent);
+
+    this.logger.info('Agent rerun started', { runId: this.currentRunId, agent });
+  }
+
   // ============ Public Getters ============
 
   async getCurrentState(): Promise<RunState | null> {
@@ -536,6 +584,10 @@ export class Orchestrator extends EventEmitter {
         runId: this.currentRunId,
         attempt: result.attempt,
       });
+
+      // Reset verifier directory to avoid stale flag files
+      await this.runManager.resetVerifierForRetry(this.currentRunId);
+
       this.emitEvent({ type: 'phase_changed', phase: 'verify', runId: this.currentRunId });
       await this.startAgent('verifier');
     }

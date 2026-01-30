@@ -20,9 +20,11 @@ import type {
   DashboardAgentStatus,
   DashboardAgentData,
   DashboardCRP,
+  DashboardErrorInfo,
   CRP,
   GatekeeperVerdict,
 } from '../types/index.js';
+import type { ErrorFlag } from './file-watcher.js';
 import {
   defaultRefinerConfig,
   defaultBuilderConfig,
@@ -303,12 +305,19 @@ export class DashboardDataProvider extends EventEmitter {
       }
     }
 
+    // Load error info if agent has error status
+    let errorInfo: DashboardErrorInfo | undefined;
+    if (dashboardStatus === 'error') {
+      errorInfo = await this.loadErrorFlag(agent);
+    }
+
     return {
       status: dashboardStatus,
       output,
       startedAt: startedAt ? new Date(startedAt) : undefined,
       finishedAt: completedAt ? new Date(completedAt) : undefined,
       model,
+      errorInfo,
     };
   }
 
@@ -370,6 +379,27 @@ export class DashboardDataProvider extends EventEmitter {
   }
 
   /**
+   * Load error.flag for an agent
+   */
+  private async loadErrorFlag(agent: AgentName): Promise<DashboardErrorInfo | undefined> {
+    try {
+      const errorFlagPath = join(this.runDir, agent, 'error.flag');
+      const content = await readFile(errorFlagPath, 'utf-8');
+      const errorFlag = JSON.parse(content) as ErrorFlag;
+      return {
+        error_type: errorFlag.error_type,
+        message: errorFlag.message,
+        stack: errorFlag.stack,
+        timestamp: errorFlag.timestamp,
+        recoverable: errorFlag.recoverable,
+      };
+    } catch {
+      // Error flag file not found or invalid
+      return undefined;
+    }
+  }
+
+  /**
    * Calculate progress based on current phase
    */
   private calculateProgress(phase: Phase, iteration: number, maxIterations: number): DashboardData['progress'] {
@@ -402,6 +432,7 @@ export class DashboardDataProvider extends EventEmitter {
       currentStep,
       totalSteps: TOTAL_STEPS,
       retryCount: iteration - 1, // iteration starts at 1, retry count starts at 0
+      maxIterations,
     };
   }
 
@@ -431,6 +462,7 @@ export class DashboardDataProvider extends EventEmitter {
         currentStep: 0,
         totalSteps: TOTAL_STEPS,
         retryCount: 0,
+        maxIterations: 3,
       },
     };
   }

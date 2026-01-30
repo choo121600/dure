@@ -4,7 +4,9 @@
  */
 
 import type { AgentName, Phase, UsageInfo, TotalUsage, ModelSelectionResult, Verdict } from './index.js';
-import type { RunId, CrpId, VcrId } from './branded.js';
+import type { RunId, CrpId, VcrId, MissionId, PhaseId, TaskId } from './branded.js';
+import { unsafeCreateRunId } from './branded.js';
+import type { MissionTaskStatus, MissionStats } from './mission.js';
 import type { ErrorFlag } from '../core/file-watcher.js';
 
 // ============================================================================
@@ -187,6 +189,103 @@ export interface ErrorEvent extends BaseOrchestratorEvent {
   cause?: Error;
 }
 
+/**
+ * Emitted when an agent is manually rerun by the user
+ */
+export interface AgentManualRerunEvent extends BaseOrchestratorEvent {
+  type: 'agent_manual_rerun';
+  agent: AgentName;
+}
+
+// ============================================================================
+// Mission Planning Events (Task 1.3)
+// ============================================================================
+
+/**
+ * Emitted when a new mission is created
+ */
+export interface MissionCreatedEvent extends BaseOrchestratorEvent {
+  type: 'mission_created';
+  missionId: MissionId;
+  title: string;
+}
+
+/**
+ * Emitted when a planning stage starts (Planner or Critic)
+ */
+export interface PlanningStageStartedEvent extends BaseOrchestratorEvent {
+  type: 'planning_stage_started';
+  missionId: MissionId;
+  stage: 'planner' | 'critic';
+  iteration: number;
+}
+
+/**
+ * Emitted when a planning stage completes
+ */
+export interface PlanningStageCompletedEvent extends BaseOrchestratorEvent {
+  type: 'planning_stage_completed';
+  missionId: MissionId;
+  stage: 'planner' | 'critic';
+  iteration: number;
+  result: 'success' | 'needs_revision' | 'needs_human';
+}
+
+/**
+ * Emitted when a plan is approved (automatically or by human)
+ */
+export interface PlanApprovedEvent extends BaseOrchestratorEvent {
+  type: 'plan_approved';
+  missionId: MissionId;
+  totalPhases: number;
+  totalTasks: number;
+  approvedBy: 'auto' | 'human';
+}
+
+/**
+ * Emitted when a mission phase starts
+ */
+export interface MissionPhaseStartedEvent extends BaseOrchestratorEvent {
+  type: 'mission_phase_started';
+  missionId: MissionId;
+  phaseId: PhaseId;
+  phaseNumber: number;
+}
+
+/**
+ * Emitted when a mission phase completes
+ */
+export interface MissionPhaseCompletedEvent extends BaseOrchestratorEvent {
+  type: 'mission_phase_completed';
+  missionId: MissionId;
+  phaseId: PhaseId;
+  phaseNumber: number;
+  tasksCompleted: number;
+  tasksFailed: number;
+}
+
+/**
+ * Emitted when a mission task status changes
+ */
+export interface MissionTaskUpdateEvent extends BaseOrchestratorEvent {
+  type: 'mission_task_update';
+  missionId: MissionId;
+  taskId: TaskId;
+  previousStatus: MissionTaskStatus;
+  newStatus: MissionTaskStatus;
+  taskRunId?: string;  // Associated Run ID if task is executing (renamed to avoid conflict with base)
+}
+
+/**
+ * Emitted when a mission completes (success, failure, or cancellation)
+ */
+export interface MissionCompletedEvent extends BaseOrchestratorEvent {
+  type: 'mission_completed';
+  missionId: MissionId;
+  status: 'completed' | 'failed' | 'cancelled';
+  stats: MissionStats;
+}
+
 // ============================================================================
 // Union Type
 // ============================================================================
@@ -213,7 +312,16 @@ export type OrchestratorEventTyped =
   | IterationStartedEvent
   | UsageUpdatedEvent
   | ModelsSelectedEvent
-  | ErrorEvent;
+  | ErrorEvent
+  | AgentManualRerunEvent
+  | MissionCreatedEvent
+  | PlanningStageStartedEvent
+  | PlanningStageCompletedEvent
+  | PlanApprovedEvent
+  | MissionPhaseStartedEvent
+  | MissionPhaseCompletedEvent
+  | MissionTaskUpdateEvent
+  | MissionCompletedEvent;
 
 /**
  * Event type names
@@ -506,6 +614,194 @@ export function createErrorEvent(runId: RunId, error: string, cause?: Error): Er
   };
 }
 
+/**
+ * Create an agent manual rerun event
+ */
+export function createAgentManualRerunEvent(runId: RunId, agent: AgentName): AgentManualRerunEvent {
+  return {
+    type: 'agent_manual_rerun',
+    runId,
+    agent,
+    timestamp: new Date(),
+  };
+}
+
+// ============================================================================
+// Mission Event Constants
+// ============================================================================
+
+/**
+ * Mission event type constants
+ */
+export const MissionEventTypes = {
+  MISSION_CREATED: 'mission_created',
+  PLANNING_STAGE_STARTED: 'planning_stage_started',
+  PLANNING_STAGE_COMPLETED: 'planning_stage_completed',
+  PLAN_APPROVED: 'plan_approved',
+  MISSION_PHASE_STARTED: 'mission_phase_started',
+  MISSION_PHASE_COMPLETED: 'mission_phase_completed',
+  MISSION_TASK_UPDATE: 'mission_task_update',
+  MISSION_COMPLETED: 'mission_completed',
+} as const;
+
+// ============================================================================
+// Mission Event Factory Functions
+// ============================================================================
+
+/**
+ * Create a mission created event
+ */
+export function createMissionCreatedEvent(
+  missionId: MissionId,
+  title: string
+): MissionCreatedEvent {
+  return {
+    type: 'mission_created',
+    runId: unsafeCreateRunId('run-00000000000000'), // Placeholder - missions don't have runId
+    missionId,
+    title,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a planning stage started event
+ */
+export function createPlanningStageStartedEvent(
+  missionId: MissionId,
+  stage: 'planner' | 'critic',
+  iteration: number
+): PlanningStageStartedEvent {
+  return {
+    type: 'planning_stage_started',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    stage,
+    iteration,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a planning stage completed event
+ */
+export function createPlanningStageCompletedEvent(
+  missionId: MissionId,
+  stage: 'planner' | 'critic',
+  iteration: number,
+  result: 'success' | 'needs_revision' | 'needs_human'
+): PlanningStageCompletedEvent {
+  return {
+    type: 'planning_stage_completed',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    stage,
+    iteration,
+    result,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a plan approved event
+ */
+export function createPlanApprovedEvent(
+  missionId: MissionId,
+  totalPhases: number,
+  totalTasks: number,
+  approvedBy: 'auto' | 'human'
+): PlanApprovedEvent {
+  return {
+    type: 'plan_approved',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    totalPhases,
+    totalTasks,
+    approvedBy,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a mission phase started event
+ */
+export function createMissionPhaseStartedEvent(
+  missionId: MissionId,
+  phaseId: PhaseId,
+  phaseNumber: number
+): MissionPhaseStartedEvent {
+  return {
+    type: 'mission_phase_started',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    phaseId,
+    phaseNumber,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a mission phase completed event
+ */
+export function createMissionPhaseCompletedEvent(
+  missionId: MissionId,
+  phaseId: PhaseId,
+  phaseNumber: number,
+  tasksCompleted: number,
+  tasksFailed: number
+): MissionPhaseCompletedEvent {
+  return {
+    type: 'mission_phase_completed',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    phaseId,
+    phaseNumber,
+    tasksCompleted,
+    tasksFailed,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a mission task update event
+ */
+export function createMissionTaskUpdateEvent(
+  missionId: MissionId,
+  taskId: TaskId,
+  previousStatus: MissionTaskStatus,
+  newStatus: MissionTaskStatus,
+  taskRunId?: string
+): MissionTaskUpdateEvent {
+  return {
+    type: 'mission_task_update',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    taskId,
+    previousStatus,
+    newStatus,
+    taskRunId,
+    timestamp: new Date(),
+  };
+}
+
+/**
+ * Create a mission completed event
+ */
+export function createMissionCompletedEvent(
+  missionId: MissionId,
+  status: 'completed' | 'failed' | 'cancelled',
+  stats: MissionStats
+): MissionCompletedEvent {
+  return {
+    type: 'mission_completed',
+    runId: unsafeCreateRunId('run-00000000000000'),
+    missionId,
+    status,
+    stats,
+    timestamp: new Date(),
+  };
+}
+
 // ============================================================================
 // Event Handler Types
 // ============================================================================
@@ -591,4 +887,34 @@ export function isRunEvent(
   event: OrchestratorEventTyped
 ): event is RunStartedEvent | RunCompletedEvent {
   return event.type === 'run_started' || event.type === 'run_completed';
+}
+
+/**
+ * Check if event is mission-related
+ */
+export function isMissionEvent(
+  event: OrchestratorEventTyped
+): event is
+  | MissionCreatedEvent
+  | PlanningStageStartedEvent
+  | PlanningStageCompletedEvent
+  | PlanApprovedEvent
+  | MissionPhaseStartedEvent
+  | MissionPhaseCompletedEvent
+  | MissionTaskUpdateEvent
+  | MissionCompletedEvent {
+  return (
+    event.type.startsWith('mission_') ||
+    event.type.startsWith('planning_') ||
+    event.type === 'plan_approved'
+  );
+}
+
+/**
+ * Check if event is planning-related
+ */
+export function isPlanningEvent(
+  event: OrchestratorEventTyped
+): event is PlanningStageStartedEvent | PlanningStageCompletedEvent | PlanApprovedEvent {
+  return event.type.startsWith('planning_') || event.type === 'plan_approved';
 }
