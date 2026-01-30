@@ -60,6 +60,28 @@ export const ErrorCodes = {
   TMUX_SESSION_NOT_FOUND: 'TMUX_SESSION_NOT_FOUND',
   TMUX_COMMAND_FAILED: 'TMUX_COMMAND_FAILED',
   TMUX_PANE_NOT_FOUND: 'TMUX_PANE_NOT_FOUND',
+
+  // Planning errors
+  PLANNING_FAILED: 'PLANNING_FAILED',
+  PLANNING_PARSE_ERROR: 'PLANNING_PARSE_ERROR',
+  PLANNING_VALIDATION_ERROR: 'PLANNING_VALIDATION_ERROR',
+
+  // Mission errors
+  MISSION_NOT_FOUND: 'MISSION_NOT_FOUND',
+  MISSION_FAILED: 'MISSION_FAILED',
+  MISSION_PLANNING_FAILED: 'MISSION_PLANNING_FAILED',
+  MISSION_ALREADY_RUNNING: 'MISSION_ALREADY_RUNNING',
+  MISSION_PHASE_NOT_FOUND: 'MISSION_PHASE_NOT_FOUND',
+  MISSION_PHASE_NOT_READY: 'MISSION_PHASE_NOT_READY',
+  MISSION_TASK_NOT_FOUND: 'MISSION_TASK_NOT_FOUND',
+  MISSION_TASK_BLOCKED: 'MISSION_TASK_BLOCKED',
+  MISSION_CONTEXT_FAILED: 'MISSION_CONTEXT_FAILED',
+
+  // Kanban errors
+  KANBAN_FAILED: 'KANBAN_FAILED',
+  KANBAN_LOAD_FAILED: 'KANBAN_LOAD_FAILED',
+  KANBAN_SAVE_FAILED: 'KANBAN_SAVE_FAILED',
+  KANBAN_TASK_NOT_FOUND: 'KANBAN_TASK_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
@@ -241,6 +263,62 @@ export class TmuxError extends OrchestraError {
     super(message, code, context, cause);
     this.name = 'TmuxError';
     this.sessionName = context?.sessionName as string | undefined;
+  }
+}
+
+/**
+ * Planning error - thrown when planning operations fail
+ */
+export class PlanningError extends OrchestraError {
+  readonly stage?: 'planner' | 'critic';
+  readonly iteration?: number;
+
+  constructor(
+    message: string,
+    code: ErrorCode = ErrorCodes.PLANNING_FAILED,
+    context?: Record<string, unknown>,
+    cause?: Error
+  ) {
+    super(message, code, context, cause);
+    this.name = 'PlanningError';
+    this.stage = context?.stage as 'planner' | 'critic' | undefined;
+    this.iteration = context?.iteration as number | undefined;
+  }
+}
+
+/**
+ * Mission error - thrown when mission operations fail
+ */
+export class MissionError extends OrchestraError {
+  readonly missionId: string;
+
+  constructor(
+    missionId: string,
+    message: string,
+    code: ErrorCode = ErrorCodes.MISSION_FAILED,
+    cause?: Error
+  ) {
+    super(message, code, { missionId }, cause);
+    this.name = 'MissionError';
+    this.missionId = missionId;
+  }
+}
+
+/**
+ * Kanban error - thrown when kanban operations fail
+ */
+export class KanbanError extends OrchestraError {
+  readonly missionId?: string;
+
+  constructor(
+    message: string,
+    code: ErrorCode = ErrorCodes.KANBAN_FAILED,
+    context?: Record<string, unknown>,
+    cause?: Error
+  ) {
+    super(message, code, context, cause);
+    this.name = 'KanbanError';
+    this.missionId = context?.missionId as string | undefined;
   }
 }
 
@@ -458,6 +536,27 @@ export function isRecoveryError(error: unknown): error is RecoveryError {
  */
 export function isTimeoutError(error: unknown): error is TimeoutError {
   return error instanceof TimeoutError;
+}
+
+/**
+ * Check if an error is a PlanningError
+ */
+export function isPlanningError(error: unknown): error is PlanningError {
+  return error instanceof PlanningError;
+}
+
+/**
+ * Check if an error is a MissionError
+ */
+export function isMissionError(error: unknown): error is MissionError {
+  return error instanceof MissionError;
+}
+
+/**
+ * Check if an error is a KanbanError
+ */
+export function isKanbanError(error: unknown): error is KanbanError {
+  return error instanceof KanbanError;
 }
 
 /**

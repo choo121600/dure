@@ -376,3 +376,78 @@ Create a simple utility function for string manipulation.
 - Must have unit tests
 `;
 }
+
+/**
+ * Create a mock Mission for testing
+ */
+export function createMockMission(overrides: Partial<any> = {}): any {
+  return {
+    mission_id: 'mission-20260130000000',
+    title: 'Test Mission',
+    description: 'Test mission description',
+    planning: {
+      stage: 'approved',
+      iterations: 1,
+      drafts: [],
+      critiques: [],
+    },
+    phases: [],
+    status: 'ready',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    stats: {
+      total_phases: 0,
+      total_tasks: 0,
+      completed_tasks: 0,
+      failed_tasks: 0,
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock MissionPhase for testing
+ */
+export function createMockPhase(phaseNumber: number, overrides: Partial<any> = {}): any {
+  return {
+    phase_id: `phase-${phaseNumber}`,
+    mission_id: 'mission-20260130000000',
+    number: phaseNumber,
+    title: `Phase ${phaseNumber}`,
+    description: `Test phase ${phaseNumber}`,
+    tasks: [],
+    status: 'pending',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock MissionTask for testing
+ */
+export function createMockTask(phaseNumber: number, taskNumber: number, overrides: Partial<any> = {}): any {
+  return {
+    task_id: `task-${phaseNumber}.${taskNumber}`,
+    phase_id: `phase-${phaseNumber}`,
+    title: `Task ${phaseNumber}.${taskNumber}`,
+    description: `Test task ${phaseNumber}.${taskNumber}`,
+    briefing_path: `phases/phase-${phaseNumber}/task-${phaseNumber}.${taskNumber}/briefing.md`,
+    depends_on: [],
+    status: 'pending',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock CarryForward for testing
+ */
+export function createMockCarryForward(taskId: string, overrides: Partial<any> = {}): any {
+  return {
+    task_id: taskId,
+    created_at: new Date().toISOString(),
+    key_decisions: ['Decision 1', 'Decision 2'],
+    created_artifacts: ['src/file1.ts', 'src/file2.ts'],
+    warnings: ['Warning 1'],
+    suggestions: ['Suggestion 1'],
+    ...overrides,
+  };
+}

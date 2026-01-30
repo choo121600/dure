@@ -408,3 +408,87 @@ export interface Mission {
   // Statistics
   stats: MissionStats;
 }
+
+// ============================================================================
+// Kanban Types (Phase 4)
+// ============================================================================
+
+/**
+ * Kanban card representing a task on the board
+ */
+export interface KanbanCard {
+  task_id: TaskId;
+  phase_id: PhaseId;
+  title: string;
+  status: MissionTaskStatus;
+  run_id?: string;
+  error?: string;
+  depends_on: TaskId[];
+  blocked_by: TaskId[];              // Tasks that are actually blocking this one
+}
+
+/**
+ * Kanban column representing a phase
+ */
+export interface KanbanColumn {
+  phase_id: PhaseId;
+  number: number;
+  title: string;
+  status: PhaseStatus;
+  cards: KanbanCard[];
+}
+
+/**
+ * Kanban board statistics
+ */
+export interface KanbanStats {
+  total_tasks: number;
+  pending: number;
+  blocked: number;
+  in_progress: number;
+  passed: number;
+  failed: number;
+  needs_human: number;
+}
+
+/**
+ * Active task information
+ */
+export interface KanbanActiveTask {
+  task_id: TaskId;
+  phase_id: PhaseId;
+  run_id?: string;
+  started_at: string;
+}
+
+/**
+ * Complete Kanban board state
+ */
+export interface KanbanState {
+  mission_id: MissionId;
+  mission_title: string;
+  planning_stage: PlanningStage;
+
+  columns: KanbanColumn[];
+
+  // Statistics
+  stats: KanbanStats;
+
+  // Currently executing task (if any)
+  active_task?: KanbanActiveTask;
+
+  // Last update timestamp
+  updated_at: string;
+}
+
+/**
+ * Kanban update event for real-time notifications
+ */
+export interface KanbanUpdate {
+  type: 'task_status' | 'phase_status' | 'full_refresh';
+  task_id?: TaskId;
+  phase_id?: PhaseId;
+  old_status?: string;
+  new_status?: string;
+  timestamp: string;
+}

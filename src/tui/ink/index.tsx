@@ -2,9 +2,8 @@
 /**
  * TUI Entry Point
  *
- * Standalone TUI dashboard for monitoring Dure runs.
- * Can be started independently or via `dure start --tui`.
- * Supports full standalone operation: create runs, switch runs, submit VCR.
+ * Standalone TUI dashboard with tab navigation for Kanban/Run/History.
+ * Integrates MissionManager for mission lifecycle management.
  */
 import React from 'react';
 import { render, Instance } from 'ink';
@@ -13,27 +12,45 @@ import { Orchestrator } from '../../core/orchestrator.js';
 import { TmuxManager } from '../../core/tmux-manager.js';
 import { StateManager } from '../../core/state-manager.js';
 import { RunManager } from '../../core/run-manager.js';
+import { MissionManager } from '../../core/mission-manager.js';
 import { DashboardDataProvider } from '../../core/dashboard-data-provider.js';
 import { ConfigManager } from '../../config/config-manager.js';
 import { join } from 'path';
 import { existsSync, readdirSync } from 'fs';
-import type { RunListItem, MRPEvidence, VCR, CRP, AgentName } from '../../types/index.js';
+import { isOk, isErr } from '../../types/result.js';
+import type { RunListItem, MRPEvidence, VCR, CRP, AgentName, MissionId, TaskId } from '../../types/index.js';
+import type { Mission, MissionTask, MissionPhase } from '../../types/mission.js';
 
 interface TUIOptions {
   projectRoot: string;
   runId?: string;
+  missionId?: string;
+}
+
+interface TaskContext {
+  taskId: TaskId;
+  taskTitle: string;
+  phaseNumber: number;
 }
 
 interface TUIState {
   projectRoot: string;
   configManager: ConfigManager;
   runManager: RunManager;
+  missionManager: MissionManager;
   orchestrator: Orchestrator | null;
   provider: DashboardDataProvider | null;
+  // Mission state
+  activeMission: Mission | null;
+  missions: Mission[];
+  // Run state
   currentRunId: string | null;
   runs: RunListItem[];
   mrpEvidence: MRPEvidence | null;
   currentCRP: CRP | null;
+  // Task context for runs from kanban
+  taskContext: TaskContext | null;
+  // Ink instance
   inkInstance: Instance | null;
 }
 
@@ -52,6 +69,8 @@ function parseArgs(): TUIOptions {
       options.projectRoot = args[++i];
     } else if (arg === '--run-id' && args[i + 1]) {
       options.runId = args[++i];
+    } else if (arg === '--mission-id' && args[i + 1]) {
+      options.missionId = args[++i];
     } else if (!arg.startsWith('-')) {
       // Assume it's a run ID if not a flag
       options.runId = arg;
@@ -129,6 +148,18 @@ async function loadRuns(state: TUIState): Promise<void> {
 }
 
 /**
+ * Load missions list
+ */
+async function loadMissions(state: TUIState): Promise<void> {
+  const result = await state.missionManager.listMissions();
+  if (isOk(result)) {
+    state.missions = result.data;
+  } else {
+    state.missions = [];
+  }
+}
+
+/**
  * Load MRP evidence for current run
  */
 async function loadMRPEvidence(state: TUIState): Promise<void> {
@@ -178,16 +209,24 @@ function rerenderApp(state: TUIState): void {
 
   state.inkInstance.rerender(
     <App
+      projectRoot={state.projectRoot}
       provider={state.provider}
-      onDetach={() => handleDetach(state)}
-      onNewRun={(briefing) => handleNewRun(state, briefing)}
+      activeMission={state.activeMission}
+      missions={state.missions}
+      runs={state.runs}
+      mrpEvidence={state.mrpEvidence}
+      currentCRP={state.currentCRP}
+      taskContext={state.taskContext}
+      onNewMission={(description) => handleNewMission(state, description)}
+      onSelectMission={(missionId) => handleSelectMission(state, missionId)}
+      onRunTask={(taskId) => handleRunTask(state, taskId)}
+      onRetryTask={(taskId) => handleRetryTask(state, taskId)}
+      onSkipTask={(taskId) => handleSkipTask(state, taskId)}
       onSelectRun={(runId) => handleSelectRun(state, runId)}
       onStopRun={() => handleStopRun(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
       onRerunAgent={(agent) => handleRerunAgent(state, agent)}
-      runs={state.runs}
-      mrpEvidence={state.mrpEvidence}
-      currentCRP={state.currentCRP}
+      onDetach={() => handleDetach(state)}
     />
   );
 }
@@ -204,35 +243,140 @@ function handleDetach(state: TUIState): void {
   if (state.currentRunId) {
     console.log(`Run continues in background: ${state.currentRunId}`);
   }
+  if (state.activeMission) {
+    console.log(`Active mission: ${state.activeMission.mission_id}`);
+  }
   console.log('To reattach: dure monitor');
 }
 
 /**
- * Handle new run creation
+ * Handle new mission creation
  */
-async function handleNewRun(state: TUIState, briefing: string): Promise<string> {
-  const config = state.configManager.loadConfig();
-
-  // Create orchestrator if not exists
-  if (!state.orchestrator) {
-    state.orchestrator = new Orchestrator(state.projectRoot, config);
+async function handleNewMission(state: TUIState, description: string): Promise<string> {
+  const result = await state.missionManager.createMission(description);
+  if (isErr(result)) {
+    throw new Error(result.error.message);
   }
 
-  // Start the run
-  const runId = await state.orchestrator.startRun(briefing);
-
-  // Switch to the new run
-  switchToRun(state, runId);
-
-  // Reload runs list
-  await loadRuns(state);
+  state.activeMission = result.data;
+  await loadMissions(state);
   rerenderApp(state);
 
-  return runId;
+  return result.data.mission_id;
 }
 
 /**
- * Handle run selection
+ * Handle mission selection
+ */
+async function handleSelectMission(state: TUIState, missionId: MissionId): Promise<void> {
+  const result = await state.missionManager.getMission(missionId);
+  if (isOk(result)) {
+    state.activeMission = result.data;
+    state.taskContext = null; // Clear task context when switching missions
+    rerenderApp(state);
+  }
+}
+
+/**
+ * Handle task run from kanban
+ */
+async function handleRunTask(state: TUIState, taskId: TaskId): Promise<void> {
+  if (!state.activeMission) {
+    throw new Error('No active mission');
+  }
+
+  // Find the task in the mission
+  let targetTask: MissionTask | undefined;
+  let targetPhase: MissionPhase | undefined;
+
+  for (const phase of state.activeMission.phases) {
+    const task = phase.tasks.find(t => t.task_id === taskId);
+    if (task) {
+      targetTask = task;
+      targetPhase = phase;
+      break;
+    }
+  }
+
+  if (!targetTask || !targetPhase) {
+    throw new Error(`Task ${taskId} not found`);
+  }
+
+  // Set task context
+  state.taskContext = {
+    taskId: taskId,
+    taskTitle: targetTask.title,
+    phaseNumber: targetPhase.number,
+  };
+
+  // Start the task run
+  const result = await state.missionManager.runTask(state.activeMission.mission_id, taskId);
+  if (isErr(result)) {
+    throw new Error(result.error.message);
+  }
+
+  // Switch to the run
+  if (result.data.runId) {
+    switchToRun(state, result.data.runId);
+  }
+
+  // Reload mission to get updated state
+  const missionResult = await state.missionManager.getMission(state.activeMission.mission_id);
+  if (isOk(missionResult)) {
+    state.activeMission = missionResult.data;
+  }
+
+  await loadRuns(state);
+  rerenderApp(state);
+}
+
+/**
+ * Handle task retry from kanban
+ */
+async function handleRetryTask(state: TUIState, taskId: TaskId): Promise<void> {
+  if (!state.activeMission) {
+    throw new Error('No active mission');
+  }
+
+  const result = await state.missionManager.retryTask(state.activeMission.mission_id, taskId);
+  if (isErr(result)) {
+    throw new Error(result.error.message);
+  }
+
+  // Reload mission to get updated state
+  const missionResult = await state.missionManager.getMission(state.activeMission.mission_id);
+  if (isOk(missionResult)) {
+    state.activeMission = missionResult.data;
+  }
+
+  await loadRuns(state);
+  rerenderApp(state);
+}
+
+/**
+ * Handle task skip from kanban
+ */
+async function handleSkipTask(state: TUIState, taskId: TaskId): Promise<void> {
+  if (!state.activeMission) {
+    throw new Error('No active mission');
+  }
+
+  const result = await state.missionManager.skipTask(state.activeMission.mission_id, taskId);
+  if (isErr(result)) {
+    throw new Error(result.error.message);
+  }
+
+  // Reload mission to get updated state
+  const missionResult = await state.missionManager.getMission(state.activeMission.mission_id);
+  if (isOk(missionResult)) {
+    state.activeMission = missionResult.data;
+  }
+
+  rerenderApp(state);
+}
+
+/**
+ * Handle run selection (from history or list)
  */
 async function handleSelectRun(state: TUIState, runId: string): Promise<void> {
   switchToRun(state, runId);
@@ -248,6 +392,7 @@ async function handleStopRun(state: TUIState): Promise<void> {
   if (state.orchestrator) {
     await state.orchestrator.stopRun();
   }
+  state.taskContext = null; // Clear task context
   await loadRuns(state);
   rerenderApp(state);
 }
@@ -301,10 +446,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const config = configManager.loadConfig();
-
-  // Initialize run manager
+  // Initialize managers
   const runManager = new RunManager(projectRoot);
+  const missionManager = new MissionManager(projectRoot);
 
   // Find initial run ID
   let runId = options.runId;
@@ -317,12 +461,16 @@ async function main(): Promise<void> {
     projectRoot,
     configManager,
     runManager,
+    missionManager,
     orchestrator: null,
     provider: null,
+    activeMission: null,
+    missions: [],
     currentRunId: runId ?? null,
     runs: [],
     mrpEvidence: null,
     currentCRP: null,
+    taskContext: null,
     inkInstance: null,
   };
 
@@ -336,6 +484,21 @@ async function main(): Promise<void> {
 
   // Load initial data
   await loadRuns(state);
+  await loadMissions(state);
+
+  // Load active mission if specified or find most recent
+  if (options.missionId) {
+    const missionResult = await missionManager.getMission(options.missionId as MissionId);
+    if (isOk(missionResult)) {
+      state.activeMission = missionResult.data;
+    }
+  } else if (state.missions.length > 0) {
+    // Use most recent non-completed mission, or most recent if all completed
+    const activeMission = state.missions.find(m => m.status !== 'completed' && m.status !== 'failed')
+      || state.missions[0];
+    state.activeMission = activeMission || null;
+  }
+
   if (state.currentRunId) {
     await loadMRPEvidence(state);
     await loadCurrentCRP(state);
@@ -347,16 +510,24 @@ async function main(): Promise<void> {
   // Render the app
   state.inkInstance = render(
     <App
+      projectRoot={state.projectRoot}
       provider={state.provider}
-      onDetach={() => handleDetach(state)}
-      onNewRun={(briefing) => handleNewRun(state, briefing)}
+      activeMission={state.activeMission}
+      missions={state.missions}
+      runs={state.runs}
+      mrpEvidence={state.mrpEvidence}
+      currentCRP={state.currentCRP}
+      taskContext={state.taskContext}
+      onNewMission={(description) => handleNewMission(state, description)}
+      onSelectMission={(missionId) => handleSelectMission(state, missionId)}
+      onRunTask={(taskId) => handleRunTask(state, taskId)}
+      onRetryTask={(taskId) => handleRetryTask(state, taskId)}
+      onSkipTask={(taskId) => handleSkipTask(state, taskId)}
       onSelectRun={(runId) => handleSelectRun(state, runId)}
       onStopRun={() => handleStopRun(state)}
       onSubmitVCR={(vcr) => handleSubmitVCR(state, vcr)}
       onRerunAgent={(agent) => handleRerunAgent(state, agent)}
-      runs={state.runs}
-      mrpEvidence={state.mrpEvidence}
-      currentCRP={state.currentCRP}
+      onDetach={() => handleDetach(state)}
     />
   );
 

@@ -16,6 +16,8 @@ import { createMrpRouter } from './routes/mrp.js';
 import { createHealthRouter } from './routes/health.js';
 import { createDashboardRouter } from './routes/dashboard.js';
 import { createDashboardSocketHandler, DashboardSocketHandler } from './dashboard/socket-handler.js';
+import { createMissionRoutes } from './dashboard/mission-routes.js';
+import { createMissionSocketHandler, MissionSocketHandler } from './dashboard/mission-socket.js';
 import { GracefulShutdown, ShutdownOptions } from './shutdown.js';
 import { apiKeyAuth, socketAuth, isAuthEnabled } from './middleware/auth.js';
 import swaggerUi from 'swagger-ui-express';
@@ -79,6 +81,8 @@ export interface ExtendedServer extends Server {
   gracefulShutdown: GracefulShutdown;
   /** Dashboard socket handler for real-time updates */
   dashboardSocketHandler: DashboardSocketHandler;
+  /** Mission socket handler for kanban updates */
+  missionSocketHandler: MissionSocketHandler;
 }
 
 export function createServer(
@@ -229,8 +233,14 @@ export function createServer(
     outputLines: 50,
   }));
 
+  // Mission API routes
+  app.use('/api', createMissionRoutes(projectRoot));
+
   // Dashboard Socket.io handler
   const dashboardSocketHandler = createDashboardSocketHandler(io, { logger });
+
+  // Mission Socket.io handler
+  const missionSocketHandler = createMissionSocketHandler(io, projectRoot, { logger });
 
   // Forward orchestrator events to Socket.io
   orchestrator.on('orchestrator_event', (event: OrchestratorEvent) => {
@@ -409,10 +419,11 @@ export function createServer(
   // Setup graceful shutdown
   const gracefulShutdown = new GracefulShutdown(httpServer, orchestrator, shutdownOptions, io, logger);
 
-  // Extend httpServer with gracefulShutdown and dashboardSocketHandler
+  // Extend httpServer with gracefulShutdown and socket handlers
   const extendedServer = httpServer as ExtendedServer;
   extendedServer.gracefulShutdown = gracefulShutdown;
   extendedServer.dashboardSocketHandler = dashboardSocketHandler;
+  extendedServer.missionSocketHandler = missionSocketHandler;
 
   return extendedServer;
 }

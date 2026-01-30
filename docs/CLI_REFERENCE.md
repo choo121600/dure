@@ -3,7 +3,7 @@
 > This document is auto-generated. Do not edit manually.
 > Run `npm run docs:cli` to regenerate.
 >
-> Last generated: 2026-01-29
+> Last generated: 2026-01-30
 
 Dure provides a command-line interface for managing agentic software engineering workflows.
 
@@ -16,6 +16,12 @@ Dure provides a command-line interface for managing agentic software engineering
 - [dure history](#dure-history)
 - [dure init](#dure-init)
 - [dure logs](#dure-logs)
+- [dure mission](#dure-mission)
+  - [dure mission create](#dure-mission-create)
+  - [dure mission kanban](#dure-mission-kanban)
+  - [dure mission list](#dure-mission-list)
+  - [dure mission run](#dure-mission-run)
+  - [dure mission status](#dure-mission-status)
 - [dure monitor](#dure-monitor)
 - [dure recover](#dure-recover)
 - [dure screenshots](#dure-screenshots)
@@ -72,6 +78,30 @@ Show the history of past runs.
 Show real-time logs for the current run.
 
 ![dure logs --help](docs/images/cli/output_logs.svg)
+
+## `dure mission`
+
+![dure mission --help](docs/images/cli/output_mission.svg)
+
+### `dure mission create`
+
+![dure mission create --help](docs/images/cli/output_mission_create.svg)
+
+### `dure mission kanban`
+
+![dure mission kanban --help](docs/images/cli/output_mission_kanban.svg)
+
+### `dure mission list`
+
+![dure mission list --help](docs/images/cli/output_mission_list.svg)
+
+### `dure mission run`
+
+![dure mission run --help](docs/images/cli/output_mission_run.svg)
+
+### `dure mission status`
+
+![dure mission status --help](docs/images/cli/output_mission_status.svg)
 
 ## `dure monitor`
 

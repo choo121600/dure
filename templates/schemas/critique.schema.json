@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["version", "verdict", "summary", "items", "stats", "rationale"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["approved", "needs_revision", "needs_human"]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "category", "target", "title", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^critique-\\d{3}$"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "major", "minor", "suggestion"]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "missing_task",
+              "duplicate_task",
+              "dependency_error",
+              "scope_issue",
+              "ordering_issue",
+              "unclear_spec",
+              "missing_artifact",
+              "security_concern",
+              "grouping_issue",
+              "other"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["mission", "phase", "task"]
+              },
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["critical", "major", "minor", "suggestion"],
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "major": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suggestion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "rationale": {
+      "type": "string"
+    }
+  }
+}

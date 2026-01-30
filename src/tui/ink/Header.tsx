@@ -80,7 +80,7 @@ export function Header({ data }: HeaderProps): React.ReactElement {
         <Box width="34%">
           <Text>Retry: </Text>
           <Text color={data.progress.retryCount > 0 ? 'red' : 'white'}>
-            {data.progress.retryCount}/3
+            {data.progress.retryCount}/{data.progress.maxIterations}
           </Text>
         </Box>
       </Box>

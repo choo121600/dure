@@ -41,6 +41,7 @@ function createEmptyData(): DashboardData {
       currentStep: 0,
       totalSteps: 4,
       retryCount: 0,
+      maxIterations: 3,
     },
   };
 }

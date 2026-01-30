@@ -174,32 +174,7 @@ describe('MissionManager', () => {
     });
   });
 
-  describe('runPhase', () => {
-    it('should return not implemented error', async () => {
-      const result = await manager.runPhase('mission-00000000000000' as MissionId, 1);
-
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
-        expect(result.error.code).toBe(ErrorCodes.MISSION_FAILED);
-        expect(result.error.message).toContain('not yet implemented');
-      }
-    });
-  });
-
-  describe('runTask', () => {
-    it('should return not implemented error', async () => {
-      const result = await manager.runTask(
-        'mission-00000000000000' as MissionId,
-        'task-1.1' as any
-      );
-
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
-        expect(result.error.code).toBe(ErrorCodes.MISSION_FAILED);
-        expect(result.error.message).toContain('not yet implemented');
-      }
-    });
-  });
+  // Note: runPhase and runTask tests are in mission-manager-run.test.ts
 
   describe('directory structure', () => {
     it('should create required subdirectories', async () => {

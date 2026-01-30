@@ -18,6 +18,11 @@ import { cleanCommand } from './commands/clean.js';
 import { clearCommand } from './commands/clear.js';
 import { recoverCommand } from './commands/recover.js';
 import { createScreenshotsCommand } from './commands/screenshots.js';
+import { missionCreateCommand } from './commands/mission-create.js';
+import { missionStatusCommand } from './commands/mission-status.js';
+import { missionListCommand } from './commands/mission-list.js';
+import { missionRunCommand } from './commands/mission-run.js';
+import { missionKanbanCommand } from './commands/mission-kanban.js';
 
 /**
  * Create the main CLI program with all commands registered
@@ -107,6 +112,49 @@ export function createProgram(): Command {
 
   // Add screenshots command for documentation automation
   program.addCommand(createScreenshotsCommand());
+
+  // Mission command group
+  const mission = program
+    .command('mission')
+    .description('Mission planning and execution');
+
+  mission
+    .command('create [description]')
+    .description('Create a new mission and start planning')
+    .option('-f, --file <path>', 'Read description from file')
+    .option('-g, --granularity <type>', 'Run unit: task, phase, auto (default: auto)', 'auto')
+    .option('--no-planning', 'Skip planning phase (for debugging)')
+    .action(missionCreateCommand);
+
+  mission
+    .command('status <mission-id>')
+    .description('Show mission status and details')
+    .option('--json', 'Output as JSON')
+    .option('-v, --verbose', 'Show detailed task information')
+    .action(missionStatusCommand);
+
+  mission
+    .command('list')
+    .description('List all missions')
+    .option('--json', 'Output as JSON')
+    .option('-s, --status <status>', 'Filter by status')
+    .option('-n, --limit <number>', 'Limit number of results', parseInt)
+    .action(missionListCommand);
+
+  mission
+    .command('run <mission-id>')
+    .description('Run mission phases or tasks')
+    .option('-p, --phase <number>', 'Run specific phase', parseInt)
+    .option('-t, --task <task-id>', 'Run specific task (e.g., task-1.2)')
+    .option('--continue-on-failure', 'Continue to next task even if one fails')
+    .option('-w, --watch', 'Show real-time task status')
+    .action(missionRunCommand);
+
+  mission
+    .command('kanban <mission-id>')
+    .description('Display mission kanban board')
+    .option('-w, --watch', 'Watch for real-time updates')
+    .action(missionKanbanCommand);
 
   return program;
 }

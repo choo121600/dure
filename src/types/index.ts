@@ -29,6 +29,7 @@ export {
   TimeoutError,
   FileSystemError,
   TmuxError,
+  KanbanError,
   ErrorCodes,
   type ErrorCode,
   // Type guards
@@ -38,6 +39,7 @@ export {
   isAgentError,
   isRecoveryError,
   isTimeoutError,
+  isKanbanError,
   hasErrorCode,
   // Factory functions
   createPathValidationError,
@@ -181,6 +183,10 @@ export {
   isMissionEvent,
   isPlanningEvent,
 } from './events.js';
+
+// TUI Tab Navigation Types
+export type TabMode = 'kanban' | 'run' | 'history';
+export type ModalMode = 'newmission' | 'missionlist' | null;
 
 // Agent Types
 export type AgentName = 'refiner' | 'builder' | 'verifier' | 'gatekeeper';
@@ -1145,4 +1151,11 @@ export {
   type PlanDraft,
   type MissionStats,
   type Mission,
+  // Kanban types
+  type KanbanCard,
+  type KanbanColumn,
+  type KanbanStats,
+  type KanbanActiveTask,
+  type KanbanState,
+  type KanbanUpdate,
 } from './mission.js';
