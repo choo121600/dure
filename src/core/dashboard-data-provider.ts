@@ -12,6 +12,7 @@ import type { TmuxManager } from './tmux-manager.js';
 import type { StateManager } from './state-manager.js';
 import type {
   AgentName,
+  AgentModel,
   Phase,
   AgentStatus,
   DashboardData,
@@ -22,6 +23,12 @@ import type {
   CRP,
   GatekeeperVerdict,
 } from '../types/index.js';
+import {
+  defaultRefinerConfig,
+  defaultBuilderConfig,
+  defaultVerifierConfig,
+  defaultGatekeeperConfig,
+} from '../config/defaults.js';
 
 /**
  * Map Phase to DashboardStage
@@ -164,12 +171,20 @@ export class DashboardDataProvider extends EventEmitter {
       return this.createEmptyData();
     }
 
+    // Get model configuration (from model_selection if available, otherwise defaults)
+    const models: Record<AgentName, AgentModel> = state.model_selection?.models ?? {
+      refiner: defaultRefinerConfig.model,
+      builder: defaultBuilderConfig.model,
+      verifier: defaultVerifierConfig.model,
+      gatekeeper: defaultGatekeeperConfig.model,
+    };
+
     // Build agent data
     const agents: DashboardData['agents'] = {
-      refiner: await this.getAgentData('refiner', state.agents.refiner.status, state.agents.refiner.started_at, state.agents.refiner.completed_at),
-      builder: await this.getAgentData('builder', state.agents.builder.status, state.agents.builder.started_at, state.agents.builder.completed_at),
-      verifier: await this.getAgentData('verifier', state.agents.verifier.status, state.agents.verifier.started_at, state.agents.verifier.completed_at),
-      gatekeeper: await this.getAgentData('gatekeeper', state.agents.gatekeeper.status, state.agents.gatekeeper.started_at, state.agents.gatekeeper.completed_at),
+      refiner: await this.getAgentData('refiner', state.agents.refiner.status, state.agents.refiner.started_at, state.agents.refiner.completed_at, models.refiner),
+      builder: await this.getAgentData('builder', state.agents.builder.status, state.agents.builder.started_at, state.agents.builder.completed_at, models.builder),
+      verifier: await this.getAgentData('verifier', state.agents.verifier.status, state.agents.verifier.started_at, state.agents.verifier.completed_at, models.verifier),
+      gatekeeper: await this.getAgentData('gatekeeper', state.agents.gatekeeper.status, state.agents.gatekeeper.started_at, state.agents.gatekeeper.completed_at, models.gatekeeper),
     };
 
     // Calculate usage
@@ -263,7 +278,8 @@ export class DashboardDataProvider extends EventEmitter {
     agent: AgentName,
     status: AgentStatus,
     startedAt?: string,
-    completedAt?: string
+    completedAt?: string,
+    model?: AgentModel
   ): Promise<DashboardAgentData> {
     const dashboardStatus = agentStatusToDashboardStatus(status);
 
@@ -292,6 +308,7 @@ export class DashboardDataProvider extends EventEmitter {
       output,
       startedAt: startedAt ? new Date(startedAt) : undefined,
       finishedAt: completedAt ? new Date(completedAt) : undefined,
+      model,
     };
   }
 

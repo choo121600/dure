@@ -993,6 +993,7 @@ export interface DashboardAgentData {
   output: string;        // Last N lines of output
   startedAt?: Date;
   finishedAt?: Date;
+  model?: AgentModel;    // Model used by this agent (haiku, sonnet, opus)
 }
 
 /**

@@ -6,7 +6,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
-import type { AgentName, DashboardAgentStatus } from '../../types/index.js';
+import type { AgentName, AgentModel, DashboardAgentStatus } from '../../types/index.js';
 
 interface AgentInfo {
   name: AgentName;
@@ -14,7 +14,7 @@ interface AgentInfo {
 }
 
 interface AgentPanelProps {
-  agents: Record<AgentName, { status: DashboardAgentStatus }>;
+  agents: Record<AgentName, { status: DashboardAgentStatus; model?: AgentModel }>;
   selectedAgent: AgentName;
   onSelectAgent: (agent: AgentName) => void;
 }
@@ -25,6 +25,16 @@ const AGENT_LABELS: Record<AgentName, string> = {
   builder: 'Builder',
   verifier: 'Verifier',
   gatekeeper: 'Gatekeeper',
+};
+
+/**
+ * Map model name to short abbreviation
+ * C.H = Claude Haiku, C.S = Claude Sonnet, C.O = Claude Opus
+ */
+const MODEL_ABBREV: Record<AgentModel, string> = {
+  haiku: 'C.H',
+  sonnet: 'C.S',
+  opus: 'C.O',
 };
 
 /**
@@ -75,9 +85,10 @@ export function AgentPanel({ agents, selectedAgent, onSelectAgent }: AgentPanelP
       <Text bold color="gray">Agents</Text>
       <Box gap={2}>
         {AGENT_ORDER.map((agent, index) => {
-          const { status } = agents[agent];
+          const { status, model } = agents[agent];
           const isSelected = selectedAgent === agent;
           const color = getAgentColor(status, isSelected);
+          const modelAbbrev = model ? MODEL_ABBREV[model] : '';
 
           return (
             <Box key={agent} gap={1}>
@@ -90,6 +101,7 @@ export function AgentPanel({ agents, selectedAgent, onSelectAgent }: AgentPanelP
               >
                 {AGENT_LABELS[agent]}
               </Text>
+              {modelAbbrev && <Text color="gray">({modelAbbrev})</Text>}
             </Box>
           );
         })}
