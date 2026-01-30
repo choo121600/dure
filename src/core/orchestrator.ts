@@ -421,7 +421,8 @@ export class Orchestrator extends EventEmitter {
     const runDir = this.runManager.getRunDir(runId);
     const verifierDir = `${runDir}/verifier`;
 
-    const testRunner = createTestRunnerFromConfig(validatedConfig, runDir);
+    // IMPORTANT: TestRunner must run from project root to find test files
+    const testRunner = createTestRunnerFromConfig(validatedConfig, this.projectRoot);
 
     // Listen to TestRunner events
     testRunner.on('event', (event) => {
