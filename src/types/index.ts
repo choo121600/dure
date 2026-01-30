@@ -1119,6 +1119,8 @@ export interface InitPlan {
 
 // Re-export Mission Planning types
 export {
+  // Granularity
+  type Granularity,
   // Critique types
   type CritiqueSeverity,
   type CritiqueCategory,
