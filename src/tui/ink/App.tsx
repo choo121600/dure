@@ -4,7 +4,7 @@
  * Orchestrates all TUI components and handles keyboard input.
  * Supports standalone operation with run management.
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { Header } from './Header.js';
 import { AgentPanel } from './AgentPanel.js';
@@ -15,8 +15,19 @@ import { NewRunPrompt } from './NewRunPrompt.js';
 import { RunListScreen } from './RunListScreen.js';
 import { MRPViewer } from './MRPViewer.js';
 import { useDashboardData } from './hooks/useDashboardData.js';
-import type { AgentName, DashboardData, RunListItem, MRPEvidence, VCR, CRP } from '../../types/index.js';
+import type { AgentName, DashboardData, DashboardCRP, RunListItem, MRPEvidence, VCR, CRP } from '../../types/index.js';
 import type { DashboardDataProvider } from '../../core/dashboard-data-provider.js';
+
+/**
+ * Convert CRP to DashboardCRP format for display
+ */
+function crpToDashboardCRP(crp: CRP): DashboardCRP {
+  return {
+    agent: crp.created_by,
+    question: crp.question || crp.questions?.[0]?.question || 'Unknown question',
+    options: crp.options?.map(o => o.label) || crp.questions?.[0]?.options?.map(o => o.label) || [],
+  };
+}
 
 type AppMode = 'view' | 'newrun' | 'list' | 'mrp';
 
@@ -93,6 +104,17 @@ export function App({
   const [mode, setMode] = useState<AppMode>('view');
   const [showingCRP, setShowingCRP] = useState(false);
   const [crpSubmitting, setCrpSubmitting] = useState(false);
+
+  // Combine CRP sources: prefer polling data, fallback to prop
+  const effectiveCRP = useMemo((): DashboardCRP | null => {
+    if (data?.crp) {
+      return data.crp;
+    }
+    if (currentCRP && currentCRP.status === 'pending') {
+      return crpToDashboardCRP(currentCRP);
+    }
+    return null;
+  }, [data?.crp, currentCRP]);
 
   // New run states
   const [newRunLoading, setNewRunLoading] = useState(false);
@@ -261,12 +283,12 @@ export function App({
     setShowingCRP(false);
   }, []);
 
-  // Show CRP modal when CRP is available
+  // Show CRP modal when CRP is available (from either polling or prop)
   useEffect(() => {
-    if (data?.crp && !showingCRP && mode === 'view') {
+    if (effectiveCRP && !showingCRP && mode === 'view') {
       setShowingCRP(true);
     }
-  }, [data?.crp, showingCRP, mode]);
+  }, [effectiveCRP, showingCRP, mode]);
 
   // Use actual data or empty data
   const displayData = data ?? createEmptyData();
@@ -365,9 +387,9 @@ export function App({
       />
 
       {/* CRP Modal (when human input needed) */}
-      {showingCRP && displayData.crp && (
+      {showingCRP && effectiveCRP && (
         <CRPPrompt
-          crp={displayData.crp}
+          crp={effectiveCRP}
           crpId={currentCRP?.crp_id}
           onSubmit={handleCRPSubmit}
           onCancel={handleCRPCancel}
