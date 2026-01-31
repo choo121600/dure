@@ -27,17 +27,49 @@ vi.mock('../../../src/core/planning-pipeline.js', () => ({
   },
 }));
 
+// Mock Orchestrator to avoid actual run execution
+vi.mock('../../../src/core/orchestrator.js', () => ({
+  Orchestrator: class MockOrchestrator {
+    startRun = vi.fn().mockResolvedValue('run-mock-123');
+  },
+}));
+
+// Mock ConfigManager to avoid file system access
+vi.mock('../../../src/config/config-manager.js', () => ({
+  ConfigManager: class MockConfigManager {
+    loadConfig = vi.fn().mockReturnValue({});
+  },
+}));
+
 describe('MissionManager - Execution Methods', () => {
   let tempDir: string;
   let manager: MissionManager;
+  let waitForRunCompletionSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     tempDir = createTempDir('mission-manager-run-test');
     manager = new MissionManager(tempDir);
+
+    // Mock the private waitForRunCompletion method to return immediately
+    // This prevents tests from timing out waiting for run completion
+    waitForRunCompletionSpy = vi.spyOn(
+      manager as any,
+      'waitForRunCompletion'
+    ).mockResolvedValue({
+      verdict: 'PASS',
+      carry_forward: {
+        task_id: 'task-1.1' as TaskId,
+        created_at: new Date().toISOString(),
+        key_decisions: ['Test decision'],
+        created_artifacts: ['test-artifact.ts'],
+        warnings: [],
+      },
+    });
   });
 
   afterEach(() => {
     cleanupTempDir(tempDir);
+    waitForRunCompletionSpy?.mockRestore();
   });
 
   // ============================================
@@ -160,8 +192,8 @@ describe('MissionManager - Execution Methods', () => {
 
       const updatedMission = await manager.getMission(mission.mission_id);
       if (isOk(updatedMission)) {
-        // Mission status should change from ready
-        expect(['in_progress', 'failed']).toContain(updatedMission.data.status);
+        // Mission status should change from ready (could be in_progress, failed, or completed with mock)
+        expect(['in_progress', 'failed', 'completed']).toContain(updatedMission.data.status);
       }
     });
   });
