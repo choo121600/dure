@@ -164,5 +164,43 @@ External Runner가 생성하는 테스트 실행 결과:
 
 **Verdict Results:**
 - `PASS` → Create `mrp/`, submit to human
+- `MINOR_FAIL` → Small test failures (≤5 failures, ≥90% passing), apply targeted fixes and re-run Verifier (max 2 attempts, then falls back to FAIL)
 - `FAIL` → Record reason in `review.md`, return to Phase 1 (retry)
 - `NEEDS_HUMAN` → Create `crp/`, wait for human response
+
+### MINOR_FAIL Workflow
+
+When Gatekeeper detects small test failures that can be fixed directly:
+
+```
+Gatekeeper (MINOR_FAIL)
+       │
+       ▼
+ Apply targeted fix
+       │
+       ▼
+   Reset Verifier
+       │
+       ▼
+  Re-run Verifier
+       │
+       ├─ All pass → Gatekeeper re-evaluates → PASS
+       │
+       └─ Still failing (or max attempts reached) → FAIL → Builder retry
+```
+
+**MINOR_FAIL Criteria:**
+- ≥90% of tests passing
+- ≤5 individual test failures
+- Issues appear fixable without major code changes
+
+**verdict.json (MINOR_FAIL):**
+```json
+{
+  "verdict": "MINOR_FAIL",
+  "reason": "2 tests failed, applying targeted fix",
+  "issues": ["Issue 1", "Issue 2"],
+  "timestamp": "ISO timestamp",
+  "minor_fix_attempt": 1
+}
+```

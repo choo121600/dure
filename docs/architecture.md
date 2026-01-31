@@ -91,9 +91,9 @@ Dure는 TUI(Terminal User Interface)를 기본 모니터링 인터페이스로 �
      │              │         ┌───────────────────────────┐     │
      │              │         │        Verdict?           │     │
      │              │         └───────────────────────────┘     │
-     │              │              │         │         │        │
-     │              │            PASS      FAIL    NEEDS_HUMAN  │
-     │              │              │         │         │        │
+     │              │         │       │         │         │     │
+     │              │       PASS  MINOR_FAIL  FAIL   NEEDS_HUMAN│
+     │              │         │       │         │         │     │
      │              │              ▼         │         ▼        │
      │              │         ┌───────┐      │    ┌────────┐    │
      │              │         │  MRP  │      │    │  CRP   │    │
@@ -111,6 +111,15 @@ Dure는 TUI(Terminal User Interface)를 기본 모니터링 인터페이스로 �
                                                                 │
      iteration < max_iterations ────────────────────────────────┘
 ```
+
+**Verdict Types:**
+
+| Verdict | Description | Next Action |
+|---------|-------------|-------------|
+| `PASS` | All checks passed | Create MRP, human review |
+| `MINOR_FAIL` | Small failures (≤5, ≥90% pass) | Fix and retry Verifier (max 2) |
+| `FAIL` | Significant issues | Return to Builder |
+| `NEEDS_HUMAN` | Requires judgment | Create CRP, wait for response |
 
 ### Dashboard Data Flow (실시간 모니터링)
 

@@ -74,6 +74,7 @@ dure monitor run-2024-01-29-143022
 | `2` | Select Builder | View Builder agent output |
 | `3` | Select Verifier | View Verifier agent output |
 | `4` | Select Gatekeeper | View Gatekeeper agent output |
+| `r` | Rerun | Manually rerun a failed agent |
 | `q` | Quit | Exit TUI (execution continues in background) |
 | `d` | Detach | Same as quit - detach from TUI |
 | `Escape` | Close modal | Close CRP response modal |

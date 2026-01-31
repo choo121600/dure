@@ -13,7 +13,7 @@ Agentic Software Engineering MVP - A system where 4 AI agents generate code whil
 
 ## Requirements
 
-- **Node.js** 18.0.0 or higher
+- **Node.js** 20.0.0 or higher
 - **tmux** (terminal multiplexer)
 - **Claude CLI** (`claude` command must be installed)
 
@@ -90,7 +90,7 @@ By default, Dure launches with an **interactive TUI dashboard** in your terminal
 │  [3] Verifier  ○ Pending                                    │
 │  [4] Gatekeeper ○ Pending                                   │
 ├─────────────────────────────────────────────────────────────┤
-│ [1-4] Switch agent  [q] Quit  [f] Fullscreen                │
+│ [1-4] Switch agent  [r] Rerun  [q] Quit                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -128,6 +128,13 @@ dure recover --list       # List interrupted runs
 dure clear-run [run-id]   # Terminate Claude processes (preserves artifacts)
 dure clean                # Delete old runs
 dure delete <run-id>      # Delete specific run
+
+# Mission planning (multi-phase projects)
+dure mission create       # Create a new mission with AI planning
+dure mission list         # List all missions
+dure mission run <id>     # Execute a mission
+dure mission status <id>  # Show mission status
+dure mission kanban <id>  # View kanban board in TUI
 ```
 
 For the complete CLI reference, see [CLI Reference](docs/CLI_REFERENCE.md).
@@ -153,6 +160,12 @@ briefing   code       test      final
 - **Builder** (sonnet): Implements code
 - **Verifier** (haiku): Generates and executes tests
 - **Gatekeeper** (sonnet): Final review and verdict
+
+**Verdict Types:**
+- `PASS`: All checks passed, creates MRP for human review
+- `MINOR_FAIL`: Small test failures (≤5 failures, ≥90% passing), Gatekeeper applies fixes and re-runs Verifier
+- `FAIL`: Significant issues, returns to Builder for retry
+- `NEEDS_HUMAN`: Requires human decision via CRP
 
 Agents run in **headless mode** using Claude Code CLI with `--output-format json` for structured output and usage tracking.
 

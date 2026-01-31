@@ -30,6 +30,7 @@ An **MVP** validation project for the "Agentic Software Engineering" paradigm.
 REFINE → BUILD → VERIFY → GATE
                            │
          ├─ PASS → MRP (human review)
+         ├─ MINOR_FAIL → Apply fix → VERIFY retry (max 2)
          ├─ FAIL → BUILD retry
          └─ NEEDS_HUMAN → CRP (human response)
 ```
@@ -76,17 +77,24 @@ REFINE → BUILD → VERIFY → GATE
 ## Implementation Locations
 
 - CLI: `src/cli/`
+  - Mission commands: `src/cli/commands/mission-*.ts`
 - TUI: `src/tui/ink/`
+  - Kanban board: `src/tui/ink/components/Kanban.tsx`
 - Core logic: `src/core/`
   - Orchestrator: `src/core/orchestrator.ts`
   - Dashboard data: `src/core/dashboard-data-provider.ts`
   - State manager: `src/core/state-manager.ts`
   - Tmux manager: `src/core/tmux-manager.ts`
   - File watcher: `src/core/file-watcher.ts`
+  - Mission manager: `src/core/mission-manager.ts`
+  - Planning pipeline: `src/core/planning-pipeline.ts`
+  - Kanban state: `src/core/kanban-state-manager.ts`
 - Agent prompts: `src/agents/prompt-generator.ts`
 - Web server: `src/server/`
   - Dashboard API: `src/server/dashboard/`
+  - Mission API: `src/server/dashboard/mission-routes.ts`
 - Type definitions: `src/types/`
+  - Mission types: `src/types/mission.ts`
 
 ## Available Skills & Agents
 

@@ -8,6 +8,8 @@
 
   - [Writing Briefings](/guide/writing-briefings.md)
   - [Understanding Agents](/guide/understanding-agents.md)
+  - [Mission Planning](/guide/mission-planning.md)
+  - [Monitoring Dashboard](/guide/monitoring-dashboard.md)
   - [Responding to CRP](/guide/responding-to-crp.md)
   - [Reviewing MRP](/guide/reviewing-mrp.md)
   - [Troubleshooting](/guide/troubleshooting.md)

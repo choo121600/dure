@@ -18,6 +18,7 @@ docsify serve docs
 
 - `guide/` - Usage guides
   - [Getting Started](guide/getting-started.md)
+  - [Mission Planning](guide/mission-planning.md) - Multi-phase project planning with Kanban
   - [Monitoring Dashboard](guide/monitoring-dashboard.md) - TUI and Web dashboard usage
   - [Writing Briefings](guide/writing-briefings.md)
   - [Troubleshooting](guide/troubleshooting.md)

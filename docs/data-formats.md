@@ -48,7 +48,7 @@ run-{timestamp}/
 │
 ├── gatekeeper/
 │   ├── review.md               # Review comments
-│   ├── verdict.json            # Verdict result
+│   ├── verdict.json            # Verdict result (PASS/MINOR_FAIL/FAIL/NEEDS_HUMAN)
 │   └── log.md
 │
 ├── crp/                        # Consultation Request Pack
@@ -139,6 +139,60 @@ run-{timestamp}/
     "verifier": "verifier/log.md",
     "gatekeeper": "gatekeeper/log.md"
   }
+}
+```
+
+## verdict.json
+
+Gatekeeper creates this file with the final verdict.
+
+**Verdict Types:**
+
+| Verdict | Description | Next Action |
+|---------|-------------|-------------|
+| `PASS` | All checks passed | Create MRP, submit to human |
+| `MINOR_FAIL` | Small test failures (≤5 failures, ≥90% passing) | Apply fix, re-run Verifier |
+| `FAIL` | Significant issues found | Return to Builder for retry |
+| `NEEDS_HUMAN` | Requires human judgment | Create CRP, wait for response |
+
+**Example (PASS):**
+```json
+{
+  "verdict": "PASS",
+  "reason": "All tests passing, code meets requirements",
+  "timestamp": "2024-01-15T15:00:00Z"
+}
+```
+
+**Example (MINOR_FAIL):**
+```json
+{
+  "verdict": "MINOR_FAIL",
+  "reason": "2 tests failed, applying targeted fix",
+  "issues": ["Edge case in rate limiter", "Missing null check"],
+  "timestamp": "2024-01-15T14:55:00Z",
+  "minor_fix_attempt": 1
+}
+```
+
+**Example (FAIL):**
+```json
+{
+  "verdict": "FAIL",
+  "reason": "Core functionality not implemented correctly",
+  "issues": ["Rate limiter not resetting counters", "Missing middleware registration"],
+  "suggestions": ["Review middleware lifecycle", "Add integration tests"],
+  "timestamp": "2024-01-15T14:50:00Z"
+}
+```
+
+**Example (NEEDS_HUMAN):**
+```json
+{
+  "verdict": "NEEDS_HUMAN",
+  "reason": "Security implications require human review",
+  "crp_id": "crp-002",
+  "timestamp": "2024-01-15T14:45:00Z"
 }
 ```
 
