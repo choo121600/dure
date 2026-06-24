@@ -117,7 +117,8 @@ def check_untested_scripts(root, cfg):
     findings = []
     sdir = os.path.join(root, "scripts")
     tdir = os.path.join(root, "tests")
-    allow = set(cfg.get("untested_allowlist", []))
+    # accept both base ("dure-gate") and filename ("dure-gate.py") forms in the allowlist
+    allow = {a[:-3] if a.endswith(".py") else a for a in cfg.get("untested_allowlist", [])}
     if not os.path.isdir(sdir):
         return findings
     for fn in sorted(os.listdir(sdir)):

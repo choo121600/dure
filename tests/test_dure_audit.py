@@ -191,6 +191,21 @@ def main():
         ec, d = run(t)
         check("untested-script: .sh utilities ignored",
               [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # allowlist tolerates the .py filename form
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  untested_allowlist: [dure-foo.py]\n")
+        ec, d = run(t)
+        check("untested-script: allowlist accepts .py form too",
+              [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # no tests/ dir at all -> still flagged, no crash
+        os.makedirs(os.path.join(t, "scripts"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        ec, d = run(t)
+        check("untested-script: no tests/ dir -> flagged, no crash",
+              len([f for f in d["findings"] if f["check"] == "untested-script"]) == 1, d["findings"])
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
