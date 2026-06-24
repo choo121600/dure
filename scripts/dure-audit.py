@@ -30,6 +30,8 @@ DEFAULT_AUDIT = {"untested_allowlist": ["dure-gate"], "fail_on": "error"}
 SCAN_DIRS = ["scripts", "skills", "agents", "hooks", "docs"]
 SCAN_EXTS = {".py", ".sh", ".md", ".json", ".yml", ".yaml", ".txt", ""}
 # Built from fragments so this scanner never flags its OWN source (self-reference edge).
+# MAINTAINERS: never write these markers in uppercase anywhere in this file — keep them lowercase
+# ("todo"/"fixme") in comments/docstrings, or the scanner will report itself and break AC-b.
 _MARKER_RE = re.compile(r"\b(" + "TO" + "DO" + "|" + "FIX" + "ME" + r")\b")
 
 # Check registry: each entry is a callable fn(root, cfg) -> list[finding]. Populated in i2.1.2-4.
