@@ -154,6 +154,59 @@ def main():
         check("todo-marker: non-SCAN_EXT (.toml) skipped",
               all(not f["file"].endswith(".toml") for f in tm), tm)
 
+    # --- check i2.1.3: untested-script ---
+    ec, d = run(REPO)
+    us = [f for f in d["findings"] if f["check"] == "untested-script"]
+    check("untested-script: 0 on committed repo (gate allowlisted, others tested)", us == [], us)
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, "tests"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        ec, d = run(t)
+        us = [f for f in d["findings"] if f["check"] == "untested-script"]
+        check("untested-script: flags dure-foo.py (warning)",
+              len(us) == 1 and us[0]["severity"] == "warning", us)
+        check("untested-script: message names test_dure_foo.py",
+              bool(us) and "test_dure_foo.py" in us[0]["message"], us)
+    with tempfile.TemporaryDirectory() as t:  # allowlisted -> skipped
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  untested_allowlist: [dure-foo]\n")
+        ec, d = run(t)
+        check("untested-script: allowlist skips it",
+              [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # hyphen->underscore mapping satisfies
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, "tests"))
+        open(os.path.join(t, "scripts/dure-foo-bar.py"), "w").close()
+        open(os.path.join(t, "tests/test_dure_foo_bar.py"), "w").close()
+        ec, d = run(t)
+        check("untested-script: hyphen->underscore test satisfies",
+              [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # .sh utilities are not flagged (only dure-*.py)
+        os.makedirs(os.path.join(t, "scripts"))
+        open(os.path.join(t, "scripts/dure-helper.sh"), "w").close()
+        ec, d = run(t)
+        check("untested-script: .sh utilities ignored",
+              [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # allowlist tolerates the .py filename form
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  untested_allowlist: [dure-foo.py]\n")
+        ec, d = run(t)
+        check("untested-script: allowlist accepts .py form too",
+              [f for f in d["findings"] if f["check"] == "untested-script"] == [], d["findings"])
+    with tempfile.TemporaryDirectory() as t:  # no tests/ dir at all -> still flagged, no crash
+        os.makedirs(os.path.join(t, "scripts"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        ec, d = run(t)
+        check("untested-script: no tests/ dir -> flagged, no crash",
+              len([f for f in d["findings"] if f["check"] == "untested-script"]) == 1, d["findings"])
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 

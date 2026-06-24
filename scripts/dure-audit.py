@@ -112,6 +112,32 @@ def check_todo_markers(root, cfg):
 CHECKS.append(check_todo_markers)
 
 
+def check_untested_scripts(root, cfg):
+    """warning — scripts/dure-*.py with no matching tests/test_<base>.py (issue i2.1.3)."""
+    findings = []
+    sdir = os.path.join(root, "scripts")
+    tdir = os.path.join(root, "tests")
+    # accept both base ("dure-gate") and filename ("dure-gate.py") forms in the allowlist
+    allow = {a[:-3] if a.endswith(".py") else a for a in cfg.get("untested_allowlist", [])}
+    if not os.path.isdir(sdir):
+        return findings
+    for fn in sorted(os.listdir(sdir)):
+        if not (fn.startswith("dure-") and fn.endswith(".py")):
+            continue
+        base = fn[:-3]  # "dure-foo.py" -> "dure-foo"
+        if base in allow:
+            continue
+        test_name = "test_" + base.replace("-", "_") + ".py"  # hyphen -> underscore
+        if not os.path.isfile(os.path.join(tdir, test_name)):
+            findings.append({"check": "untested-script", "severity": "warning",
+                             "file": os.path.relpath(os.path.join(sdir, fn), root),
+                             "message": "no matching tests/" + test_name})
+    return findings
+
+
+CHECKS.append(check_untested_scripts)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Report-only .dure repo audit (inventory only).")
     ap.add_argument("--debug-config", action="store_true",
