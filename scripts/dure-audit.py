@@ -73,6 +73,34 @@ def compute_exit(findings, fail_on):
     return 1 if worst >= threshold else 0
 
 
+SUGGESTABLE = {"warning", "error"}
+
+
+def _suggest_one(f):
+    """Map one finding to a draft issue stub (report-only; the user decides what becomes work)."""
+    check, sev = f.get("check"), f.get("severity")
+    if check == "untested-script":
+        return {"check": check, "severity": sev,
+                "title": f"Add tests for {f.get('file')}",
+                "rationale": f.get("message", ""),
+                "acceptance": [f"a matching tests/test_*.py exists and exercises {f.get('file')}"]}
+    if check == "done-parent-undone-child":
+        return {"check": check, "severity": sev,
+                "title": f"Reconcile status of {f.get('id')}",
+                "rationale": f.get("message", ""),
+                "acceptance": [f"{f.get('id')}'s status reflects its children "
+                               "(children advanced to done, or the parent reopened)"]}
+    return {"check": check, "severity": sev,
+            "title": f"Address {check}",
+            "rationale": f.get("message", ""),
+            "acceptance": [f"the {check} finding no longer reports"]}
+
+
+def build_suggestions(findings):
+    """Draft issue stubs for warning-or-higher findings (info is not suggested)."""
+    return [_suggest_one(f) for f in findings if f.get("severity") in SUGGESTABLE]
+
+
 def build_report(findings, exit_code):
     counts = {"findings": len(findings)}
     for f in findings:
@@ -242,6 +270,8 @@ def main():
     ap = argparse.ArgumentParser(description="Report-only .dure repo audit (inventory only).")
     ap.add_argument("--debug-config", action="store_true",
                     help="print the resolved audit config and exit")
+    ap.add_argument("--suggest", action="store_true",
+                    help="also emit draft issue stubs for warning-or-higher findings (report-only)")
     args = ap.parse_args()
     root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     try:
@@ -251,7 +281,10 @@ def main():
             sys.exit(0)
         findings = run_checks(root, cfg)
         code = compute_exit(findings, cfg["fail_on"])
-        print(json.dumps(build_report(findings, code), ensure_ascii=False, indent=2))
+        report = build_report(findings, code)
+        if args.suggest:
+            report["suggestions"] = build_suggestions(findings)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         sys.exit(code)
     except Exception as e:  # noqa: BLE001
         print(json.dumps({"status": "error", "message": str(e),
