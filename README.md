@@ -19,6 +19,21 @@ The brain is Claude Code.
 > **Language:** committed artifacts (code, docs, identifiers) are English; the runtime interview
 > responds in the **user's language**. See [ADR-0007](docs/adr/0007-english-artifacts-localized-runtime.md).
 
+## Install
+
+From the plugin marketplace (persists across sessions):
+
+```
+/plugin marketplace add choo121600/dure
+/plugin install dure@dure
+```
+
+Or load it directly for a single session (no install):
+
+```bash
+claude --plugin-dir /path/to/dure
+```
+
 ## Usage (target shape, v1)
 
 ```bash
@@ -47,7 +62,7 @@ Convergence is logged in [`.dure/interview-log.md`](.dure/interview-log.md); the
 | Issue backend | Hybrid — local per-item files (source of truth) + GitHub sync (`gh` CLI first) |
 | v1 vertical slice | Deep interview → issue decomposition + progress tracking |
 
-> Install path (plugin marketplace vs. git clone) is undecided (OQ4) — non-blocking for v1.
+> Install: via the plugin marketplace (`/plugin marketplace add choo121600/dure`) or `--plugin-dir` (OQ4 resolved).
 
 ## Plugin structure
 

@@ -1,0 +1,14 @@
+{
+  "name": "dure",
+  "owner": {
+    "name": "Yeonguk",
+    "email": "choo121600@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "dure",
+      "source": "./",
+      "description": "A project PM agent — converges requirements via deep interview, decomposes them into milestones/epics/issues, and tracks progress."
+    }
+  ]
+}
