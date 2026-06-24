@@ -340,6 +340,26 @@ def main():
     _, ds = run(REPO, "--suggest")  # committed repo: no warning+ findings -> no suggestions
     check("--suggest: committed repo -> 0 suggestions", ds.get("suggestions") == [], ds.get("suggestions"))
 
+    # unit: forward-looking branches (generic fallback, error severity, info excluded)
+    gen = audit.build_suggestions([{"check": "future-check", "severity": "warning", "message": "m"}])
+    check("--suggest: generic fallback title for unknown check",
+          len(gen) == 1 and gen[0]["title"] == "Address future-check" and gen[0]["acceptance"], gen)
+    check("--suggest: error severity IS suggested",
+          len(audit.build_suggestions([{"check": "x", "severity": "error", "message": "m"}])) == 1, "")
+    check("--suggest: info severity is NOT suggested (unit)",
+          audit.build_suggestions([{"check": "x", "severity": "info", "message": "m"}]) == [], "")
+    check("--suggest: malformed finding doesn't render 'None' title",
+          "None" not in audit.build_suggestions([{"check": "untested-script", "severity": "warning"}])[0]["title"], "")
+    # exit-code invariance under --suggest
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  fail_on: warning\n")
+        check("--suggest: exit code unchanged (fail_on=warning -> 1 both)",
+              run(t)[0] == 1 and run(t, "--suggest")[0] == 1, (run(t)[0], run(t, "--suggest")[0]))
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 

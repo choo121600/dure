@@ -81,12 +81,12 @@ def _suggest_one(f):
     check, sev = f.get("check"), f.get("severity")
     if check == "untested-script":
         return {"check": check, "severity": sev,
-                "title": f"Add tests for {f.get('file')}",
+                "title": f"Add tests for {f.get('file') or f.get('id') or check}",
                 "rationale": f.get("message", ""),
                 "acceptance": [f"a matching tests/test_*.py exists and exercises {f.get('file')}"]}
     if check == "done-parent-undone-child":
         return {"check": check, "severity": sev,
-                "title": f"Reconcile status of {f.get('id')}",
+                "title": f"Reconcile status of {f.get('id') or f.get('file') or check}",
                 "rationale": f.get("message", ""),
                 "acceptance": [f"{f.get('id')}'s status reflects its children "
                                "(children advanced to done, or the parent reopened)"]}
