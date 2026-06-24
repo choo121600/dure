@@ -26,7 +26,9 @@ artifacts stay English (ADR-0007).
    (`error` > `warning` > `info`), each with its `file:line` or `id`. Lead with the counts summary.
    If `findings` is empty, say so plainly.
 4. Offer next actions **without auto-acting**:
-   - feed a selected finding into `/dure:interview "<finding>"` as grounding evidence, or
+   - feed a selected finding into `/dure:interview "<finding>"` as grounding evidence,
+   - run `${CLAUDE_PLUGIN_ROOT}/scripts/dure-audit.py --suggest` to get **draft** issue stubs
+     (title + suggested acceptance) for warning-or-higher findings, which the user can hand to `/dure:plan`, or
    - note findings to fold into `/dure:plan`.
    Let the user choose; do not create issues or edit the roadmap.
 

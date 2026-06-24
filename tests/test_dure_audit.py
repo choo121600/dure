@@ -314,6 +314,52 @@ def main():
           bool(audit_classes) and bool(doctor_classes) and audit_classes.isdisjoint(doctor_classes),
           (sorted(audit_classes), sorted(doctor_classes)))
 
+    # === issue i2.2.2: --suggest (draft issue stubs from findings) ===
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()  # untested-script (warning)
+        _, d = run(t)
+        check("no --suggest -> no suggestions key", "suggestions" not in d, list(d))
+        _, ds = run(t, "--suggest")
+        sug = ds.get("suggestions", [])
+        check("--suggest: untested-script -> 1 suggestion",
+              len(sug) == 1 and sug[0]["check"] == "untested-script", sug)
+        check("--suggest: stub has title + non-empty acceptance",
+              bool(sug) and "Add tests" in sug[0]["title"] and len(sug[0]["acceptance"]) >= 1, sug)
+    with tempfile.TemporaryDirectory() as t:  # info-only findings are NOT suggested
+        os.makedirs(os.path.join(t, "docs"))
+        with open(os.path.join(t, "docs/n.md"), "w") as f:
+            f.write("# " + "TO" + "DO: x\n")
+        _, ds = run(t, "--suggest")
+        check("--suggest: info findings not suggested", ds.get("suggestions") == [], ds.get("suggestions"))
+    with tempfile.TemporaryDirectory() as t:  # done-parent -> reconcile stub
+        mk_roadmap(t, "done", "todo", "todo")
+        sug = run(t, "--suggest")[1].get("suggestions", [])
+        check("--suggest: done-parent -> reconcile stub",
+              any(s["check"] == "done-parent-undone-child" and "Reconcile" in s["title"] for s in sug), sug)
+    _, ds = run(REPO, "--suggest")  # committed repo: no warning+ findings -> no suggestions
+    check("--suggest: committed repo -> 0 suggestions", ds.get("suggestions") == [], ds.get("suggestions"))
+
+    # unit: forward-looking branches (generic fallback, error severity, info excluded)
+    gen = audit.build_suggestions([{"check": "future-check", "severity": "warning", "message": "m"}])
+    check("--suggest: generic fallback title for unknown check",
+          len(gen) == 1 and gen[0]["title"] == "Address future-check" and gen[0]["acceptance"], gen)
+    check("--suggest: error severity IS suggested",
+          len(audit.build_suggestions([{"check": "x", "severity": "error", "message": "m"}])) == 1, "")
+    check("--suggest: info severity is NOT suggested (unit)",
+          audit.build_suggestions([{"check": "x", "severity": "info", "message": "m"}]) == [], "")
+    check("--suggest: malformed finding doesn't render 'None' title",
+          "None" not in audit.build_suggestions([{"check": "untested-script", "severity": "warning"}])[0]["title"], "")
+    # exit-code invariance under --suggest
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  fail_on: warning\n")
+        check("--suggest: exit code unchanged (fail_on=warning -> 1 both)",
+              run(t)[0] == 1 and run(t, "--suggest")[0] == 1, (run(t)[0], run(t, "--suggest")[0]))
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
