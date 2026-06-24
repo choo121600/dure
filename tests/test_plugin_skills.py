@@ -69,8 +69,11 @@ def main():
     if os.path.isfile(audit_md):
         _, txt = front_matter(audit_md)
         check("audit skill runs dure-audit.py", "scripts/dure-audit.py" in txt, "")
+        # tolerant of rewording: requires a 'report-only' signal AND a negation near 'roadmap'
+        report_only = bool(re.search(r"(?i)report-only", txt))
+        guards_roadmap = bool(re.search(r"(?is)must not\b.{0,60}roadmap", txt))
         check("audit skill declares report-only boundary (no roadmap writes)",
-              "MUST NOT write to `.dure/roadmap/`" in txt, "")
+              report_only and guards_roadmap, (report_only, guards_roadmap))
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
