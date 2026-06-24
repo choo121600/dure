@@ -12,3 +12,5 @@
     - ✓ **i2.1.3** Check — untested-script (warning) · `done`
     - ✓ **i2.1.4** Check — done-parent-undone-child (warning) · `done`
     - ✓ **i2.1.5** Tests — AC-a/b/c incl. dure-doctor ownership disjointness · `done`
+  - ◐ **e2.2** Audit integration · `doing`
+    - · **i2.2.1** /dure:audit skill — run the scanner and surface findings · `todo`
