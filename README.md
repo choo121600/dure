@@ -25,7 +25,7 @@ From the plugin marketplace (persists across sessions):
 
 ```
 /plugin marketplace add choo121600/dure
-/plugin install dure
+/plugin install dure@dure
 ```
 
 Or load it directly for a single session (no install):
