@@ -14,6 +14,7 @@ Exit: 0 = no finding >= fail_on (advisory) · 1 = a finding >= fail_on · 2 = in
 import argparse
 import json
 import os
+import re
 import sys
 
 try:
@@ -24,6 +25,12 @@ except Exception:  # noqa: BLE001
 
 SEVERITY_ORDER = {"info": 0, "warning": 1, "error": 2}
 DEFAULT_AUDIT = {"untested_allowlist": ["dure-gate"], "fail_on": "error"}
+
+# Directories scanned by source-level checks, and the text extensions considered.
+SCAN_DIRS = ["scripts", "skills", "agents", "hooks", "docs"]
+SCAN_EXTS = {".py", ".sh", ".md", ".json", ".yml", ".yaml", ".txt", ""}
+# Built from fragments so this scanner never flags its OWN source (self-reference edge).
+_MARKER_RE = re.compile(r"\b(" + "TO" + "DO" + "|" + "FIX" + "ME" + r")\b")
 
 # Check registry: each entry is a callable fn(root, cfg) -> list[finding]. Populated in i2.1.2-4.
 CHECKS = []
@@ -72,6 +79,35 @@ def build_report(findings, exit_code):
     return {"status": "fail" if exit_code == 1 else "pass",
             "counts": counts,
             "findings": findings}
+
+
+def check_todo_markers(root, cfg):
+    """info — case-sensitive todo/fixme annotation markers in SCAN_DIRS (issue i2.1.2)."""
+    findings = []
+    for d in SCAN_DIRS:
+        base = os.path.join(root, d)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirs, files in os.walk(base):
+            dirs.sort()
+            for fn in sorted(files):
+                if os.path.splitext(fn)[1] not in SCAN_EXTS:
+                    continue
+                path = os.path.join(dirpath, fn)
+                try:
+                    with open(path, encoding="utf-8") as fh:
+                        for i, line in enumerate(fh, 1):
+                            if _MARKER_RE.search(line):
+                                findings.append({
+                                    "check": "todo-marker", "severity": "info",
+                                    "file": os.path.relpath(path, root), "line": i,
+                                    "message": line.strip()[:120]})
+                except (OSError, UnicodeDecodeError):
+                    continue
+    return findings
+
+
+CHECKS.append(check_todo_markers)
 
 
 def main():

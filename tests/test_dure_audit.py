@@ -116,6 +116,28 @@ def main():
     check("runs on committed repo (exit 0, valid shape)",
           ec == 0 and "findings" in d, (ec, d))
 
+    # --- check i2.1.2: todo-marker ---
+    ec, d = run(REPO)
+    repo_tm = [f for f in d["findings"] if f["check"] == "todo-marker"]
+    check("todo-marker: 0 on committed repo (no real markers; self-source clean)", repo_tm == [], repo_tm)
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        with open(os.path.join(t, "scripts/x.py"), "w") as f:
+            f.write("# " + "TO" + "DO: wire this up\nprint(1)\n")
+        ec, d = run(t)
+        tm = [f for f in d["findings"] if f["check"] == "todo-marker"]
+        check("todo-marker: finds planted marker", len(tm) == 1, d["findings"])
+        check("todo-marker: severity=info + file:line",
+              bool(tm) and tm[0]["severity"] == "info"
+              and tm[0]["file"] == "scripts/x.py" and tm[0]["line"] == 1, tm)
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        with open(os.path.join(t, "scripts/y.py"), "w") as f:
+            f.write("status = 'todo'  # lowercase is not a marker\n")
+        ec, d = run(t)
+        check("todo-marker: lowercase 'todo' ignored (case-sensitive)",
+              [f for f in d["findings"] if f["check"] == "todo-marker"] == [], d["findings"])
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
