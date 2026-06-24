@@ -264,6 +264,29 @@ def main():
     finally:
         audit.HAVE_YAML = _saved
 
+    # --- check i2.3.1: unfinished-interview ---
+    def mk_log(t, status):
+        d = os.path.join(t, ".dure", "interview-logs")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "feat.md"), "w") as f:
+            f.write(f"---\nslug: feat\ntitle: F\nstatus: {status}\n---\nbody\n")
+
+    def ui_findings(d):
+        return [f for f in d["findings"] if f["check"] == "unfinished-interview"]
+
+    ec, d = run(REPO)
+    check("unfinished-interview: 0 on committed repo (all converged)", ui_findings(d) == [], ui_findings(d))
+    with tempfile.TemporaryDirectory() as t:
+        mk_log(t, "in-progress")
+        ui = ui_findings(run(t)[1])
+        check("unfinished-interview: flags in-progress log (warning, id=feat)",
+              len(ui) == 1 and ui[0]["severity"] == "warning" and ui[0]["id"] == "feat", ui)
+    with tempfile.TemporaryDirectory() as t:
+        mk_log(t, "converged")
+        check("unfinished-interview: converged -> none", ui_findings(run(t)[1]) == [], "expected none")
+    with tempfile.TemporaryDirectory() as t:  # no interview-logs/ dir -> none, no crash
+        check("unfinished-interview: no logs dir -> none", ui_findings(run(t)[1]) == [], "expected none")
+
     # === issue i2.1.5: formalized AC-a / AC-b / AC-c (incl. dure-doctor disjointness) ===
     DOCTOR = os.path.join(REPO, "scripts", "dure-doctor.py")
 
@@ -302,14 +325,18 @@ def main():
             f.write("---\nid: m1\ntype: milestone\ntitle: M\nstatus: done\nepics: [e1]\n---\n")
         with open(os.path.join(rd, "epics/e1.md"), "w") as f:
             f.write("---\nid: e1\ntype: epic\ntitle: E\nstatus: todo\nmilestone: m1\n---\n")  # done-parent
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        with open(os.path.join(t, ".dure/interview-logs/x.md"), "w") as f:
+            f.write("---\nslug: x\ntitle: X\nstatus: in-progress\n---\n")            # unfinished-interview
         audit_classes = {f["check"] for f in run(t)[1]["findings"]}
     with tempfile.TemporaryDirectory() as t2:  # bare .dure provokes known doctor classes deterministically
         os.makedirs(os.path.join(t2, ".dure"))  # missing subdirs/config/active -> struct:*/config:*/active:*
         denv = dict(os.environ, CLAUDE_PROJECT_DIR=t2)
         dd = json.loads(subprocess.run([sys.executable, DOCTOR], capture_output=True, text=True, env=denv).stdout)
     doctor_classes = {v["check"] for v in dd.get("violations", [])} | {w["check"] for w in dd.get("warnings", [])}
-    check("AC-c: audit emits exactly its three check-classes",
-          audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child"}, audit_classes)
+    check("AC-c: audit emits exactly its four check-classes",
+          audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child",
+                            "unfinished-interview"}, audit_classes)
     check("AC-c: audit and dure-doctor check-classes are disjoint",
           bool(audit_classes) and bool(doctor_classes) and audit_classes.isdisjoint(doctor_classes),
           (sorted(audit_classes), sorted(doctor_classes)))
