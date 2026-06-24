@@ -1,6 +1,8 @@
 .DS_Store
 *.log
 *.tmp
+__pycache__/
+*.pyc
 
 # transient pulled GitHub status cache (github-map.json IS committed)
 .dure/sync/github-status.json
