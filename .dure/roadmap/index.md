@@ -5,3 +5,10 @@
 - ◐ **m1** Deep interview → issue decomposition + progress tracking (v1) · `doing`
   - · **e1.2** Deep interview engine · `todo`
     - · **i1.2.5** Convergence gate + anti-gaming guard · `todo`
+- · **m2** Full audit · `todo`
+  - · **e2.1** dure-audit engine · `todo`
+    - · **i2.1.1** dure-audit.py scaffold — JSON/exit contract + hard-coded audit config defaults · `todo`
+    - · **i2.1.2** Check — todo-marker (info) · `todo`
+    - · **i2.1.3** Check — untested-script (warning) · `todo`
+    - · **i2.1.4** Check — done-parent-undone-child (warning) · `todo`
+    - · **i2.1.5** Tests — AC-a/b/c incl. dure-doctor ownership disjointness · `todo`
