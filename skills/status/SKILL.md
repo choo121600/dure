@@ -1,23 +1,26 @@
 ---
 name: status
-description: dure 진척 리포트 — 로컬 로드맵과 GitHub 상태를 머지해 마일스톤별 완료율·블로커·충돌을 리포트.
+description: dure progress report — merge the local roadmap with GitHub status to report per-milestone completion rate, blockers, and conflicts.
 argument-hint: "[milestone-id]"
 allowed-tools: Bash Read
 disable-model-invocation: true
 ---
 
-# /dure:status — 진척 리포트
+# /dure:status — Progress Report
 
-범위: **$ARGUMENTS** (비면 전체 마일스톤)
+Scope: **$ARGUMENTS** (if empty, all milestones)
 
-목표: [spec §5.3 / E1.5](../../.dure/spec.md)대로 로컬 항목 상태와 GitHub 상태를 머지해
-진척을 리포트한다.
+Goal: Following [spec §5.3 / E1.5](../../.dure/spec.md), merge local item status with GitHub
+status to report progress.
 
-## 절차
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/dure-context.sh`로 컨텍스트·active spec 확인.
-2. `.dure/roadmap/`의 항목 상태(todo/doing/done/blocked)를 집계.
-3. `.dure/sync/github-map.json`이 있으면 GitHub 상태를 머지(충돌은 표시).
-4. 리포트: 마일스톤별 완료율, 블로커 목록, 로컬↔GitHub 충돌.
+## Procedure
+1. Confirm context and the active spec with `${CLAUDE_PLUGIN_ROOT}/scripts/dure-context.sh`.
+2. Aggregate item status (todo/doing/done/blocked) from `.dure/roadmap/`.
+3. If `.dure/sync/github-map.json` exists, merge GitHub status (mark conflicts).
+4. Report: per-milestone completion rate, blocker list, and local ↔ GitHub conflicts.
+
+When reporting to the user, communicate in the user's language; keep all artifacts in English.
 
 ---
-> **구현 상태(E1.1 스캐폴드):** 절차 정의 완료. 상태 머지·리포트 집계는 **E1.5에서 구현**.
+> **Implementation status (E1.1 scaffold):** Procedure defined. The status merge and report
+> aggregation MUST be implemented **in E1.5**.

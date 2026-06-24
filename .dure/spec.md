@@ -1,167 +1,179 @@
-# dure — 요구사항 명세 (spec.md) · v1.1
+# dure — Requirements Specification (spec.md) · v1.1
 
-> 상태: **FIXED (v1 범위)** · 수렴 근거: [`interview-log.md`](interview-log.md) · 크리틱: [`critique.md`](critique.md)
-> v1.1 변경: 레드팀 크리틱 C1–C12 반영 (아키텍처 모순 해소·서브에이전트 분업·수렴 게이트 가드·양방향 sync 등).
-> 이 문서는 dure가 *자기 자신*에게 딥 인터뷰 + 레드팀 크리틱을 적용해 산출한 결과물이다 (도그푸딩).
+> Status: **FIXED (v1 scope)** · Convergence evidence: [`interview-log.md`](interview-log.md) · Critique: [`critique.md`](critique.md)
+> v1.1 reflects red-team critique C1–C12 (architecture-contradiction fix, subagent division of labor,
+> anti-gaming convergence gate, bidirectional sync, etc.).
+> This document is the output of dure applying its own deep interview + red-team critique to itself (dogfooding).
+> Normative keywords (MUST/SHOULD/MAY) follow RFC 2119. Architectural decisions are recorded as
+> ADRs under [`docs/adr/`](../docs/adr/).
 
-## 1. 비전
+## 1. Vision
 
-dure(두레)는 임의의 코드베이스에 붙어 PM 역할을 수행하는 에이전트다. 막연한 사용자
-입력을 받아 **요구사항 이해도가 충분히 수렴할 때까지** 딥 인터뷰하고, 확정된 요구사항을
-마일스톤/에픽/이슈로 분해하며, 진척을 추적한다. 두뇌는 Claude Code다.
+dure is an agent that attaches to a codebase and acts as its PM. It takes vague user input,
+runs a deep interview **until requirements understanding has sufficiently converged**, decomposes
+the fixed requirements into milestones/epics/issues, and tracks progress. The brain is Claude Code.
 
-## 2. 확정 결정 (Locked)
+## 2. Locked decisions (see `docs/adr/`)
 
-| # | 결정 | 값 | 함의 |
+| # | Decision | Value | ADR |
 |---|---|---|---|
-| D1 | 정체성 | 완전 독립 신규 프로젝트 | odin-loop 의존 없음. 인터뷰/분해 로직 자체 설계 |
-| D2 | 관리 대상 | 임의의 외부 코드베이스 | 타깃 비종속. 어느 폴더에서든 동작 |
-| D3 | 엔진 | **Claude Code를 두뇌로 사용** | v1=플러그인 인-프로세스. subprocess 래핑은 설계상 개방(§3.1) |
-| D4 | 인터페이스 | Claude Code 플러그인 우선 | TUI는 검증 후 별도 마일스톤(M4) |
-| D5 | 이슈 백엔드 | 하이브리드: 로컬 우선 + GitHub 동기화 | 진실원본=로컬, GitHub는 미러 |
-| D6 | v1 슬라이스 | 딥 인터뷰 → 이슈 분해 + 진척 추적 | 감사·기획은 M2·M3 |
-| D7 | 인터뷰 깊이 | 4특성 전부 (§4) | "Huginn 이상"의 구체 정의 |
-| D8 | 실행 범위 | 이슈 생성 + 진척 추적까지 | 자동 구현은 v1 비목표 |
+| D1 | Identity | Fully independent project (no odin-loop dependency) | [0001](../docs/adr/0001-deliver-as-in-process-claude-code-plugin.md) |
+| D2 | Managed targets | Any external codebase | [0002](../docs/adr/0002-operate-on-arbitrary-external-codebases.md) |
+| D3 | Engine | Claude Code as the brain (in-process; wrapper path kept open, §3.1) | [0001](../docs/adr/0001-deliver-as-in-process-claude-code-plugin.md) |
+| D4 | Interface | Claude Code plugin first (TUI deferred to M4) | [0001](../docs/adr/0001-deliver-as-in-process-claude-code-plugin.md) |
+| D5 | Issue backend | Hybrid: local-first source of truth + GitHub sync | [0003](../docs/adr/0003-hybrid-local-first-issue-backend.md) |
+| D6 | v1 slice | Deep interview → issue decomposition + progress tracking | — |
+| D7 | Interview depth | All four traits (§4) | [0004](../docs/adr/0004-four-trait-deep-interview-engine.md) |
+| D8 | Execution scope | Up to issue creation + progress tracking | — |
+| D9 | Working language | English artifacts; localized runtime interview | [0007](../docs/adr/0007-english-artifacts-localized-runtime.md) |
 
-## 3. v1 범위
+## 3. v1 scope
 
-### 포함 (in-scope)
-- `/dure:interview <한 줄 입력>` — 딥 인터뷰 수렴 루프 (재개 가능, §4.6)
-- 확정 요구사항을 `.dure/specs/<slug>.md`로 박제
-- `/dure:plan` — active spec → 마일스톤/에픽/이슈 분해 (`.dure/roadmap/`)
-- `/dure:sync` — 로컬 ↔ GitHub 멱등 동기화 (구조 push / 상태 pull, §5.3)
-- `/dure:status` — 진척 추적·리포트 (로컬+GitHub 머지)
-- 타깃 repo 내 `.dure/` 상태 레이아웃 (§6)
+### In scope
+- `/dure:interview <one-line input>` — the deep-interview convergence loop (resumable, §4.6)
+- Crystallize fixed requirements into `.dure/specs/<slug>.md`
+- `/dure:plan` — decompose the active spec into milestones/epics/issues (`.dure/roadmap/`)
+- `/dure:sync` — idempotent local ↔ GitHub sync (structure push / status pull, §5.3)
+- `/dure:status` — progress tracking/report (local + GitHub merge)
+- The `.dure/` state layout inside the target repo (§6)
 
-### 비목표 (out-of-scope, v1)
-- ❌ 이슈 자동 구현/실행 (브랜치·코딩·PR) → M5 또는 gh-flow 등 외부 위임
-- ❌ 전수조사·감사 → M2 · ❌ 방향성 기획 → M3 · ❌ 풀스크린 TUI → M4
-- ❌ GitHub 외 트래커(Jira/Linear) 연동
+### Non-goals (out of scope for v1)
+- ❌ Auto-implementation of issues (branch/code/PR) → M5 or delegated to gh-flow
+- ❌ Full audit → M2 · ❌ Strategic planning → M3 · ❌ Full-screen TUI → M4
+- ❌ Trackers other than GitHub (Jira/Linear)
 
-### 3.1 아키텍처: 무엇이 코드이고 무엇이 프롬프트인가 (C1·C2)
-v1에서 dure는 Claude Code *안에서* 도는 플러그인이다. "엔진"의 실체:
+### 3.1 Architecture: what is code vs. prompt (ADR-0001, ADR-0004)
+In v1, dure is a plugin that runs inside Claude Code. The "engine" is concretely:
 
-- **프롬프트/스킬** — 수렴 루프·크리틱·분해의 *방법론*은 `skills/*/SKILL.md` 지시로 표현되고
-  **모델이 그 지시를 따라** 수행한다. (실행 가능한 알고리즘 코드가 아님)
-- **서브에이전트** — 근거수집·레드팀·리서치를 독립 서브에이전트로 분리(§4.5).
-- **결정적 코드(소량, bash/script)** — 파일 I/O, `.dure/` 부트스트랩, `gh` 호출, 멱등 매핑
-  같이 *결정성이 필요한* 부분만 hooks/명령 스크립트로 구현.
-- **상태** — 라운드 간 지속은 전부 파일(`interview-logs/`, `roadmap/`, `sync/`).
+- **Prompt/skill** — the *methodology* of the convergence loop, critique, and decomposition is
+  expressed in `skills/*/SKILL.md` instructions that **the model follows**. It is not algorithmic code.
+- **Subagents** — evidence gathering, red-team, and research are separated into independent
+  subagents (§4.5).
+- **Small deterministic code (bash/python)** — only the parts that REQUIRE determinism are scripts:
+  file I/O, `.dure/` bootstrap, `gh` calls, idempotent mapping, and the convergence gate.
+- **State** — all cross-round persistence is files (`interview-logs/`, `roadmap/`, `sync/`).
 
-> 코어 방법론 로직은 인터페이스(슬래시 명령)와 분리한다. 그래야 나중에 동일 로직을
-> subprocess 래핑/독립 TUI(M4)로 재호스팅할 수 있다 (C1 결정: 래핑 경로 개방).
+> The core methodology logic MUST stay separable from the interface (slash commands) so it can be
+> re-hosted behind a subprocess wrapper or standalone TUI later (M4).
 
-## 4. 딥 인터뷰 엔진 ("Huginn 이상")
+## 4. Deep-interview engine ("beyond Huginn")
 
-요구사항 D7: 아래 4특성을 **모두** 충족한다. 각 특성은 §4.5의 서브에이전트로 구현된다.
+Per D7, all four traits below MUST hold. Each is realized by the subagents in §4.5.
 
-1. **코드베이스 근거 기반 질문** — 질문 전에 실제 코드·구조·기존 이슈를 읽고(grep/read),
-   *추측이 아니라 근거로* 질문·후보답을 제시. (grounding-scout)
-2. **공격적 레드팀 크리틱** — 매 라운드 요구사항을 *깨려는* 반대신문 주입: 숨은 가정·
-   엣지케이스·실패 모드·더 단순한 대안. (redteam-critic)
-3. **자동 리서치 후보답** — 사용자가 모르거나 위임하면 웹/코드 리서치로 후보답을 생성·
-   제시하고 고르게 함. 미응답 시 보수적 auto-answer 기본값. (research-scout)
-4. **정량 수렴 게이트** — 차원별 모호성을 정직하게 자기평가하고, **게이밍 방지 가드**가
-   걸린 멈춤 조건(§4.4)을 만족할 때만 종료. *모든 점수는 정직한 자기평가다.*
+1. **Evidence-grounded questions** — before asking, read actual code/structure/existing issues
+   (grep/read) and ask/propose candidate answers *from evidence, not guesses*. (grounding-scout)
+2. **Aggressive red-team critique** — every round, inject cross-examination that tries to *break*
+   the requirements: hidden assumptions, edge cases, failure modes, simpler alternatives. (redteam-critic)
+3. **Auto-research candidate answers** — when the user does not know or delegates, research sourced
+   candidate answers and let them choose; otherwise propose a conservative auto-answer. (research-scout)
+4. **Quantitative convergence gate** — score ambiguity honestly and stop only when the
+   anti-gaming-guarded stop conditions (§4.4) are met. *Every score is an honest self-assessment.*
 
-### 4.1 수렴 루프
+### 4.1 Convergence loop
 ```
-Round 0  요청을 컴포넌트로 분해. grounding-scout로 바운드된 근거 수집.
+Round 0  Decompose the request into components. Collect bounded evidence via grounding-scout.
 Round N
-  1. (근거) grounding-scout: 요청 키워드 범위의 코드/이슈 read → 컨텍스트·후보답
-  2. (점수) 컴포넌트×차원 모호성 자기평가 (0=명확 … 5=깜깜)
-  3. (타깃) 최약 차원 1~4개 질문 — 후보답 동봉 (구조화 선택 + 자유서술)
-  4. (레드팀) redteam-critic: 요구사항 깨는 반대신문 ≥1개 주입
-  5. (리서치) 사용자 위임 시 research-scout 후보답
-  6. (수렴) 점수 갱신 → 멈춤 조건 평가
+  1. (evidence) grounding-scout reads code/issues within keyword scope → context + candidate answers
+  2. (score)    self-assess component × dimension ambiguity (0 = clear … 5 = pitch black)
+  3. (ask)      target the weakest dimension with 1–4 questions (structured choice + free-form, with candidates)
+  4. (red-team) redteam-critic injects ≥1 requirement-breaking cross-examination
+  5. (research) research-scout candidate answers when the user defers
+  6. (converge) update scores → evaluate stop conditions via dure-gate.py
 ```
 
-### 4.2 모호성 차원 + 가중치 (C10)
-| 차원 | 가중치 | 묻는 것 |
+### 4.2 Ambiguity dimensions + weights
+| Dimension | Weight | Asks |
 |---|---|---|
-| 문제(Problem) | 3 | 진짜 풀려는 문제·동기 |
-| 범위(Scope) | 3 | 무엇이 포함/제외 |
-| 수용기준(Acceptance) | 3 | 완료를 어떻게 테스트 가능하게 판정 |
-| 제약(Constraints) | 2 | 기술·시간·의존성·호환 |
-| 엣지/실패(Edge) | 2 | 엣지케이스·실패 모드·롤백 |
-| 이해관계자(Stakeholders) | 1 | 누가 쓰고 누가 영향받나 |
+| Problem | 3 | The real problem/motivation being solved |
+| Scope | 3 | What is in / out |
+| Acceptance | 3 | How completion is judged in a testable way |
+| Constraints | 2 | Technical/time/dependency/compatibility |
+| Edge | 2 | Edge cases, failure modes, rollback |
+| Stakeholders | 1 | Who uses it and who is affected |
 
-런 레벨 모호성 = 차원 점수의 **가중평균**.
+Run-level ambiguity = the **weighted average** of dimension scores (per component; the run-level
+value used by the gate is the worst/maximum component, §4.4).
 
-### 4.3 산출물
-- `.dure/specs/<slug>.md` — 확정 명세 (이 문서와 동형 구조)
-- `.dure/interview-logs/<slug>.md` — 라운드별 점수·근거파일·레드팀항목·결정 원장
+### 4.3 Artifacts
+- `.dure/specs/<slug>.md` — the fixed spec (same structure as this document)
+- `.dure/interview-logs/<slug>.md` — per-round ledger of scores, evidence files, red-team items, decisions
 
-### 4.4 멈춤 조건 + 게이밍 방지 가드 (C3)
-**모두** 충족해야 종료:
-1. 런 레벨 가중 모호성 ≤ 임계치 (기본 1.0, `config.yml`에서 조정)
-2. 모든 활성 컴포넌트가 테스트 가능 수용 기준을 가짐
-   — **redteam-critic(독립)이 "테스트 가능"을 사인오프해야 통과** ← 가드
-3. 미해결 블로킹 오픈 질문 0
-4. (객관 신호) 최소 1라운드 완료 **AND** 직전 라운드 신규 모호성 0
+### 4.4 Stop conditions + anti-gaming guard (ADR-0005)
+Convergence is decided by `scripts/dure-gate.py`, not by self-declaration. The gate MUST require all of:
+1. Run-level (weakest component) weighted ambiguity ≤ `ambiguity_threshold` (default 1.0, configurable).
+2. Every active component has testable acceptance criteria — **`redteam-critic` MUST sign this off**
+   (`pass`); this is the guard that self-declaration cannot open.
+3. Zero unresolved blocking open questions.
+4. (objective signal) `round ≥ min_rounds` AND zero new ambiguity in the previous round.
 
-### 4.5 서브에이전트 분업 (C4)
-| 서브에이전트 | 권한 | 역할 |
+### 4.5 Subagent division of labor (ADR-0004)
+| Subagent | Permissions | Role |
 |---|---|---|
-| grounding-scout | read-only | 요청 키워드로 **바운드된**(C9) 코드/이슈 근거·후보답 |
-| redteam-critic | read-only | 매 라운드 반대신문 + §4.4 clause2 사인오프 |
-| research-scout | web/read | 외부 리서치 후보답 |
-| (메인) 오케스트레이터 | — | 점수화·질문·종합·크리스털라이즈 |
+| grounding-scout | read-only | Keyword-**bounded** code/issue evidence + candidate answers (C9) |
+| redteam-critic | read-only | Per-round cross-examination + §4.4 clause-2 sign-off |
+| research-scout | web/read | Sourced candidate answers |
+| (main) orchestrator | — | Scoring, questioning, synthesis, crystallization |
 
-> 분리 이유: 같은 컨텍스트의 자기검열을 피하고 *독립적* 반대·근거를 확보 → 진짜 크리틱.
+> Rationale: separation avoids same-context self-censorship and yields *independent* challenge and evidence.
 
-### 4.6 재개 (C7)
-`/dure:interview` 재호출 시 in-progress 로그(미충족 멈춤조건)를 감지하면 마지막 라운드
-상태에서 이어간다. 새 slug면 새 인터뷰. 세션을 넘겨도 수렴이 이어진다.
+### 4.6 Resume (C7)
+When `/dure:interview` is re-invoked and an in-progress log (unmet stop conditions) exists, dure MUST
+detect it and offer to continue from the last round. A new slug starts a new interview. Convergence
+survives across sessions.
 
-## 5. 이슈 분해 모델
+## 5. Issue decomposition model
 
-- **계층**: 마일스톤 ⊃ 에픽 ⊃ 이슈. 각 이슈는 테스트 가능한 수용 기준 필수.
+- **Hierarchy**: milestone ⊃ epic ⊃ issue. Every issue MUST have testable acceptance criteria.
 
-### 5.1 로컬 포맷 — 항목별 파일 = 진실원본 (C6)
-- `roadmap/{milestones,epics,issues}/<id>.md` (프론트매터 `id`·`slug`·`status`·링크 + 본문).
-- `roadmap/index.md` = **생성된** 사람용 인덱스(요약 트리). 진실원본 아님.
-- 안정적 `id`가 멱등 sync의 키.
+### 5.1 Local format — per-item files = source of truth (ADR-0003)
+- `roadmap/{milestones,epics,issues}/<id>.md` (front matter `id`·`slug`·`status`·`github`·links +
+  body; issues also carry `acceptance`).
+- `roadmap/index.md` is a **generated** human index (summary tree), NOT the source of truth.
+- The stable `id` is the key for idempotent sync.
 
-### 5.2 sync 도구 (C11)
-- **gh CLI 우선** (토큰 기반, 배포·헤드리스에 견고). github MCP는 가용 시 폴백.
+### 5.2 Sync tooling (ADR-0006)
+- `gh` CLI is primary (token-based, robust for distribution/headless). GitHub MCP MAY be a fallback.
 
-### 5.3 GitHub 매핑 + 방향 (C5, 멱등)
-- 마일스톤 → GitHub Milestone · 에픽 → 라벨 `epic` 트래킹 이슈(하위 체크리스트) · 이슈 → GitHub Issue
-- **구조 = 로컬 → GH push**, **상태 = GH → 로컬 pull** (닫힘/라벨/담당)
-- 충돌(양쪽이 다르게 변경) 시 자동 병합하지 않고 **감지·보고**
-- 매핑 캐시: `sync/github-map.json` (로컬 id ↔ GH 번호)
-- GitHub 미연결/오프라인이어도 로컬만으로 완전 동작 (push/pull만 스킵 보고)
+### 5.3 GitHub mapping + direction (idempotent)
+- milestone → GitHub Milestone · epic → tracking issue (label `epic`, child checklist) · issue → GitHub Issue
+- **Structure = local → GitHub push**, **status = GitHub → local pull** (closed/labels/assignee)
+- Conflicts (both sides changed) MUST be detected and reported, never auto-merged.
+- Mapping cache: `sync/github-map.json` (local `id` ↔ GitHub number)
+- dure MUST function fully with no GitHub connection (push/pull are skipped and reported).
 
-## 6. 상태 레이아웃 (타깃 repo 내 `.dure/`)
+## 6. State layout (inside the target repo's `.dure/`)
 ```
 .dure/
-  config.yml            # 임계치·가중치·GitHub repo·sync 설정
-  active                # 현재 active spec slug 포인터 (C8)
+  config.yml            # thresholds, weights, GitHub repo, sync settings
+  active                # pointer to the current active spec slug (C8)
   specs/<slug>.md
   interview-logs/<slug>.md
   roadmap/
-    milestones/<id>.md  # 진실원본 (항목별 파일)
+    milestones/<id>.md  # source of truth (per-item files)
     epics/<id>.md
     issues/<id>.md
-    index.md            # 생성된 인덱스
+    index.md            # generated index
   sync/github-map.json
 ```
 
-## 7. v1 수용 기준 (전체 통과 시 v1 완료)
-- **AC1** 빈 polyglot repo와 기존 repo 양쪽에서 `/dure:interview`가 동작하고, §4.4 멈춤
-  조건(가드 포함)을 만족한 뒤에만 spec을 박제한다.
-- **AC2** 인터뷰가 4특성을 *관측 가능하게* 수행 — 로그에 (a)읽은 근거 파일, (b)레드팀
-  질문, (c)후보답 출처, (d)라운드별 점수가 남는다.
-- **AC3** `/dure:plan`이 active spec을 항목별 파일로 분해하고, 모든 이슈가 비어있지 않은
-  테스트 가능 수용 기준을 가진다.
-- **AC4** `/dure:sync`를 연속 2회 실행해도 중복 이슈/마일스톤이 생기지 않는다 (멱등).
-- **AC5** `/dure:status`가 로컬+GitHub 상태를 머지해 정확한 완료율·블로커를 낸다.
-- **AC6** GitHub 미연결 환경에서 AC1~AC3, AC5(로컬분)가 그대로 동작한다.
-- **AC7** 중단된 인터뷰를 `/dure:interview` 재호출로 이어갈 수 있다 (재개, §4.6).
+## 7. v1 acceptance criteria (all MUST pass for v1 completion)
+Phrased Given/When/Then where natural; each is observable and testable.
 
-## 8. 오픈 질문 (v1 블로킹 아님)
-- **OQ1 (해소)** 질문 제시 = 구조화 선택 기본 + 자유서술 병행, 근거/후보답 동봉.
-- **OQ2 (해소)** 차원 가중치 = §4.2 기본값. 도그푸딩으로 보정.
-- **OQ3** GitHub sub-issues(베타) vs 체크리스트 — 기본 체크리스트, 가용 시 sub-issues. sync 구현 시 확정.
-- **OQ4 (C12)** 배포/설치 경로(plugin marketplace vs git clone) — README 명기, v1 비블로킹.
+- **AC1** Given an empty polyglot repo or an existing repo, When `/dure:interview` runs, Then it
+  MUST crystallize a spec ONLY after the §4.4 stop conditions (guard included) are met.
+- **AC2** Given a completed interview, Then the log MUST contain, observably: (a) evidence file
+  paths read, (b) red-team questions, (c) candidate-answer sources, (d) per-round scores.
+- **AC3** Given an active spec, When `/dure:plan` runs, Then it MUST produce per-item files in which
+  every issue has a non-empty, testable acceptance criterion.
+- **AC4** Given a synced roadmap, When `/dure:sync` runs twice in a row, Then no duplicate
+  issues/milestones are created (idempotent).
+- **AC5** When `/dure:status` runs, Then it MUST merge local + GitHub status into an accurate
+  completion rate and blocker list.
+- **AC6** Given no GitHub connection, Then AC1–AC3 and the local portion of AC5 MUST still work.
+- **AC7** Given an interrupted interview, When `/dure:interview` is re-invoked, Then it MUST resume (§4.6).
+
+## 8. Open questions (non-blocking for v1)
+- **OQ1 (resolved)** Question presentation = structured choice by default + free-form, with cited candidates.
+- **OQ2 (resolved)** Dimension weights = §4.2 defaults; tune via dogfooding.
+- **OQ3** GitHub sub-issues (beta) vs. checklist — default checklist, use sub-issues when available; decided at sync implementation.
+- **OQ4** Distribution/install path (plugin marketplace vs. git clone) — documented in README, non-blocking for v1.

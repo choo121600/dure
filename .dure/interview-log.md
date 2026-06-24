@@ -1,70 +1,74 @@
-# dure — 인터뷰 수렴 원장 (interview-log.md)
+# dure — Interview Convergence Ledger (interview-log.md)
 
-> 대상: dure 프로젝트 자체(메타). 방법: dure가 설계한 딥 인터뷰를 dure에 적용.
-> 결과: 3라운드 만에 멈춤 조건 충족 → [`spec.md`](spec.md) 박제.
+> Subject: the dure project itself (meta). Method: apply the deep interview dure designed to dure.
+> Result: stop conditions met in 3 rounds → locked into [`spec.md`](spec.md).
+>
+> Note: dure's runtime interview responds in the user's language; only the committed artifacts (such as this log) are kept in English.
 
-## Round 0 — 컴포넌트 분해 + 근거 수집
+## Round 0 — Component decomposition + evidence collection
 
-- 입력: "프로젝트 전문 PM으로서 전반을 이끄는 TUI. 딥 인터뷰로 요구사항 수렴 →
-  마일스톤/에픽/이슈 생성·진행. + 전수조사·감사. + 방향성 기획."
-- 근거 수집: `/Users/yeonguk/Project/dure` 비어있음(greenfield, non-git).
-  레퍼런스 `deep-interview.md`(Huginn) 구조 확인 — 컴포넌트 분해·차원 점수화·
-  반대관점 주입·임계 수렴·`spec.md`/`interview-log.md` 산출.
-- 컴포넌트: ①정체성/범위 ②관리대상 ③인터페이스 ④엔진 ⑤이슈백엔드 ⑥인터뷰깊이 ⑦실행범위.
+- Input: "A TUI that leads the whole thing as an expert project PM. Converge
+  requirements via deep interview → create and run milestones/epics/issues.
+  + full audit. + strategic planning."
+- Evidence collection: `/Users/yeonguk/Project/dure` is empty (greenfield, non-git).
+  Confirmed the structure of the reference `deep-interview.md` (Huginn) — component
+  decomposition, dimension scoring, opposing-view injection, threshold convergence,
+  and `spec.md` / `interview-log.md` outputs.
+- Components: ①identity/scope ②managed targets ③interface ④engine ⑤issue backend ⑥interview depth ⑦execution scope.
 
-## Round 1 — 약한 차원: 기반 결정 4
+## Round 1 — Weak dimensions: 4 foundational decisions
 
-| 질문 | 답 |
+| Question | Answer |
 |---|---|
-| 정체성 (odin-loop 관계) | **완전 독립 신규** |
-| 관리 대상 | **임의의 외부 코드베이스** |
-| 기술 스택/인터페이스 | *(미정)* "TUI가 최선인지 고민, UX 더 좋으면 다르게" |
-| 에이전트 엔진 | **Claude Code CLI 래핑** |
+| Identity (relation to odin-loop) | **Fully independent, new** |
+| Managed targets | **Any external codebase** |
+| Tech stack / interface | *(undecided)* "Considering whether a TUI is best; would go a different way if the UX is better" |
+| Agent engine | **Wrap the Claude Code CLI** |
 
-- 레드팀 주입: "엔진이 Claude Code 래핑이면, 풀스크린 TUI 신규 제작은 과하다 —
-  Claude Code가 이미 대화 루프+UI를 가짐. 플러그인이 본질에 맞다." → 인터페이스 재질문 트리거.
+- Red-team injection: "If the engine wraps Claude Code, building a new full-screen TUI is overkill —
+  Claude Code already has a conversation loop + UI. A plugin fits the essence better." → Triggered a re-question on the interface.
 
-## Round 2 — 약한 차원: 인터페이스 + 풀린 결정
+## Round 2 — Weak dimension: interface + unlocked decisions
 
-| 질문 | 답 |
+| Question | Answer |
 |---|---|
-| 인터페이스 형태 | **Claude Code 플러그인 우선** (TUI 나중) |
-| 이슈 백엔드 | **하이브리드: 로컬 우선 + GitHub 동기화** |
-| v1 우선 슬라이스 | **딥 인터뷰 → 이슈 분해** |
+| Interface form | **Claude Code plugin first** (TUI later) |
+| Issue backend | **Hybrid: local-first + GitHub sync** |
+| v1 priority slice | **Deep interview → issue decomposition** |
 
-- 근거: 사용자 보유 자산(github MCP, gh-flow, qt-roadmap)이 GitHub 지향 →
-  단 '임의 코드베이스'라 GitHub 비종속 필요 → 하이브리드가 두 제약 동시 충족.
+- Rationale: the user's existing assets (github MCP, gh-flow, qt-roadmap) lean GitHub →
+  but since targets are "any codebase," GitHub independence is needed → a hybrid satisfies both constraints at once.
 
-## Round 3 — 차별점 확정: 인터뷰 깊이 + 실행 범위
+## Round 3 — Locking the differentiator: interview depth + execution scope
 
-| 질문 | 답 |
+| Question | Answer |
 |---|---|
-| "Huginn 이상"의 구체 특성 | **4특성 전부**: 코드근거 질문 / 공격적 레드팀 / 자동리서치 후보답 / 정량 수렴게이트 |
-| "진행" 범위 (실행 경계) | **이슈 생성 + 진척 추적까지** (자동 구현은 비목표) |
+| The concrete "beyond Huginn" traits | **All 4 traits**: code-grounded questions / aggressive red team / auto-research candidate answers / quantitative convergence gate |
+| Scope of "running" (the execution boundary) | **Up to issue creation + progress tracking** (auto-implementation is a non-goal) |
 
-- 레드팀 주입: "'진행하게 하고 싶어'를 자동 구현까지로 읽으면 v1이 폭발한다." →
-  실행 경계를 추적까지로 규율, 자동 구현은 후속 마일스톤으로 격리.
+- Red-team injection: "Reading 'I want to make it run' as auto-implementation would blow up v1." →
+  Disciplined the execution boundary to tracking only, and isolated auto-implementation to a later milestone.
 
-## 멈춤 조건 점검
+## Stop-condition check
 
-| 조건 | 상태 |
+| Condition | Status |
 |---|---|
-| 1. 런 레벨 모호성 ≤ 임계 | ✅ 8개 결정 차원 전부 명확(≤1) |
-| 2. 모든 활성 컴포넌트 테스트 가능 수용기준 | ✅ spec §7 AC1~AC6 |
-| 3. 미해결 블로킹 오픈 질문 0 | ✅ 잔여 OQ1~OQ3는 비블로킹(빌드 중 결정) |
+| 1. Run-level ambiguity ≤ threshold | ✅ All 8 decision dimensions clear (≤1) |
+| 2. Testable acceptance criteria for every active component | ✅ spec §7 AC1–AC6 |
+| 3. Zero unresolved blocking open questions | ✅ Remaining OQ1–OQ3 are non-blocking (decided during build) |
 
-→ **수렴 완료.** spec FIXED, roadmap 분해로 진행.
+→ **Convergence complete.** Spec FIXED; proceed to roadmap decomposition.
 
-## Round 4 — 레드팀 크리틱 패스 (빌드 전 깎기)
+## Round 4 — Red-team critique pass (distilling before build)
 
-spec/roadmap 초안에 dure의 "공격적 레드팀 크리틱"을 적용. 상세는 [`critique.md`](critique.md).
-BLOCKING 모순 1건 포함 12개 발견 → 전부 해소. 사용자 갈림길 3건:
+Applied dure's "aggressive red-team critique" to the spec/roadmap draft. Details in [`critique.md`](critique.md).
+12 findings including 1 BLOCKING contradiction → all resolved. 3 user forks:
 
-| 갈림길 | 결정 |
+| Fork | Decision |
 |---|---|
-| C1 아키텍처(D3↔D4 모순) | 플러그인-퍼스트, 래핑 경로 설계상 개방 (D3 재해석: "Claude Code를 두뇌로") |
-| C6 로드맵 포맷 | 항목별 파일=진실원본 + 생성 인덱스 |
-| C11 sync 도구 | gh CLI 우선, MCP 폴백 |
+| C1 architecture (D3↔D4 contradiction) | Plugin-first; the wrapping path kept open by design (D3 reinterpreted: "Claude Code as the brain") |
+| C6 roadmap format | Per-item files = source of truth + generated index |
+| C11 sync tooling | gh CLI first, MCP fallback |
 
-나머지 9건(C2·C3·C4·C5·C7·C8·C9·C10·C12)은 권장안대로 자동 해소 → spec v1.1 반영.
-주요 보강: 서브에이전트 분업(§4.5), 수렴 게이트 게이밍 방지 가드(§4.4), 양방향 sync(§5.3), 재개(§4.6).
+The remaining 9 (C2·C3·C4·C5·C7·C8·C9·C10·C12) were auto-resolved per the recommended option → reflected in spec v1.1.
+Key reinforcements: subagent division of labor (§4.5), anti-gaming guard for the convergence gate (§4.4), bidirectional sync (§5.3), resume (§4.6).

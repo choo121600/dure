@@ -1,7 +1,7 @@
 {
   "name": "dure",
-  "displayName": "dure (두레)",
-  "description": "프로젝트 전문 PM 에이전트 — 딥 인터뷰로 요구사항을 수렴시켜 마일스톤/에픽/이슈로 분해하고 진척을 추적한다.",
+  "displayName": "dure",
+  "description": "A project PM agent — converges requirements via deep interview, decomposes them into milestones/epics/issues, and tracks progress.",
   "version": "0.1.0",
   "author": { "name": "Yeonguk", "email": "choo121600@gmail.com" },
   "license": "MIT",

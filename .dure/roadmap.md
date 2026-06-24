@@ -1,82 +1,83 @@
-# dure — 로드맵 (마일스톤 / 에픽 / 이슈) · v1.1
+# dure — Roadmap (Milestones / Epics / Issues) · v1.1
 
-> [`spec.md`](spec.md) v1.1을 dure의 분해 모델로 깎은 결과. v1 = **M1**.
-> **포맷 주의 (C6):** 진실원본(canonical)은 `roadmap/{milestones,epics,issues}/<id>.md`
-> 항목별 파일이다. 이 `roadmap.md`는 *부트스트랩 단계의 사람용 전체 계획*이며,
-> 정식 항목별 파일·`roadmap/index.md`는 `/dure:plan`(I1.3.1)이 생성·정식화한다.
-> canonical 포맷 샘플은 `roadmap/` 아래 m1 / e1.2 / i1.2.5 파일 참조.
-
----
-
-## M1 — 딥 인터뷰 → 이슈 분해 + 진척 추적 *(v1)*
-
-> 사용자가 한 줄을 던지면, 수렴된 spec과 마일스톤/에픽/이슈가 나오고 진척이 보인다.
-
-### E1.1 플러그인 스캐폴드 + 상태
-- **I1.1.1** `.claude-plugin/plugin.json` + 명령 표면(`/dure:interview|plan|sync|status`) 정의.
-  - AC: `claude` 안에서 4개 슬래시 명령이 인식되고 각 스텁이 응답한다.
-- **I1.1.2** `.dure/` 부트스트랩 + `config.yml`(임계치·가중치·repo·sync) + `active` 포인터.
-  - AC: 첫 실행 시 `.dure/`가 없으면 생성, 있으면 보존. 기본 임계치/가중치(§4.2)가 채워진다.
-- **I1.1.3** 타깃 repo 감지(git/non-git, 빈/기존) 유틸.
-  - AC: 4조합에서 오류 없이 컨텍스트를 보고한다.
-
-### E1.2 딥 인터뷰 엔진 (핵심)
-- **I1.2.1** 컴포넌트 분해 + 가중 모호성 차원 점수 모델(§4.2).
-  - AC: 입력 1건에서 컴포넌트 목록 + 차원별 점수표 + 가중평균이 로그에 남는다.
-- **I1.2.2** `grounding-scout` 서브에이전트 — 요청 키워드로 **바운드된** 근거수집·후보답. *(특성①, C9)*
-  - AC: 로그에 (읽은 파일 경로 + 도출 후보답)이 근거로 기록되고, 읽기 범위가 키워드로 제한된다.
-- **I1.2.3** `redteam-critic` 서브에이전트 — 매 라운드 반대신문/엣지/단순대안. *(특성②)*
-  - AC: 모든 라운드 로그에 ≥1 레드팀 항목이 있다.
-- **I1.2.4** `research-scout` 서브에이전트 — 자동 리서치 후보답 + 보수적 auto-answer. *(특성③)*
-  - AC: 사용자 '모름/위임' 시 출처가 달린 후보답이 제시된다.
-- **I1.2.5** 수렴 게이트 + 멈춤조건 + **게이밍 방지 가드**(§4.4). *(특성④, C3)*
-  - AC: critic 사인오프 + 객관신호(최소1라운드·신규모호성0) 전에는 spec을 박제하지 않는다.
-- **I1.2.6** 크리스털라이즈 — `specs/<slug>.md` + `interview-logs/<slug>.md` 산출.
-  - AC: 산출 spec이 §1 템플릿 구조(비전·결정·범위·AC)를 충족한다.
-- **I1.2.7** 재개(resume) — in-progress 로그 감지 후 마지막 라운드에서 이어가기. *(C7, AC7)*
-  - AC: 중단된 인터뷰를 재호출하면 점수·결정이 보존된 채 이어진다.
-
-### E1.3 이슈 분해기
-- **I1.3.1** active spec 선택 + spec → 마일스톤/에픽/이슈 **항목별 파일** 분해. *(C8, C6)*
-  - AC: 모든 생성 이슈가 비어있지 않은 테스트 가능 AC를 가진다(spec AC3). 항목별 파일에 안정 `id`.
-- **I1.3.2** `roadmap/index.md` 생성기(요약 트리). *(C6)*
-  - AC: 인덱스가 항목별 파일 상태와 일치한다(생성물, 진실원본 아님).
-- **I1.3.3** 분해 검토 패스 — 누락/중복/과대 이슈 크리틱 후 정리.
-  - AC: 동일 spec 재분해 시 `id`/`slug`가 안정적으로 유지된다.
-
-### E1.4 GitHub 동기화
-- **I1.4.1** `gh` CLI 어댑터(MCP 폴백) + `sync/github-map.json` 멱등 매핑. *(C11)*
-  - AC: 연속 2회 실행해도 중복 이슈/마일스톤이 안 생긴다(spec AC4).
-- **I1.4.2** 구조 push — 마일스톤=Milestone, 에픽=트래킹이슈, 이슈=Issue. *(C5)*
-  - AC: 로컬 구조가 GitHub에 1:1로 반영되고 매핑이 캐시된다.
-- **I1.4.3** 상태 pull + 충돌 감지·보고 + 오프라인 graceful. *(C5)*
-  - AC: GH에서 닫힌 이슈가 로컬에 반영되고, 양쪽 상이 변경 시 자동병합 없이 보고. 미연결 시 스킵 보고(spec AC6).
-
-### E1.5 진척 추적
-- **I1.5.1** 상태 모델(todo/doing/done/blocked) + 로컬↔GitHub 머지·충돌감지.
-  - AC: 상태 불일치 시 충돌을 감지·보고한다.
-- **I1.5.2** `/dure:status` 진척 리포트(마일스톤별 완료율·블로커).
-  - AC: 합쳐진 리포트가 정확한 완료율과 블로커 목록을 낸다(spec AC5).
-
-### E1.6 도그푸딩 검증
-- **I1.6.1** dure로 dure의 다음 기능(M2 일부) 인터뷰→분해를 실제 수행.
-  - AC: 사람이 손으로 쓴 것과 동등 품질의 spec/roadmap이 자동 생성된다.
+> The result of distilling [`spec.md`](spec.md) v1.1 into dure's decomposition model. v1 = **M1**.
+> **Format note (C6):** The source of truth (canonical) is the per-item files at
+> `roadmap/{milestones,epics,issues}/<id>.md`. This `roadmap.md` is the *human-facing
+> full plan for the bootstrap phase*; the formal per-item files and `roadmap/index.md`
+> are generated and canonicalized by `/dure:plan` (I1.3.1).
+> For canonical format samples, see the m1 / e1.2 / i1.2.5 files under `roadmap/`.
 
 ---
 
-## M2 — 전수조사·감사 *(이후)*
-코드베이스 전수 스캔 → 부채/버그/구조/보안 인벤토리 → M1 분해 파이프라인으로 흘려보냄.
+## M1 — Deep interview → issue decomposition + progress tracking *(v1)*
 
-## M3 — 방향성 기획 *(이후)*
-현황에서 '앞으로 필요한 것'을 스스로 발굴 → 딥 인터뷰 + 철저한 크리틱으로 깎은 기획안 → 마일스톤화.
+> The user throws in a single line, and out come a converged spec, milestones/epics/issues, and visible progress.
 
-## M4 — 풀스크린 TUI 대시보드 *(검증 후)*
-플러그인 UX가 한계로 검증되면 마일스톤 보드·인터뷰 진행·감사 뷰 추가. 코어 로직을 §3.1대로 재호스팅(래핑 경로).
+### E1.1 Plugin scaffold + state
+- **I1.1.1** Define `.claude-plugin/plugin.json` + the command surface (`/dure:interview|plan|sync|status`).
+  - AC: Inside `claude`, the four slash commands are recognized and each stub responds.
+- **I1.1.2** `.dure/` bootstrap + `config.yml` (thresholds, weights, repo, sync) + `active` pointer.
+  - AC: On first run, `.dure/` is created if absent and preserved if present. The default thresholds/weights (§4.2) are populated.
+- **I1.1.3** Target repo detection utility (git/non-git, empty/existing).
+  - AC: Across all four combinations, the context is reported without errors.
 
-## M5 — 실행 오케스트레이션 *(선택)*
-이슈 → 브랜치·구현·검증·PR 자동 구동(또는 gh-flow 위임). v1 비목표였던 자동 구현.
+### E1.2 Deep interview engine (core)
+- **I1.2.1** Component decomposition + weighted ambiguity-dimension scoring model (§4.2).
+  - AC: For a single input, the component list + per-dimension score table + weighted average are recorded in the log.
+- **I1.2.2** `grounding-scout` subagent — **bounded** evidence collection and candidate answers driven by request keywords. *(Trait ①, C9)*
+  - AC: The log records (read file paths + derived candidate answers) as evidence, and the read scope is bounded by keywords.
+- **I1.2.3** `redteam-critic` subagent — cross-examination / edge cases / simpler alternatives every round. *(Trait ②)*
+  - AC: Every round's log contains ≥1 red-team item.
+- **I1.2.4** `research-scout` subagent — auto-research candidate answers + conservative auto-answer. *(Trait ③)*
+  - AC: When the user answers "don't know / delegate", a candidate answer with a cited source is presented.
+- **I1.2.5** Convergence gate + stop conditions + **anti-gaming guard** (§4.4). *(Trait ④, C3)*
+  - AC: The spec MUST NOT be locked before critic sign-off + objective signals (at least 1 round complete, zero new ambiguity).
+- **I1.2.6** Crystallize — produce `specs/<slug>.md` + `interview-logs/<slug>.md`.
+  - AC: The produced spec satisfies the §1 template structure (vision, decisions, scope, AC).
+- **I1.2.7** Resume — detect in-progress logs and continue from the last round. *(C7, AC7)*
+  - AC: Re-invoking an interrupted interview continues with scores and decisions preserved.
+
+### E1.3 Issue decomposer
+- **I1.3.1** Select the active spec + decompose spec → milestone/epic/issue **per-item files**. *(C8, C6)*
+  - AC: Every generated issue has a non-empty, testable AC (spec AC3). Per-item files carry a stable `id`.
+- **I1.3.2** `roadmap/index.md` generator (summary tree). *(C6)*
+  - AC: The index matches the state of the per-item files (a generated artifact, not the source of truth).
+- **I1.3.3** Decomposition review pass — critique missing / duplicate / oversized issues, then clean up.
+  - AC: Re-decomposing the same spec keeps `id`/`slug` stable.
+
+### E1.4 GitHub sync
+- **I1.4.1** `gh` CLI adapter (MCP fallback) + idempotent `sync/github-map.json` mapping. *(C11)*
+  - AC: Running twice in a row creates no duplicate issues/milestones (spec AC4).
+- **I1.4.2** Push structure — milestone = Milestone, epic = tracking issue, issue = Issue. *(C5)*
+  - AC: The local structure is mirrored 1:1 to GitHub and the mapping is cached.
+- **I1.4.3** Pull status + conflict detection/reporting + graceful offline handling. *(C5)*
+  - AC: Issues closed on GH are reflected locally; when both sides change, the conflict is reported with no auto-merge. When not connected, a skip is reported (spec AC6).
+
+### E1.5 Progress tracking
+- **I1.5.1** Status model (todo/doing/done/blocked) + local↔GitHub merge / conflict detection.
+  - AC: On status mismatch, the conflict is detected and reported.
+- **I1.5.2** `/dure:status` progress report (per-milestone completion rate, blockers).
+  - AC: The merged report yields an accurate completion rate and blocker list (spec AC5).
+
+### E1.6 Dogfooding validation
+- **I1.6.1** Actually run dure's interview→decomposition on dure's own next feature (part of M2).
+  - AC: A spec/roadmap of quality equivalent to a hand-written one is generated automatically.
 
 ---
 
-### 의존 순서
-`E1.1 → E1.2 → E1.3 → (E1.4 ∥ E1.5) → E1.6` · M2/M3는 M1의 분해 파이프라인 재사용.
+## M2 — Full audit *(later)*
+Full codebase scan → debt/bug/structure/security inventory → feed into the M1 decomposition pipeline.
+
+## M3 — Strategic planning *(later)*
+Self-discover "what is needed next" from the current state → a plan distilled through deep interview + rigorous critique → turn into milestones.
+
+## M4 — Full-screen TUI dashboard *(after validation)*
+If the plugin UX is validated as a limiting factor, add a milestone board, interview progress, and audit views. Re-host the core logic per §3.1 (the wrapping path).
+
+## M5 — Execution orchestration *(optional)*
+Issue → branch/implement/verify/PR automation (or delegate to gh-flow). The auto-implementation that was a non-goal in v1.
+
+---
+
+### Dependency order
+`E1.1 → E1.2 → E1.3 → (E1.4 ∥ E1.5) → E1.6` · M2/M3 reuse M1's decomposition pipeline.

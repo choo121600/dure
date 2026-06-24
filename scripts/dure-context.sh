@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# dure-context.sh — 타깃 repo 컨텍스트 감지: git/non-git, green/brownfield (I1.1.3)
-# 어떤 조합에서도 오류 없이 key=value 라인을 출력한다.
+# dure-context.sh — detect target repo context: git/non-git, greenfield/brownfield (I1.1.3).
+# Emits key=value lines without error in any combination.
 set -eu
 
 ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$ROOT"
 
-# git 여부
+# git?
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   is_git=yes
   branch="$(git branch --show-current 2>/dev/null || echo '(detached)')"
@@ -17,7 +17,7 @@ else
   remote=''
 fi
 
-# green/brownfield: .git/.dure 제외한 최상위 항목 수
+# greenfield/brownfield: count top-level entries excluding .git/.dure
 entries="$(find . -maxdepth 1 -mindepth 1 -not -name '.git' -not -name '.dure' 2>/dev/null | wc -l | tr -d ' ')"
 if [ "${entries:-0}" -eq 0 ]; then
   kind=greenfield
@@ -25,7 +25,7 @@ else
   kind=brownfield
 fi
 
-# dure 초기화 여부
+# is dure initialized?
 if [ -d "$ROOT/.dure" ]; then dure_init=yes; else dure_init=no; fi
 
 # active spec

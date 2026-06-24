@@ -1,27 +1,37 @@
 ---
 name: sync
-description: dure 동기화 — 로컬 로드맵을 GitHub Issues/Milestones와 멱등 동기화. 구조는 push, 상태는 pull, 충돌은 보고. gh CLI 우선.
+description: dure sync — idempotently synchronize the local roadmap with GitHub Issues/Milestones. Push structure, pull status, report conflicts. Prefer the gh CLI.
 argument-hint: ""
 allowed-tools: Bash Read Write
 disable-model-invocation: true
 ---
 
-# /dure:sync — GitHub 동기화
+# /dure:sync — GitHub Synchronization
 
-목표: [spec §5.3](../../.dure/spec.md)대로 로컬 로드맵 ↔ GitHub를 **멱등** 동기화.
+Goal: Following [spec §5.3](../../.dure/spec.md), **idempotently** synchronize the local
+roadmap ↔ GitHub.
 
-## 규칙
-- 도구: `gh` CLI 우선, 없으면 github MCP 폴백(`config.yml: github.sync`).
-- **구조 = 로컬 → GitHub push**: 마일스톤→Milestone, 에픽→트래킹 이슈(label `epic`), 이슈→Issue.
-- **상태 = GitHub → 로컬 pull**: 닫힘/라벨/담당.
-- 매핑 키: 항목 `id` ↔ GH 번호, `.dure/sync/github-map.json`에 캐시(멱등 보장).
-- **충돌**(양쪽 상이 변경) 시 자동 병합하지 않고 **감지·보고**.
-- GitHub 미연결/오프라인이면 push/pull을 스킵하고 그 사실을 명확히 보고(로컬은 정상).
+## Rules
+- Tooling: prefer the `gh` CLI; if unavailable, fall back to the github MCP
+  (`config.yml: github.sync`).
+- **Structure = local → GitHub push**: milestone → Milestone, epic → tracking issue
+  (label `epic`), issue → Issue.
+- **Status = GitHub → local pull**: closed/labels/assignee.
+- Mapping key: item `id` ↔ GH number, cached in `.dure/sync/github-map.json`
+  (this guarantees idempotency).
+- On **conflict** (both sides changed divergently), the sync MUST NOT auto-merge; it MUST
+  **detect and report** instead.
+- If GitHub is not connected or you are offline, skip push/pull and report that fact clearly
+  (the local state remains valid).
 
-## 절차
-1. `gh auth status`로 가용성 확인. `config.yml: github.repo` 확인(없으면 remote 추정 또는 질문).
-2. `github-map.json` 로드 → 신규 항목만 생성, 기존은 갱신(중복 생성 금지).
-3. 상태 pull → 로컬 프론트매터 `status`/`github` 갱신, 충돌 목록 보고.
+## Procedure
+1. Check availability with `gh auth status`. Verify `config.yml: github.repo` (if absent,
+   infer from the remote or ask the user). When asking the user, communicate in the user's
+   language; keep all artifacts in English.
+2. Load `github-map.json` → create only new items, update existing ones (MUST NOT create
+   duplicates).
+3. Pull status → update local frontmatter `status`/`github`, and report the list of conflicts.
 
 ---
-> **구현 상태(E1.1 스캐폴드):** 규칙·절차 정의 완료. gh 어댑터·멱등 매핑은 **E1.4에서 구현**.
+> **Implementation status (E1.1 scaffold):** Rules and procedure defined. The gh adapter and
+> idempotent mapping MUST be implemented **in E1.4**.

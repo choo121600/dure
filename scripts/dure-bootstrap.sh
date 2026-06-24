@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# dure-bootstrap.sh — 타깃 repo에 .dure/ 상태 레이아웃을 멱등 생성 (I1.1.2)
-# 기존 파일은 절대 덮어쓰지 않는다. macOS bash 3.2 호환(배열 미사용).
+# dure-bootstrap.sh — idempotently create the .dure/ state layout in the target repo (I1.1.2).
+# Never overwrites existing files. Compatible with macOS bash 3.2 (no arrays).
 set -eu
 
 ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -18,10 +18,10 @@ created=""
 
 if [ ! -f "$DURE/config.yml" ]; then
   cat > "$DURE/config.yml" <<'YAML'
-# dure config — 인터뷰 임계치·차원 가중치·GitHub 동기화 (spec §4.2 / §5 / §6)
+# dure config — interview thresholds, dimension weights, GitHub sync (spec §4.2 / §5 / §6)
 interview:
-  ambiguity_threshold: 1.0      # 런 레벨 가중 모호성 ≤ 임계치일 때 수렴 (§4.4)
-  min_rounds: 1                 # 게이밍 방지: 최소 라운드 (§4.4 clause4)
+  ambiguity_threshold: 1.0      # converge when run-level weighted ambiguity <= threshold (§4.4)
+  min_rounds: 1                 # anti-gaming: minimum rounds (§4.4 clause 4)
   dimension_weights:            # §4.2
     problem: 3
     scope: 3
@@ -30,17 +30,17 @@ interview:
     edge: 2
     stakeholders: 1
 github:
-  repo: null                    # "owner/name". null = 로컬 전용
-  sync: gh                      # gh | mcp | off  (§5.2: gh 우선)
+  repo: null                    # "owner/name". null = local-only
+  sync: gh                      # gh | mcp | off  (§5.2: gh first)
   epic_as: tracking-issue       # tracking-issue | sub-issues  (OQ3)
 roadmap:
-  id_prefix: ""                 # 항목 id 접두사(선택)
+  id_prefix: ""                 # optional item id prefix
 YAML
   created="$created config.yml"
 fi
 
 if [ ! -f "$DURE/active" ]; then
-  : > "$DURE/active"            # 현재 active spec slug 포인터 (C8). 비어있음=미선택
+  : > "$DURE/active"            # pointer to the current active spec slug (C8). empty = none selected
   created="$created active"
 fi
 
