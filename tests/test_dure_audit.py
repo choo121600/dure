@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Tests for dure-audit.py.
 
-Scaffold scope (issue i2.1.1): config-default resolution, severity/fail_on exit logic, JSON shape.
-The per-check tests (i2.1.2-4) and the full AC-a/b/c + dure-doctor disjointness (i2.1.5) are added
-in their own PRs. Run: python3 tests/test_dure_audit.py   (exit 0 = all pass)
+Covers the scaffold (i2.1.1), each check (i2.1.2-4: todo-marker, untested-script,
+done-parent-undone-child), and the formalized AC-a/b/c incl. dure-doctor ownership disjointness
+(i2.1.5). Run: python3 tests/test_dure_audit.py   (exit 0 = all pass)
 """
 import importlib.util
 import json
@@ -263,6 +263,53 @@ def main():
             check("fallback parses scalar after block list", fm.get("status") == "done", fm)
     finally:
         audit.HAVE_YAML = _saved
+
+    # === issue i2.1.5: formalized AC-a / AC-b / AC-c (incl. dure-doctor disjointness) ===
+    DOCTOR = os.path.join(REPO, "scripts", "dure-doctor.py")
+
+    # AC-a — exit-code contract: a warning is advisory (exit 0) by default; exit 1 when fail_on lowered.
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, ".dure"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()  # -> untested-script (warning)
+        ec0, d0 = run(t)
+        check("AC-a: warning finding is advisory (exit 0) by default",
+              ec0 == 0 and d0["status"] == "pass", (ec0, d0["status"]))
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  fail_on: warning\n")
+        ec1, d1 = run(t)
+        check("AC-a: lowering fail_on=warning flips exit to 1 (status fail)",
+              ec1 == 1 and d1["status"] == "fail", (ec1, d1["status"]))
+
+    # AC-b — zero false positives across ALL checks on the committed repo.
+    ec, d = run(REPO)
+    check("AC-b: committed repo -> 0 findings, status pass, exit 0",
+          ec == 0 and d["status"] == "pass" and d["findings"] == [],
+          (ec, d["status"], len(d["findings"])))
+
+    # AC-c — audit's check-classes are disjoint from dure-doctor's.
+    with tempfile.TemporaryDirectory() as t:  # one fixture triggering all three audit checks
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, "docs"))
+        rd = os.path.join(t, ".dure", "roadmap")
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(rd, sub))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()              # untested-script
+        with open(os.path.join(t, "docs/note.md"), "w") as f:
+            f.write("# " + "TO" + "DO: x\n")                                    # todo-marker
+        with open(os.path.join(rd, "milestones/m1.md"), "w") as f:
+            f.write("---\nid: m1\ntype: milestone\ntitle: M\nstatus: done\nepics: [e1]\n---\n")
+        with open(os.path.join(rd, "epics/e1.md"), "w") as f:
+            f.write("---\nid: e1\ntype: epic\ntitle: E\nstatus: todo\nmilestone: m1\n---\n")  # done-parent
+        audit_classes = {f["check"] for f in run(t)[1]["findings"]}
+    env = dict(os.environ, CLAUDE_PROJECT_DIR=REPO)
+    dd = json.loads(subprocess.run([sys.executable, DOCTOR], capture_output=True, text=True, env=env).stdout)
+    doctor_classes = {v["check"] for v in dd.get("violations", [])} | {w["check"] for w in dd.get("warnings", [])}
+    check("AC-c: audit emits exactly its three check-classes",
+          audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child"}, audit_classes)
+    check("AC-c: audit and dure-doctor check-classes are disjoint",
+          bool(audit_classes) and bool(doctor_classes) and audit_classes.isdisjoint(doctor_classes),
+          (sorted(audit_classes), sorted(doctor_classes)))
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
