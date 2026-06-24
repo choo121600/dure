@@ -138,6 +138,92 @@ def check_untested_scripts(root, cfg):
 CHECKS.append(check_untested_scripts)
 
 
+UNDONE_STATUSES = {"todo", "doing", "blocked"}
+
+
+def _read_front_matter(path):
+    txt = open(path, encoding="utf-8").read()
+    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", txt, re.S)
+    if not m:
+        return {}
+    block = m.group(1)
+    if HAVE_YAML:
+        try:
+            return yaml.safe_load(block) or {}
+        except Exception:  # noqa: BLE001
+            return {}
+    data = {}
+    for raw in block.splitlines():
+        line = re.sub(r"\s+#.*$", "", raw)
+        mm = re.match(r"^([\w.-]+):\s*(.*)$", line)
+        if not mm:
+            continue
+        k, v = mm.group(1), mm.group(2).strip()
+        if v.startswith("[") and v.endswith("]"):
+            inner = v[1:-1].strip()
+            data[k] = [x.strip() for x in inner.split(",") if x.strip()] if inner else []
+        elif v.lower() in ("null", "~", ""):
+            data[k] = None
+        else:
+            data[k] = v.strip('"').strip("'")
+    return data
+
+
+def _load_items(root, kind):
+    out = {}
+    d = os.path.join(root, ".dure", "roadmap", kind)
+    if os.path.isdir(d):
+        for fn in sorted(os.listdir(d)):
+            if fn.endswith(".md"):
+                fm = _read_front_matter(os.path.join(d, fn))
+                if fm.get("id"):
+                    out[fm["id"]] = fm
+    return out
+
+
+def check_done_parent_undone_child(root, cfg):
+    """warning — a milestone/epic with status 'done' whose child is not done (issue i2.1.4).
+
+    Front-matter status only (prose/emoji markers ignored). Disjoint from dure-doctor: a
+    done-parent/undone-child state is schema-valid, so doctor never reports it.
+    """
+    findings = []
+    milestones = _load_items(root, "milestones")
+    epics = _load_items(root, "epics")
+    issues = _load_items(root, "issues")
+
+    def emit(parent_id, parent_kind, child_id, child_kind, status):
+        findings.append({
+            "check": "done-parent-undone-child", "severity": "warning", "id": parent_id,
+            "message": f"{parent_kind} '{parent_id}' is done but child {child_kind} "
+                       f"'{child_id}' is '{status}'"})
+
+    for mid, m in sorted(milestones.items()):
+        if m.get("status") != "done":
+            continue
+        children = set(m.get("epics") or [])
+        children |= {eid for eid, e in epics.items() if e.get("milestone") == mid}
+        for cid in sorted(children):
+            st = epics.get(cid, {}).get("status")
+            if st in UNDONE_STATUSES:
+                emit(mid, "milestone", cid, "epic", st)
+
+    for eid, e in sorted(epics.items()):
+        if e.get("status") != "done":
+            continue
+        children = set(e.get("issues") or [])
+        children |= {iid for iid, i in issues.items() if i.get("epic") == eid}
+        for cid in sorted(children):
+            st = issues.get(cid, {}).get("status")
+            if st in UNDONE_STATUSES:
+                emit(eid, "epic", cid, "issue", st)
+
+    return findings
+
+
+CHECKS.append(check_done_parent_undone_child)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Report-only .dure repo audit (inventory only).")
     ap.add_argument("--debug-config", action="store_true",

@@ -207,6 +207,40 @@ def main():
         check("untested-script: no tests/ dir -> flagged, no crash",
               len([f for f in d["findings"] if f["check"] == "untested-script"]) == 1, d["findings"])
 
+    # --- check i2.1.4: done-parent-undone-child ---
+    def mk_roadmap(t, m_status, e_status, i_status):
+        rd = os.path.join(t, ".dure", "roadmap")
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(rd, sub), exist_ok=True)
+        with open(os.path.join(rd, "milestones/m1.md"), "w") as f:
+            f.write(f"---\nid: m1\ntype: milestone\ntitle: M\nstatus: {m_status}\nepics: [e1]\n---\n")
+        with open(os.path.join(rd, "epics/e1.md"), "w") as f:
+            f.write(f"---\nid: e1\ntype: epic\ntitle: E\nstatus: {e_status}\nmilestone: m1\nissues: [i1]\n---\n")
+        with open(os.path.join(rd, "issues/i1.md"), "w") as f:
+            f.write(f"---\nid: i1\ntype: issue\ntitle: I\nstatus: {i_status}\nmilestone: m1\nepic: e1\n---\n")
+
+    def dp_findings(d):
+        return [f for f in d["findings"] if f["check"] == "done-parent-undone-child"]
+
+    ec, d = run(REPO)
+    check("done-parent: 0 on committed repo (no done parents)", dp_findings(d) == [], dp_findings(d))
+    with tempfile.TemporaryDirectory() as t:  # milestone done, epic undone -> flag on m1
+        mk_roadmap(t, "done", "todo", "todo")
+        dp = dp_findings(run(t)[1])
+        check("done-parent: milestone done + epic undone flagged on m1",
+              any(f["id"] == "m1" and f["severity"] == "warning" for f in dp), dp)
+    with tempfile.TemporaryDirectory() as t:  # epic done, issue undone -> flag on e1
+        mk_roadmap(t, "doing", "done", "blocked")
+        dp = dp_findings(run(t)[1])
+        check("done-parent: epic done + issue undone flagged on e1",
+              any(f["id"] == "e1" for f in dp), dp)
+    with tempfile.TemporaryDirectory() as t:  # all done -> no finding
+        mk_roadmap(t, "done", "done", "done")
+        check("done-parent: all done -> none", dp_findings(run(t)[1]) == [], "expected none")
+    with tempfile.TemporaryDirectory() as t:  # parent not done -> none (no false positive)
+        mk_roadmap(t, "doing", "todo", "todo")
+        check("done-parent: undone parent -> none", dp_findings(run(t)[1]) == [], "expected none")
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
