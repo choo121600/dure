@@ -1,6 +1,6 @@
 ---
 name: status
-description: dure progress report — merge the local roadmap with GitHub status to report per-milestone completion rate, blockers, and conflicts.
+description: dure progress report — aggregate per-item roadmap status into per-milestone completion, blockers, and local↔GitHub conflicts.
 argument-hint: "[milestone-id]"
 allowed-tools: Bash Read
 disable-model-invocation: true
@@ -10,17 +10,20 @@ disable-model-invocation: true
 
 Scope: **$ARGUMENTS** (if empty, all milestones)
 
-Goal: Following [spec §5.3 / E1.5](../../.dure/spec.md), merge local item status with GitHub
-status to report progress.
+Goal: per [spec §5.3 / E1.5](../../.dure/spec.md), aggregate local item status (and any pulled
+GitHub status) into a progress report.
 
 ## Procedure
-1. Confirm context and the active spec with `${CLAUDE_PLUGIN_ROOT}/scripts/dure-context.sh`.
-2. Aggregate item status (todo/doing/done/blocked) from `.dure/roadmap/`.
-3. If `.dure/sync/github-map.json` exists, merge GitHub status (mark conflicts).
-4. Report: per-milestone completion rate, blocker list, and local ↔ GitHub conflicts.
-
-When reporting to the user, communicate in the user's language; keep all artifacts in English.
+1. Run `${CLAUDE_PLUGIN_ROOT}/scripts/dure-context.sh` to confirm context and the active spec.
+2. Run `${CLAUDE_PLUGIN_ROOT}/scripts/dure-status.py` — it returns JSON:
+   `{overall, milestones[{id,title,total,completion,counts}], blockers[], conflicts[]}`.
+   Completion is computed from issues (done / total); conflicts come from
+   `.dure/sync/github-status.json` when present (written by `/dure:sync`'s pull).
+3. Render the report **in the user's language** (artifacts stay English): per-milestone
+   completion %, status counts, the blocker list, and any local↔GitHub conflicts. If a
+   `milestone-id` argument was given, filter to that milestone.
 
 ---
-> **Implementation status (E1.1 scaffold):** Procedure defined. The status merge and report
-> aggregation MUST be implemented **in E1.5**.
+> **Implementation status (E1.5):** `dure-status.py` is deterministic and tested
+> (completion math + conflict detection). The GitHub side of conflicts activates once
+> `/dure:sync` (E1.4) writes `sync/github-status.json`.
