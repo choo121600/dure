@@ -90,6 +90,11 @@ def _suggest_one(f):
                 "rationale": f.get("message", ""),
                 "acceptance": [f"{f.get('id')}'s status reflects its children "
                                "(children advanced to done, or the parent reopened)"]}
+    if check == "unfinished-interview":
+        return {"check": check, "severity": sev,
+                "title": f"Finish or discard interview {f.get('id')}",
+                "rationale": f.get("message", ""),
+                "acceptance": [f"interview-logs/{f.get('id')}.md is converged or removed"]}
     return {"check": check, "severity": sev,
             "title": f"Address {check}",
             "rationale": f.get("message", ""),
@@ -264,6 +269,30 @@ def check_done_parent_undone_child(root, cfg):
 
 
 CHECKS.append(check_done_parent_undone_child)
+
+
+def check_unfinished_interviews(root, cfg):
+    """warning — a .dure/interview-logs/<slug>.md still marked status: in-progress (issue i2.3.1).
+
+    Front-matter only; disjoint from dure-doctor (which does not inspect interview-logs).
+    """
+    findings = []
+    d = os.path.join(root, ".dure", "interview-logs")
+    if not os.path.isdir(d):
+        return findings
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".md"):
+            continue
+        fm = _read_front_matter(os.path.join(d, fn))
+        if fm.get("status") == "in-progress":
+            slug = fm.get("slug") or fn[:-3]
+            findings.append({"check": "unfinished-interview", "severity": "warning", "id": slug,
+                             "file": os.path.relpath(os.path.join(d, fn), root),
+                             "message": f"interview '{slug}' is in-progress (never converged)"})
+    return findings
+
+
+CHECKS.append(check_unfinished_interviews)
 
 
 def main():
