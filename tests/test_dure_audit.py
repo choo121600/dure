@@ -240,6 +240,29 @@ def main():
     with tempfile.TemporaryDirectory() as t:  # parent not done -> none (no false positive)
         mk_roadmap(t, "doing", "todo", "todo")
         check("done-parent: undone parent -> none", dp_findings(run(t)[1]) == [], "expected none")
+    with tempfile.TemporaryDirectory() as t:  # done parent referencing a MISSING child -> not flagged (doctor's domain)
+        rd = os.path.join(t, ".dure", "roadmap")
+        os.makedirs(os.path.join(rd, "milestones"))
+        os.makedirs(os.path.join(rd, "epics"))
+        os.makedirs(os.path.join(rd, "issues"))
+        with open(os.path.join(rd, "milestones/m1.md"), "w") as f:
+            f.write("---\nid: m1\ntype: milestone\ntitle: M\nstatus: done\nepics: [eX]\n---\n")
+        check("done-parent: missing child not flagged (disjoint from doctor)",
+              dp_findings(run(t)[1]) == [], "expected none")
+
+    # fallback front-matter parser handles block lists (no-PyYAML parity)
+    _saved = audit.HAVE_YAML
+    try:
+        audit.HAVE_YAML = False
+        with tempfile.TemporaryDirectory() as t:
+            p = os.path.join(t, "m.md")
+            with open(p, "w") as f:
+                f.write("---\nid: m1\nepics:\n  - e1\n  - e2\nstatus: done\n---\nbody\n")
+            fm = audit._read_front_matter(p)
+            check("fallback parses block list", fm.get("epics") == ["e1", "e2"], fm)
+            check("fallback parses scalar after block list", fm.get("status") == "done", fm)
+    finally:
+        audit.HAVE_YAML = _saved
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)

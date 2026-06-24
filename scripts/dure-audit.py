@@ -152,9 +152,10 @@ def _read_front_matter(path):
             return yaml.safe_load(block) or {}
         except Exception:  # noqa: BLE001
             return {}
-    data = {}
-    for raw in block.splitlines():
-        line = re.sub(r"\s+#.*$", "", raw)
+    data, lines, i = {}, block.splitlines(), 0
+    while i < len(lines):
+        line = re.sub(r"\s+#.*$", "", lines[i])
+        i += 1
         mm = re.match(r"^([\w.-]+):\s*(.*)$", line)
         if not mm:
             continue
@@ -162,7 +163,20 @@ def _read_front_matter(path):
         if v.startswith("[") and v.endswith("]"):
             inner = v[1:-1].strip()
             data[k] = [x.strip() for x in inner.split(",") if x.strip()] if inner else []
-        elif v.lower() in ("null", "~", ""):
+        elif v == "":  # bare key -> possible block list ("- item" continuation lines)
+            items = []
+            while i < len(lines):
+                nxt = re.sub(r"\s+#.*$", "", lines[i])
+                lm = re.match(r"^\s+-\s+(.*)$", nxt)
+                if lm:
+                    items.append(lm.group(1).strip().strip('"').strip("'"))
+                    i += 1
+                elif nxt.strip() == "":
+                    i += 1
+                else:
+                    break
+            data[k] = items if items else None
+        elif v.lower() in ("null", "~"):
             data[k] = None
         else:
             data[k] = v.strip('"').strip("'")
