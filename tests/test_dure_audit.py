@@ -273,8 +273,9 @@ def main():
         os.makedirs(os.path.join(t, ".dure"))
         open(os.path.join(t, "scripts/dure-foo.py"), "w").close()  # -> untested-script (warning)
         ec0, d0 = run(t)
-        check("AC-a: warning finding is advisory (exit 0) by default",
-              ec0 == 0 and d0["status"] == "pass", (ec0, d0["status"]))
+        check("AC-a: warning finding is advisory (exit 0) by default *despite* a finding",
+              ec0 == 0 and d0["status"] == "pass" and len(d0["findings"]) == 1,
+              (ec0, d0["status"], len(d0["findings"])))
         with open(os.path.join(t, ".dure/config.yml"), "w") as f:
             f.write("audit:\n  fail_on: warning\n")
         ec1, d1 = run(t)
@@ -302,8 +303,10 @@ def main():
         with open(os.path.join(rd, "epics/e1.md"), "w") as f:
             f.write("---\nid: e1\ntype: epic\ntitle: E\nstatus: todo\nmilestone: m1\n---\n")  # done-parent
         audit_classes = {f["check"] for f in run(t)[1]["findings"]}
-    env = dict(os.environ, CLAUDE_PROJECT_DIR=REPO)
-    dd = json.loads(subprocess.run([sys.executable, DOCTOR], capture_output=True, text=True, env=env).stdout)
+    with tempfile.TemporaryDirectory() as t2:  # bare .dure provokes known doctor classes deterministically
+        os.makedirs(os.path.join(t2, ".dure"))  # missing subdirs/config/active -> struct:*/config:*/active:*
+        denv = dict(os.environ, CLAUDE_PROJECT_DIR=t2)
+        dd = json.loads(subprocess.run([sys.executable, DOCTOR], capture_output=True, text=True, env=denv).stdout)
     doctor_classes = {v["check"] for v in dd.get("violations", [])} | {w["check"] for w in dd.get("warnings", [])}
     check("AC-c: audit emits exactly its three check-classes",
           audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child"}, audit_classes)
