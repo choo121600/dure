@@ -1,6 +1,6 @@
 ---
 name: interview
-description: dure deep interview — interview a vague requirement until understanding converges quantitatively, then crystallize it into .dure/specs/<slug>.md. Four traits: evidence-grounded, red-team, auto-research, quantitative convergence gate.
+description: dure deep interview — interview a vague requirement until understanding converges quantitatively, then crystallize it into .dure/specs/<slug>.md. Four traits — evidence-grounded, red-team, auto-research, quantitative convergence gate.
 argument-hint: "<one-line requirement>"
 allowed-tools: Bash Read Grep Glob Task Write AskUserQuestion
 disable-model-invocation: true

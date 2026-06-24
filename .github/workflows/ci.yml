@@ -22,7 +22,7 @@ jobs:
       - name: Test suites
         run: |
           set -e
-          for f in tests/test_dure_*.py; do
+          for f in tests/test_*.py; do
             echo "== $f =="
             python3 "$f"
           done
