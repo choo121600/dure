@@ -49,3 +49,8 @@ directory and reports structural, schema, and hierarchy problems so users can tr
 
 ## 6. Open questions (non-blocking)
 - **OQ1** Add a fixture that forces the regex-fallback path (simulate PyYAML absent); the committed data only exercises the PyYAML path. Non-blocking.
+
+## Implementation
+- Code: [`scripts/dure-doctor.py`](../../scripts/dure-doctor.py)
+- Tests: [`tests/test_dure_doctor.py`](../../tests/test_dure_doctor.py) — AC-a/b/c, 32 checks green.
+- Run: `python3 scripts/dure-doctor.py [--fix]` (reads `CLAUDE_PROJECT_DIR` or cwd).

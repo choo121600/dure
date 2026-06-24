@@ -86,7 +86,12 @@ claude --plugin-dir /Users/yeonguk/Project/dure
 
 ## Status
 
-🚧 **Building M1.** E1.1 (plugin scaffold) is complete: manifest, four slash commands, three
-subagents, bootstrap/context scripts. E1.2 (deep-interview engine) is in progress: the
-deterministic convergence gate (`scripts/dure-gate.py`), slug helper, methodology playbook, and
-crystallization templates are in place. See [`.dure/roadmap.md`](.dure/roadmap.md).
+🚧 **Building M1.** E1.1 (plugin scaffold) is complete. E1.2 (deep-interview engine) is in place
+and **validated end-to-end** by dogfooding: dure interviewed a real requirement (`dure-doctor`),
+the deterministic gate blocked on a failed red-team sign-off, then passed once resolved, and
+crystallized [`.dure/specs/dure-doctor.md`](.dure/specs/dure-doctor.md).
+
+First feature shipped via the engine: **`dure-doctor`** — a `.dure/` integrity validator
+([`scripts/dure-doctor.py`](scripts/dure-doctor.py), tests in
+[`tests/test_dure_doctor.py`](tests/test_dure_doctor.py), 32 checks green). See
+[`.dure/roadmap.md`](.dure/roadmap.md).
