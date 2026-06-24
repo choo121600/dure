@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install deps
+        run: pip install pyyaml
+      - name: Test suites
+        run: |
+          set -e
+          for f in tests/test_dure_*.py; do
+            echo "== $f =="
+            python3 "$f"
+          done
+      - name: Repo self-checks (dure-doctor + dure-audit must pass)
+        run: |
+          set -e
+          python3 scripts/dure-doctor.py
+          python3 scripts/dure-audit.py
