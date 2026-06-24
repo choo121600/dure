@@ -15,3 +15,5 @@
   - ◐ **e2.2** Audit integration · `doing`
     - ✓ **i2.2.1** /dure:audit skill — run the scanner and surface findings · `done`
     - ✓ **i2.2.2** dure-audit --suggest — draft issue stubs from findings (report-only) · `done`
+  - ◐ **e2.3** Additional audit checks · `doing`
+    - · **i2.3.1** Check — unfinished-interview (warning) · `todo`
