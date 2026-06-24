@@ -72,6 +72,29 @@ def main():
         check("override untested_allowlist", cfg["untested_allowlist"] == ["foo", "bar"], cfg)
         check("override fail_on=warning", cfg["fail_on"] == "warning", cfg)
 
+    # --- unit: malformed/invalid audit values fall back to defaults ---
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, ".dure"))
+        with open(os.path.join(t, ".dure/config.yml"), "w") as f:
+            f.write("audit:\n  fail_on: bogus\n  untested_allowlist: notalist\n")
+        cfg = audit.resolve_config(t)
+        check("invalid fail_on -> default error", cfg["fail_on"] == "error", cfg)
+        check("non-list allowlist -> default", cfg["untested_allowlist"] == ["dure-gate"], cfg)
+
+    # --- unit: a raising check propagates (main() maps this to status=error/exit 2) ---
+    def _boom(root, cfg):
+        raise RuntimeError("boom")
+    audit.CHECKS.append(_boom)
+    try:
+        raised = False
+        try:
+            audit.run_checks(".", {})
+        except RuntimeError:
+            raised = True
+        check("run_checks propagates check exceptions", raised)
+    finally:
+        audit.CHECKS.pop()
+
     # --- integration: clean run, JSON shape, exit 0 (no checks registered yet) ---
     with tempfile.TemporaryDirectory() as t:
         ec, d = run(t)

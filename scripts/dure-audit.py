@@ -59,7 +59,7 @@ def run_checks(root, cfg):
 
 def compute_exit(findings, fail_on):
     """0 if no finding has severity >= fail_on, else 1."""
-    threshold = SEVERITY_ORDER[fail_on]
+    threshold = SEVERITY_ORDER.get(fail_on, SEVERITY_ORDER["error"])
     worst = max((SEVERITY_ORDER.get(f.get("severity"), 0) for f in findings), default=-1)
     return 1 if worst >= threshold else 0
 
@@ -91,7 +91,8 @@ def main():
         sys.exit(code)
     except Exception as e:  # noqa: BLE001
         print(json.dumps({"status": "error", "message": str(e),
-                          "counts": {"findings": 0}, "findings": []}))
+                          "counts": {"findings": 0}, "findings": []},
+                         ensure_ascii=False, indent=2))
         sys.exit(2)
 
 
