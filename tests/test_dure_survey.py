@@ -160,6 +160,35 @@ def main():
         fm = mod._read_front_matter(good)
         check("_read_front_matter valid -> id", fm.get("id") == "m1", fm)
 
+    # ---- unit: load_items DROPS a malformed child (AC #4 at the loader level, not vacuously) ----
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        w(os.path.join(t, ".dure", "roadmap", "milestones", "m1.md"),
+          "---\nid: m1\nslug: m1\ntype: milestone\ntitle: M1\nstatus: doing\nepics: [e1]\n---\nx\n")
+        w(os.path.join(t, ".dure", "roadmap", "issues", "i1.md"),
+          "---\nid: i1\nlabels: [unclosed, broken\nstatus: : :\n---\nx\n")
+        items = mod.load_items(t)
+        check("load_items keeps valid m1", "m1" in items["milestones"], items["milestones"])
+        check("load_items DROPS malformed i1 (skipped, not loaded wrong)",
+              "i1" not in items["issues"], items["issues"])
+
+    # ---- unit: no-PyYAML fallback parses block lists too (parity with dure-audit) ----
+    saved = mod.HAVE_YAML
+    try:
+        mod.HAVE_YAML = False
+        with tempfile.TemporaryDirectory() as t:
+            p = os.path.join(t, "blocklist.md")
+            w(p, "---\nid: m1\nepics:\n  - e1\n  - e2\nstatus: doing\n---\nx\n")
+            fm = mod._read_front_matter(p)
+            check("fallback parses block-list epics", fm.get("epics") == ["e1", "e2"], fm)
+            check("fallback parses inline scalar after list", fm.get("status") == "doing", fm)
+            p2 = os.path.join(t, "inline.md")
+            w(p2, "---\nid: m2\nepics: [e1, e2]\n---\nx\n")
+            check("fallback parses inline list",
+                  mod._read_front_matter(p2).get("epics") == ["e1", "e2"])
+    finally:
+        mod.HAVE_YAML = saved
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 

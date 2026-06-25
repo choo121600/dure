@@ -30,6 +30,13 @@ DEFAULT_SURVEY = {"fail_on": "error"}
 
 # Signal registry: each entry is a callable fn(items) -> list[finding]. Populated in i3.1.2-3.
 # `items` is the dict returned by load_items(): {"milestones":{...}, "epics":{...}, "issues":{...}}.
+#
+# MEMBERSHIP INVARIANT (signal authors, i3.1.2+): compute child membership via the reference-union,
+# exactly like dure-audit — e.g. an epic's issues = `epic.issues ∪ {i : i.epic == eid}` — and look a
+# child's status up with `items[kind].get(child_id, {}).get("status")`. A malformed/id-less child is
+# DROPPED by the loaders below, so a reference-union lookup reads it as status None (≠ "done"), which
+# keeps a broken child from making a parent vacuously "closable". Iterating only the *loaded* set for
+# membership would silently lose that child and could falsely report a parent as complete.
 SIGNALS = []
 
 
@@ -82,7 +89,20 @@ def _read_front_matter(path):
         if v.startswith("[") and v.endswith("]"):
             inner = v[1:-1].strip()
             data[k] = [x.strip() for x in inner.split(",") if x.strip()] if inner else []
-        elif v.lower() in ("null", "~", ""):
+        elif v == "":  # bare key -> possible block list ("- item" continuation lines)
+            items = []
+            while i < len(lines):
+                nxt = re.sub(r"\s+#.*$", "", lines[i])
+                lm = re.match(r"^\s+-\s+(.*)$", nxt)
+                if lm:
+                    items.append(lm.group(1).strip().strip('"').strip("'"))
+                    i += 1
+                elif nxt.strip() == "":
+                    i += 1
+                else:
+                    break
+            data[k] = items if items else None
+        elif v.lower() in ("null", "~"):
             data[k] = None
         else:
             data[k] = v.strip('"').strip("'")
