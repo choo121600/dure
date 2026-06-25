@@ -5,17 +5,17 @@
 - ✓ **m1** Deep interview → issue decomposition + progress tracking (v1) · `done`
   - ✓ **e1.2** Deep interview engine · `done`
     - ✓ **i1.2.5** Convergence gate + anti-gaming guard · `done`
-- ◐ **m2** Full audit · `doing`
+- ✓ **m2** Full audit · `done`
   - ✓ **e2.1** dure-audit engine · `done`
     - ✓ **i2.1.1** dure-audit.py scaffold — JSON/exit contract + hard-coded audit config defaults · `done`
     - ✓ **i2.1.2** Check — todo-marker (info) · `done`
     - ✓ **i2.1.3** Check — untested-script (warning) · `done`
     - ✓ **i2.1.4** Check — done-parent-undone-child (warning) · `done`
     - ✓ **i2.1.5** Tests — AC-a/b/c incl. dure-doctor ownership disjointness · `done`
-  - ◐ **e2.2** Audit integration · `doing`
+  - ✓ **e2.2** Audit integration · `done`
     - ✓ **i2.2.1** /dure:audit skill — run the scanner and surface findings · `done`
     - ✓ **i2.2.2** dure-audit --suggest — draft issue stubs from findings (report-only) · `done`
-  - ◐ **e2.3** Additional audit checks · `doing`
+  - ✓ **e2.3** Additional audit checks · `done`
     - ✓ **i2.3.1** Check — unfinished-interview (warning) · `done`
 - ✓ **m3** Strategic planning · `done`
   - ✓ **e3.1** State survey (discovery engine) · `done`
