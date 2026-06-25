@@ -57,10 +57,13 @@ round-ledger `interview-logs/<slug>.md`. Front matter `slug`, `kind: direction`,
 6. `direction:rationale-missing` — chosen direction has an empty rationale.
 7. `direction:candidate-issue-missing` — fewer than 1 candidate-issue sketch.
 8. `direction:acceptance-missing` — a candidate-issue sketch has an empty acceptance string.
-9. `direction:gate-not-pass` — the embedded gate block is absent, does NOT match `dure-gate.py`'s real
-   output shape (must carry `run_level_max`, `threshold`, `per_component[].testable_signoff`, `failed`),
-   has `gate != "PASS"`, or is internally inconsistent (`gate == "PASS"` with a non-empty `failed`). A
-   bare `{"gate":"PASS"}` stub MUST fail (B1-residual: the block must be a real gate run, not a paste).
+9. `direction:gate-not-pass` — the embedded gate block is absent/unparseable, does NOT match
+   `dure-gate.py`'s real output shape (`run_level_max`, `threshold`, `failed`, and a non-empty
+   `per_component` whose entries each carry `name`, a numeric `weighted_ambiguity`, and
+   `testable_signoff`), has `gate != "PASS"`, or is **internally inconsistent with a real PASS** — i.e.
+   any of: `failed` non-empty, `run_level_max > threshold`, `run_level_max != max(weighted_ambiguity)`,
+   or any component `testable_signoff != "pass"`. It cannot prove a run happened, but it rejects any
+   block a real `dure-gate.py` run could never emit (a bare `{"gate":"PASS"}` stub MUST fail). B1-residual.
 
 No check names or asserts "testable" — semantic validity is the embedded gate's (critic's) responsibility.
 
