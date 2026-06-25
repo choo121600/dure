@@ -154,6 +154,48 @@ def build_report(findings, exit_code):
             "findings": findings}
 
 
+def _milestone_descendants(mid, milestone, epics, issues):
+    """Reference-union membership (mirrors dure-audit): returns (child_epic_ids, child_issue_ids).
+
+    A child referenced but lacking a backing file is still included by id; its status then looks up
+    as None (!= 'done'), so a missing/broken child keeps the milestone from being closable.
+    """
+    child_epics = set(milestone.get("epics") or [])
+    child_epics |= {eid for eid, e in epics.items() if e.get("milestone") == mid}
+    child_issues = set()
+    for eid in child_epics:
+        child_issues |= set(epics.get(eid, {}).get("issues") or [])
+    child_issues |= {iid for iid, i in issues.items()
+                     if i.get("milestone") == mid or i.get("epic") in child_epics}
+    return child_epics, child_issues
+
+
+def signal_closable_milestone(items):
+    """info — a milestone ready to close: status != done, has >=1 descendant, and every descendant
+    epic AND issue is done. The all-descendants oracle (not issues-only) keeps it disjoint from
+    dure-status completion% and from audit's done-parent-undone-child (its inverse)."""
+    findings = []
+    milestones, epics, issues = items["milestones"], items["epics"], items["issues"]
+    for mid, m in sorted(milestones.items()):
+        if m.get("status") == "done":
+            continue
+        child_epics, child_issues = _milestone_descendants(mid, m, epics, issues)
+        if not (child_epics or child_issues):
+            continue  # vacuous-truth guard: an empty milestone is never "closable"
+        epics_done = all(epics.get(eid, {}).get("status") == "done" for eid in child_epics)
+        issues_done = all(issues.get(iid, {}).get("status") == "done" for iid in child_issues)
+        if epics_done and issues_done:
+            findings.append({
+                "check": "closable-milestone", "severity": "info", "id": mid,
+                "message": f"milestone '{mid}' has all {len(child_epics)} epic(s) and "
+                           f"{len(child_issues)} issue(s) done but status is '{m.get('status')}'"
+                           " — ready to close"})
+    return findings
+
+
+SIGNALS.append(signal_closable_milestone)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Report-only .dure state survey — forward-looking planning signals (discovery only).")
