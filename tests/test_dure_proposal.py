@@ -83,7 +83,7 @@ def run(path):
 
 
 def vset(d):
-    return sorted(v["check"] for v in d.get("violations", []))
+    return sorted(set(v["check"] for v in d.get("violations", [])))
 
 
 def check(name, cond, detail=""):
@@ -129,39 +129,54 @@ def main():
           all("testable" not in c and "valid" not in c for c in mod.STRUCTURAL_CHECKS),
           mod.STRUCTURAL_CHECKS)
 
-    # ---- frontmatter ----
-    check("no front matter -> direction:frontmatter",
-          vset(write_and_run(build_doc(fm=False))[1]) == ["direction:frontmatter"])
-    check("wrong kind -> direction:frontmatter",
-          "direction:frontmatter" in vset(write_and_run(build_doc(kind="spec"))[1]))
-    check("missing slug -> direction:frontmatter",
-          "direction:frontmatter" in vset(write_and_run(build_doc(slug=None))[1]))
+    # Each single-mutation doc must fire EXACTLY its one violation class (==, not membership),
+    # so an over-firing regression (spurious extra violation) is caught (red-team N1).
+    cases = [
+        ("no front matter", build_doc(fm=False), "direction:frontmatter"),
+        ("wrong kind", build_doc(kind="spec"), "direction:frontmatter"),
+        ("missing slug", build_doc(slug=None), "direction:frontmatter"),
+        ("no Problem section", build_doc(problem=None), "direction:problem-missing"),
+        ("empty Problem", build_doc(problem=""), "direction:problem-missing"),
+        ("one option", build_doc(options=1), "direction:options-too-few"),
+        ("option without critique", build_doc(drop_critique=True), "direction:option-critique-missing"),
+        ("no Chosen", build_doc(chosen=None), "direction:chosen-missing"),
+        ("Chosen with only a Rationale (no name)", build_doc(chosen=""), "direction:chosen-missing"),
+        ("no Rationale", build_doc(rationale=None), "direction:rationale-missing"),
+        ("zero candidate issues", build_doc(candidates=0), "direction:candidate-issue-missing"),
+        ("empty acceptance", build_doc(empty_acceptance=True), "direction:acceptance-missing"),
+    ]
+    for label, doc, expected in cases:
+        got = vset(write_and_run(doc)[1])
+        check(f"{label} -> exactly [{expected}]", got == [expected], got)
 
-    # ---- problem ----
-    check("no Problem section -> direction:problem-missing",
-          "direction:problem-missing" in vset(write_and_run(build_doc(problem=None))[1]))
-    check("empty Problem -> direction:problem-missing",
-          "direction:problem-missing" in vset(write_and_run(build_doc(problem=""))[1]))
+    # ---- B1 regression: code fences are NOT parsed as structure ----
+    # FALSE-POSITIVE guard: a VALID doc whose Option A description embeds a fenced block containing a
+    # '## ' line must NOT be torn apart (without fence-awareness this orphans Option B / Chosen /
+    # Candidate sections and fires bogus violations).
+    doc = build_doc().replace(
+        "Some description of the option.",
+        "Some description of the option.\n```yaml\n## not-a-heading: true\nkey: val\n```", 1)
+    ec, d = write_and_run(doc)
+    check("fence: a '## ' line inside an option's code fence does NOT break a valid doc",
+          ec == 0 and d["status"] == "pass" and d["violations"] == [], (ec, d))
 
-    # ---- options ----
-    check("one option -> direction:options-too-few",
-          "direction:options-too-few" in vset(write_and_run(build_doc(options=1))[1]))
-    check("option without critique -> direction:option-critique-missing",
-          "direction:option-critique-missing" in vset(write_and_run(build_doc(drop_critique=True))[1]))
+    # the required ## Gate fenced JSON (with no extra structure) also must not trip anything
+    ec, d = write_and_run(build_doc())
+    check("fence: the required gate ```json block leaves a valid doc clean", ec == 0 and d["violations"] == [], (ec, d))
 
-    # ---- chosen / rationale ----
-    check("no Chosen -> direction:chosen-missing",
-          "direction:chosen-missing" in vset(write_and_run(build_doc(chosen=None))[1]))
-    check("Chosen with only a Rationale (no name) -> direction:chosen-missing",
-          "direction:chosen-missing" in vset(write_and_run(build_doc(chosen=""))[1]))
-    check("no Rationale -> direction:rationale-missing",
-          "direction:rationale-missing" in vset(write_and_run(build_doc(rationale=None))[1]))
+    # a BROKEN doc whose only 2nd option lives inside a fence must still fire options-too-few
+    doc = build_doc(options=1)
+    doc = doc.replace("## Options",
+                      "## Options\n```text\n### Option B\nCritique: fenced, not real.\n```", 1)
+    check("fence: a 2nd option hidden in a fence does NOT satisfy options-too-few",
+          vset(write_and_run(doc)[1]) == ["direction:options-too-few"], vset(write_and_run(doc)[1]))
 
-    # ---- candidate issues ----
-    check("zero candidate issues -> direction:candidate-issue-missing",
-          "direction:candidate-issue-missing" in vset(write_and_run(build_doc(candidates=0))[1]))
-    check("empty acceptance -> direction:acceptance-missing",
-          "direction:acceptance-missing" in vset(write_and_run(build_doc(empty_acceptance=True))[1]))
+    # a BROKEN doc whose only candidate issue is inside a fence must fire candidate-issue-missing
+    doc = build_doc(candidates=0)
+    doc = doc.replace("## Candidate issues",
+                      "## Candidate issues\n```text\n- fenced | acceptance: not real\n```", 1)
+    check("fence: a candidate issue hidden in a fence does NOT satisfy candidate-issue-missing",
+          "direction:candidate-issue-missing" in vset(write_and_run(doc)[1]), vset(write_and_run(doc)[1]))
 
     # ---- any violation exits 1 ----
     ec, _ = write_and_run(build_doc(problem=None))

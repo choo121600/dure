@@ -29,6 +29,7 @@ except Exception:  # noqa: BLE001
 FM_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.S)
 H2_RE = re.compile(r"^##\s+(.*?)\s*$")
 H3_RE = re.compile(r"^###\s+(.*?)\s*$")
+FENCE_RE = re.compile(r"^\s*```")
 # "- <title> | acceptance: <text>"  (markdown body, so colon-space is fine here)
 CANDIDATE_RE = re.compile(r"^\s*-\s+(?P<title>.+?)\s*\|\s*acceptance:\s*(?P<acc>.*)$", re.I)
 LABELED_RE = lambda label: re.compile(r"^\s*(?:\*\*)?" + label + r"(?:\*\*)?\s*:\s*(.*)$", re.I)
@@ -57,13 +58,26 @@ def split_front_matter(text):
     return (data or None), body
 
 
+def _iter_unfenced(lines):
+    """Yield (line, in_fence). Lines inside (and the delimiters of) a ``` code fence are flagged
+    in_fence=True so they are NEVER interpreted as structure — the schema *requires* a fenced gate
+    block, and proposals routinely contain code examples (red-team B1)."""
+    in_fence = False
+    for line in lines:
+        if FENCE_RE.match(line):
+            yield line, True          # the ``` delimiter is never structural
+            in_fence = not in_fence
+        else:
+            yield line, in_fence
+
+
 def split_sections(body):
-    """Split body into {heading_lower: [lines]} keyed by level-2 (## ) headings."""
+    """Split body into {heading_lower: [lines]} keyed by level-2 (## ) headings, fence-aware.
+    Fenced lines are retained as section *content* but never start a new section."""
     sections, cur = {}, None
-    for line in body.splitlines():
-        h2 = H2_RE.match(line)
-        if h2:
-            cur = h2.group(1).strip().lower()
+    for line, fenced in _iter_unfenced(body.splitlines()):
+        if not fenced and H2_RE.match(line):
+            cur = H2_RE.match(line).group(1).strip().lower()
             sections[cur] = []
         elif cur is not None:
             sections[cur].append(line)
@@ -75,12 +89,12 @@ def _nonempty(lines):
 
 
 def _option_blocks(lines):
-    """Split an Options section's lines into {option_title: [block lines]} by level-3 (### ) headings."""
+    """Split an Options section's lines into {option_title: [block lines]} by level-3 (### ) headings,
+    fence-aware (a ### inside a code fence is not an option boundary)."""
     blocks, cur = {}, None
-    for line in lines:
-        h3 = H3_RE.match(line)
-        if h3:
-            cur = h3.group(1).strip()
+    for line, fenced in _iter_unfenced(lines):
+        if not fenced and H3_RE.match(line):
+            cur = H3_RE.match(line).group(1).strip()
             blocks[cur] = []
         elif cur is not None:
             blocks[cur].append(line)
@@ -88,7 +102,10 @@ def _option_blocks(lines):
 
 
 def _first_labeled(lines, rx):
-    for line in lines:
+    """First non-fenced line matching `rx`, returning its trailing text (stripped) or None."""
+    for line, fenced in _iter_unfenced(lines):
+        if fenced:
+            continue
         m = rx.match(line)
         if m:
             return m.group(1).strip()
@@ -147,7 +164,7 @@ def validate_structure(fm, sections):
 
     # direction:candidate-issue-missing / acceptance-missing
     cand = sections.get("candidate issues") or sections.get("candidate-issues") or sections.get("issues")
-    matches = [CANDIDATE_RE.match(ln) for ln in (cand or [])]
+    matches = [CANDIDATE_RE.match(ln) for ln, fenced in _iter_unfenced(cand or []) if not fenced]
     matches = [m for m in matches if m]
     if len(matches) < 1:
         emit("direction:candidate-issue-missing",
