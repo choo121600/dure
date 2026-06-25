@@ -3,8 +3,8 @@
 # dure roadmap index (generated)
 
 - ◐ **m1** Deep interview → issue decomposition + progress tracking (v1) · `doing`
-  - · **e1.2** Deep interview engine · `todo`
-    - · **i1.2.5** Convergence gate + anti-gaming guard · `todo`
+  - ✓ **e1.2** Deep interview engine · `done`
+    - ✓ **i1.2.5** Convergence gate + anti-gaming guard · `done`
 - ◐ **m2** Full audit · `doing`
   - ✓ **e2.1** dure-audit engine · `done`
     - ✓ **i2.1.1** dure-audit.py scaffold — JSON/exit contract + hard-coded audit config defaults · `done`
