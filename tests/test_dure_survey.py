@@ -272,6 +272,27 @@ def main():
         _, d = run(t)
         check("missing referenced epic -> not closable", closable_ids(d) == [], d)
 
+    # DISCRIMINATING reference-union safety: a present-done epic AND a missing referenced epic.
+    # Correct union oracle -> NOT closable (missing e2 reads not-done). A loaded-only oracle would
+    # drop e2 and wrongly fire — so this fixture (unlike the one above) actually catches that regression.
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1, e2]")  # e2.md absent
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("missing epic among present-done epics -> not closable (union, not loaded-only)",
+              closable_ids(d) == [], d)
+
+    # issues-only milestone (zero epics): all issues done -> closable (pins the epics-count==0 path)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing")  # no epics
+        mkitem(t, "issues", "i1", "done", milestone="m1")
+        mkitem(t, "issues", "i2", "done", milestone="m1")
+        _, d = run(t)
+        check("issues-only milestone closable when all issues done", closable_ids(d) == ["m1"], d)
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
