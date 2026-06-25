@@ -20,6 +20,6 @@
 - ◐ **m3** Strategic planning · `doing`
   - ◐ **e3.1** State survey (discovery engine) · `doing`
     - ✓ **i3.1.1** dure-survey.py scaffold — JSON/exit contract + survey config defaults + robust loaders · `done`
-    - · **i3.1.2** Signal — closable-milestone (info) · `todo`
+    - ✓ **i3.1.2** Signal — closable-milestone (info) · `done`
     - · **i3.1.3** Signal — empty-epic (info) · `todo`
     - · **i3.1.4** Disjointness test (AC-c) + /dure:survey skill + CI wiring · `todo`
