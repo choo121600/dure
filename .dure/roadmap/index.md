@@ -2,7 +2,7 @@
 
 # dure roadmap index (generated)
 
-- ◐ **m1** Deep interview → issue decomposition + progress tracking (v1) · `doing`
+- ✓ **m1** Deep interview → issue decomposition + progress tracking (v1) · `done`
   - ✓ **e1.2** Deep interview engine · `done`
     - ✓ **i1.2.5** Convergence gate + anti-gaming guard · `done`
 - ◐ **m2** Full audit · `doing`
