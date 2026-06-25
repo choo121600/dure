@@ -15,6 +15,8 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SURVEY = os.path.join(REPO, "scripts", "dure-survey.py")
+DOCTOR = os.path.join(REPO, "scripts", "dure-doctor.py")
+AUDIT = os.path.join(REPO, "scripts", "dure-audit.py")
 
 CONFIG_NO_SURVEY = """interview:
   ambiguity_threshold: 1.0
@@ -351,6 +353,84 @@ def main():
         mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
         _, d = run(t)
         check("empty-epic: only the empty epic (e2) fires", empty_ids(d) == ["e2"], d)
+
+    # ===================== AC-c: ownership disjointness (i3.1.4) =====================
+    def classes_of(script, root):
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=root)
+        out = subprocess.run([sys.executable, script], capture_output=True, text=True, env=env).stdout
+        try:
+            data = json.loads(out)
+        except Exception:
+            return set()
+        cs = {f.get("check") for f in data.get("findings", [])}
+        cs |= {v.get("check") for v in data.get("violations", [])}
+        cs |= {w.get("check") for w in data.get("warnings", [])}
+        return {c for c in cs if c}
+
+    # survey emits exactly its two signal classes (fixture firing BOTH signals, in separate
+    # milestones so the empty epic does not itself block the closable milestone)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")     # -> closable-milestone
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        mkitem(t, "milestones", "m2", "done", epics="[e2]")      # done -> not itself closable
+        mkitem(t, "epics", "e2", "todo", milestone="m2")         # -> empty-epic
+        survey_classes = classes_of(SURVEY, t)
+    check("AC-c: survey emits exactly {closable-milestone, empty-epic}",
+          survey_classes == {"closable-milestone", "empty-epic"}, sorted(survey_classes))
+
+    # audit's four IMPLEMENTED check-classes (the live set, not the stale 3-check spec list)
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, "docs"))
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()               # untested-script
+        w(os.path.join(t, "docs/note.md"), "# " + "TO" + "DO: x\n")             # todo-marker
+        w(os.path.join(t, ".dure/roadmap/milestones/m1.md"),
+          "---\nid: m1\ntype: milestone\ntitle: M\nstatus: done\nepics: [e1]\n---\n")
+        w(os.path.join(t, ".dure/roadmap/epics/e1.md"),
+          "---\nid: e1\ntype: epic\ntitle: E\nstatus: todo\nmilestone: m1\n---\n")  # done-parent-undone-child
+        w(os.path.join(t, ".dure/interview-logs/x.md"),
+          "---\nslug: x\ntitle: X\nstatus: in-progress\n---\n")                  # unfinished-interview
+        audit_classes = classes_of(AUDIT, t)
+    check("AC-c: audit's four implemented classes present",
+          audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child",
+                            "unfinished-interview"}, sorted(audit_classes))
+
+    # doctor's classes — union over a bare .dure (struct/config/active) AND a rich roadmap fixture
+    # (ref:missing-backing + item:field*) so disjointness is checked against doctor's namespaced
+    # families, not only the handful a bare .dure provokes.
+    doctor_classes = set()
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, ".dure"))
+        doctor_classes |= classes_of(DOCTOR, t)
+    with tempfile.TemporaryDirectory() as t:
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        os.makedirs(os.path.join(t, ".dure", "specs"))
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        w(os.path.join(t, ".dure", "config.yml"), CONFIG_NO_SURVEY)
+        open(os.path.join(t, ".dure", "active"), "w").close()
+        # milestone referencing a missing epic eX -> ref:missing-backing; epic missing 'title' -> item:field*
+        w(os.path.join(t, ".dure/roadmap/milestones/m1.md"),
+          "---\nid: m1\nslug: m1\ntype: milestone\ntitle: M1\nstatus: doing\nepics: [e1, eX]\n---\nx\n")
+        w(os.path.join(t, ".dure/roadmap/epics/e1.md"),
+          "---\nid: e1\nslug: e1\ntype: epic\nstatus: todo\nmilestone: m1\n---\nx\n")  # missing title
+        doctor_classes |= classes_of(DOCTOR, t)
+
+    # status reports no "check" classes; guard against name collision with its output concepts anyway
+    STATUS_FIELDS = {"overall", "milestones", "blockers", "conflicts", "completion"}
+
+    check("AC-c: survey disjoint from audit's 4 classes",
+          survey_classes.isdisjoint(audit_classes), (sorted(survey_classes), sorted(audit_classes)))
+    check("AC-c: survey disjoint from dure-doctor classes",
+          bool(doctor_classes) and survey_classes.isdisjoint(doctor_classes),
+          (sorted(survey_classes), sorted(doctor_classes)))
+    check("AC-c: survey disjoint from dure-status fields",
+          survey_classes.isdisjoint(STATUS_FIELDS), sorted(survey_classes))
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)

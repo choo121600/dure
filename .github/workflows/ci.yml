@@ -26,8 +26,10 @@ jobs:
             echo "== $f =="
             python3 "$f"
           done
-      - name: Repo self-checks (dure-doctor + dure-audit must pass)
+      - name: Repo self-checks (dure-doctor + dure-audit + dure-survey must pass)
         run: |
           set -e
           python3 scripts/dure-doctor.py
           python3 scripts/dure-audit.py
+          survey_out=$(python3 scripts/dure-survey.py)   # set -e catches a non-zero exit
+          echo "$survey_out" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['counts']['findings']==0, d['counts']; print('dure-survey: 0 findings')"
