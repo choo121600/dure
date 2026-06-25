@@ -307,8 +307,9 @@ def main():
         mkitem(t, "epics", "e1", "todo", milestone="m1")
         ec, d = run(t)
         check("empty-epic: childless epic reported", empty_ids(d) == ["e1"], (ec, d))
-        check("empty-epic: severity info & exit 0",
-              ec == 0 and all(f["severity"] == "info" for f in d["findings"] if f["check"] == "empty-epic"), (ec, d))
+        ee = [f for f in d["findings"] if f["check"] == "empty-epic"]
+        check("empty-epic: exactly one info finding, exit 0 (self-contained)",
+              ec == 0 and len(ee) == 1 and ee[0]["severity"] == "info", (ec, d))
 
     # epic with a child via its issues list -> no fire
     with tempfile.TemporaryDirectory() as t:
