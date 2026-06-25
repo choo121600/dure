@@ -283,6 +283,8 @@ def main():
 
     # ===================== AC-e: five-way ownership disjointness (i3.2.3) =====================
     def run_env_classes(script, root):
+        # Returns the emitted check/violation/warning class names. A broken invocation yields set();
+        # the explicit non-empty guard below is the intended backstop against that masking disjointness.
         env = dict(os.environ, CLAUDE_PROJECT_DIR=root)
         out = subprocess.run([sys.executable, script], capture_output=True, text=True, env=env).stdout
         try:
@@ -364,6 +366,14 @@ def main():
           direction_classes.isdisjoint(others), sorted(direction_classes & others))
     check("AC-e: no other tool uses the 'direction:' namespace",
           not any(c.startswith("direction:") for c in others), sorted(c for c in others if c.startswith("direction:")))
+
+    # Source-grep backstop (closes the sampling gap: a future 'direction:'-prefixed class in another
+    # tool that no fixture happens to trip would still be caught here, since check names are string
+    # literals at the emission sites).
+    for s in ("dure-doctor.py", "dure-audit.py", "dure-survey.py", "dure-status.py"):
+        src = open(os.path.join(REPO, "scripts", s), encoding="utf-8").read()
+        check(f"AC-e backstop: {s} source contains no 'direction:' class literal",
+              "direction:" not in src, s)
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
