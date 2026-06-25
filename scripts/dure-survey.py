@@ -196,6 +196,26 @@ def signal_closable_milestone(items):
 SIGNALS.append(signal_closable_milestone)
 
 
+def signal_empty_epic(items):
+    """info — an epic with no concrete work: its child-issue membership is empty
+    (`epic.issues ∪ {i : i.epic == eid}` == ∅). Because this loads the epic's own front matter (its
+    backing file is present), it is mutually exclusive with dure-doctor's ref:missing-backing, which
+    fires only when a *referenced* id's backing file is ABSENT — no id can satisfy both."""
+    findings = []
+    epics, issues = items["epics"], items["issues"]
+    for eid, e in sorted(epics.items()):
+        child_issues = set(e.get("issues") or [])
+        child_issues |= {iid for iid, i in issues.items() if i.get("epic") == eid}
+        if not child_issues:
+            findings.append({
+                "check": "empty-epic", "severity": "info", "id": eid,
+                "message": f"epic '{eid}' has no child issues — decompose or drop"})
+    return findings
+
+
+SIGNALS.append(signal_empty_epic)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Report-only .dure state survey — forward-looking planning signals (discovery only).")

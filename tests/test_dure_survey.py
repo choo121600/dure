@@ -293,6 +293,65 @@ def main():
         _, d = run(t)
         check("issues-only milestone closable when all issues done", closable_ids(d) == ["m1"], d)
 
+    # ============================ empty-epic (i3.1.3) ============================
+    def empty_ids(dd):
+        return sorted(f["id"] for f in dd.get("findings", []) if f["check"] == "empty-epic")
+
+    # committed repo: every backed epic has >= 1 child issue -> 0
+    _, d = run(REPO)
+    check("committed: empty-epic = 0", empty_ids(d) == [], empty_ids(d))
+
+    # a truly childless epic (no issues list, no back-refs) -> fires
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "epics", "e1", "todo", milestone="m1")
+        ec, d = run(t)
+        check("empty-epic: childless epic reported", empty_ids(d) == ["e1"], (ec, d))
+        ee = [f for f in d["findings"] if f["check"] == "empty-epic"]
+        check("empty-epic: exactly one info finding, exit 0 (self-contained)",
+              ec == 0 and len(ee) == 1 and ee[0]["severity"] == "info", (ec, d))
+
+    # epic with a child via its issues list -> no fire
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "epics", "e1", "doing", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "todo", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("empty-epic: epic with listed issue not empty", empty_ids(d) == [], d)
+
+    # epic with a child only via back-ref (issue.epic==e1, not in epic.issues) -> no fire
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "epics", "e1", "doing", milestone="m1")  # no issues list
+        mkitem(t, "issues", "i1", "todo", epic="e1")        # attributed via back-ref only
+        _, d = run(t)
+        check("empty-epic: back-ref child counts (not empty)", empty_ids(d) == [], d)
+
+    # an epic LISTING an issue whose file is absent is NOT empty (it has listed work);
+    # the missing backing is dure-doctor's concern, not empty-epic's -> disjoint
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "epics", "e1", "todo", milestone="m1", issues="[i1]")  # i1.md absent
+        _, d = run(t)
+        check("empty-epic: listed-but-missing issue is not empty (disjoint from doctor)",
+              empty_ids(d) == [], d)
+
+    # zero epics at all -> no empty-epic finding, no crash
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing")
+        ec, d = run(t)
+        check("empty-epic: zero epics -> none", empty_ids(d) == [] and ec == 0, (ec, d))
+
+    # mixed: only the childless epic fires
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "epics", "e1", "doing", milestone="m1", issues="[i1]")
+        mkitem(t, "epics", "e2", "todo", milestone="m1")  # empty
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("empty-epic: only the empty epic (e2) fires", empty_ids(d) == ["e2"], d)
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
