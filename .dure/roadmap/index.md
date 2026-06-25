@@ -25,6 +25,6 @@
     - ✓ **i3.1.4** Disjointness test (AC-c) + /dure:survey skill + CI wiring · `done`
   - ◐ **e3.2** Direction-proposal layer · `doing`
     - ✓ **i3.2.1** dure-proposal.py scaffold + directions schema + structural presence checks · `done`
-    - · **i3.2.2** Embedded-gate validation (direction:gate-not-pass) · `todo`
+    - ✓ **i3.2.2** Embedded-gate validation (direction:gate-not-pass) · `done`
     - · **i3.2.3** Disjointness test (direction:* five-way) + CI wiring · `todo`
     - · **i3.2.4** /dure:direction skill — orchestration · `todo`
