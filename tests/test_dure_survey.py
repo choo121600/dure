@@ -38,6 +38,20 @@ def w(path, text):
         f.write(text)
 
 
+def mkitem(base, kind, iid, status, **extra):
+    """Write a per-item roadmap file. extra values are emitted verbatim (e.g. epics='[e1]')."""
+    fm = [f"id: {iid}", f"slug: {iid}", f"type: {kind[:-1]}", f"title: {iid.upper()}",
+          f"status: {status}", "github: null"]
+    for k, v in extra.items():
+        fm.append(f"{k}: {v}")
+    w(os.path.join(base, ".dure", "roadmap", kind, f"{iid}.md"),
+      "---\n" + "\n".join(fm) + "\n---\nbody\n")
+
+
+def closable_ids(d):
+    return sorted(f["id"] for f in d.get("findings", []) if f["check"] == "closable-milestone")
+
+
 def load_module():
     spec = importlib.util.spec_from_file_location("dure_survey", SURVEY)
     mod = importlib.util.module_from_spec(spec)
@@ -188,6 +202,96 @@ def main():
                   mod._read_front_matter(p2).get("epics") == ["e1", "e2"])
     finally:
         mod.HAVE_YAML = saved
+
+    # ============================ closable-milestone (i3.1.2) ============================
+    # committed repo: m2 is NOT closable while epics e2.2/e2.3 are doing
+    _, d = run(REPO)
+    check("committed: closable-milestone = 0", closable_ids(d) == [], closable_ids(d))
+
+    # genuinely closable: milestone doing, epic done, all issues done
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1, i2]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        mkitem(t, "issues", "i2", "done", milestone="m1", epic="e1")
+        ec, d = run(t)
+        check("closable: m1 reported", closable_ids(d) == ["m1"], (ec, d))
+        check("closable: severity info", all(f["severity"] == "info" for f in d["findings"]), d)
+        check("closable: exit 0 (info advisory)", ec == 0, ec)
+
+    # NOT closable: an undone descendant epic (even though all issues are done)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")
+        mkitem(t, "epics", "e1", "doing", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("not-closable: undone epic blocks", closable_ids(d) == [], d)
+
+    # NOT closable: an undone descendant issue
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1, i2]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        mkitem(t, "issues", "i2", "todo", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("not-closable: undone issue blocks", closable_ids(d) == [], d)
+
+    # vacuous guard: milestone with zero descendants is never closable
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing")
+        _, d = run(t)
+        check("vacuous: zero-descendant milestone not closable", closable_ids(d) == [], d)
+
+    # done milestone is skipped (not a candidate)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "done", epics="[e1]")
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("done-milestone: skipped (not closable)", closable_ids(d) == [], d)
+
+    # epic-only issue attribution (issue has epic but no milestone field) still counts
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")
+        mkitem(t, "epics", "e1", "done", milestone="m1")  # epic lists no issues
+        mkitem(t, "issues", "i1", "done", epic="e1")       # attributed via epic only
+        _, d = run(t)
+        check("epic-only attribution: m1 closable via union membership",
+              closable_ids(d) == ["m1"], d)
+
+    # a referenced child with no backing file keeps the milestone NOT closable (reference-union safety)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")  # e1.md intentionally absent
+        _, d = run(t)
+        check("missing referenced epic -> not closable", closable_ids(d) == [], d)
+
+    # DISCRIMINATING reference-union safety: a present-done epic AND a missing referenced epic.
+    # Correct union oracle -> NOT closable (missing e2 reads not-done). A loaded-only oracle would
+    # drop e2 and wrongly fire — so this fixture (unlike the one above) actually catches that regression.
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing", epics="[e1, e2]")  # e2.md absent
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        _, d = run(t)
+        check("missing epic among present-done epics -> not closable (union, not loaded-only)",
+              closable_ids(d) == [], d)
+
+    # issues-only milestone (zero epics): all issues done -> closable (pins the epics-count==0 path)
+    with tempfile.TemporaryDirectory() as t:
+        make_repo(t)
+        mkitem(t, "milestones", "m1", "doing")  # no epics
+        mkitem(t, "issues", "i1", "done", milestone="m1")
+        mkitem(t, "issues", "i2", "done", milestone="m1")
+        _, d = run(t)
+        check("issues-only milestone closable when all issues done", closable_ids(d) == ["m1"], d)
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
