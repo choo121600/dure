@@ -75,6 +75,22 @@ def main():
         check("audit skill declares report-only boundary (no roadmap writes)",
               report_only and guards_roadmap, (report_only, guards_roadmap))
 
+    # /dure:direction skill contract (i3.2.4)
+    dir_md = os.path.join(SKILLS, "direction", "SKILL.md")
+    check("direction skill exists", os.path.isfile(dir_md))
+    if os.path.isfile(dir_md):
+        _, txt = front_matter(dir_md)
+        check("direction skill runs the dure-proposal.py validator",
+              "scripts/dure-proposal.py" in txt, "")
+        check("direction skill gathers survey/audit/status evidence",
+              all(f"scripts/dure-{s}.py" in txt for s in ("survey", "audit", "status")), "")
+        check("direction skill embeds the reused dure-gate.py PASS",
+              "scripts/dure-gate.py" in txt, "")
+        report_only = bool(re.search(r"(?i)report-only|non-canonical", txt))
+        guards_roadmap = bool(re.search(r"(?is)must not\b.{0,80}roadmap", txt))
+        check("direction skill declares the no-roadmap-writes boundary",
+              report_only and guards_roadmap, (report_only, guards_roadmap))
+
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
 
