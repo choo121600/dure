@@ -26,8 +26,9 @@ jobs:
             echo "== $f =="
             python3 "$f"
           done
-      - name: Repo self-checks (dure-doctor + dure-audit must pass)
+      - name: Repo self-checks (dure-doctor + dure-audit + dure-survey must pass)
         run: |
           set -e
           python3 scripts/dure-doctor.py
           python3 scripts/dure-audit.py
+          python3 scripts/dure-survey.py
