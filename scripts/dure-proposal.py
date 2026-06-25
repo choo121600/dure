@@ -186,31 +186,36 @@ _GATE_REQUIRED = ["gate", "run_level_max", "threshold", "per_component", "failed
 
 
 def _extract_gate_block(gate_lines):
-    """Parse the JSON inside the first fenced code block of the Gate section, or None."""
+    """Parse the JSON of the first fenced code block in the Gate section that yields a dict, or None.
+    Scans ALL fences (not just the first) so a human-readable prose fence before the json is tolerated."""
     in_fence, buf = False, []
     for line in gate_lines:
         if FENCE_RE.match(line):
-            if in_fence:
-                break               # closing fence of the first block
-            in_fence = True
+            if in_fence:                      # closing fence: try this block, else keep scanning
+                try:
+                    obj = json.loads("\n".join(buf))
+                    if isinstance(obj, dict):
+                        return obj
+                except Exception:  # noqa: BLE001
+                    pass
+                buf = []
+            in_fence = not in_fence
             continue
         if in_fence:
             buf.append(line)
-    if not buf:
-        return None
-    try:
-        obj = json.loads("\n".join(buf))
-        return obj if isinstance(obj, dict) else None
-    except Exception:  # noqa: BLE001
-        return None
+    return None
+
+
+def _num(x):
+    return x if isinstance(x, (int, float)) and not isinstance(x, bool) else None
 
 
 def validate_gate(sections):
-    """direction:gate-not-pass — the embedded block must be a REAL dure-gate.py PASS (i3.2.2, B1).
-
-    Refuses a forged stub: requires dure-gate.py's genuine output shape AND internal consistency
-    (failed == [] when gate == PASS). Semantic validity is the critic's job, recorded in this block;
-    this check only verifies a real PASS gate was embedded, never re-judges the direction."""
+    """direction:gate-not-pass — the embedded block must be INTERNALLY CONSISTENT with a real
+    dure-gate.py PASS (i3.2.2, B1-residual). It cannot prove a run happened, but it rejects any block
+    a real run could never emit: genuine shape, gate==PASS, and the PASS invariants from dure-gate.py
+    (failed empty, run_level_max <= threshold and == max component ambiguity, every testable_signoff
+    'pass'). It never re-judges the direction — semantic validity is the critic's, recorded here."""
     def bad(message):
         return [{"check": GATE_CHECK, "message": message}]
 
@@ -219,21 +224,33 @@ def validate_gate(sections):
         return bad("no '## Gate' section embedding the verbatim dure-gate.py output")
     obj = _extract_gate_block(gate_sec)
     if obj is None:
-        return bad("the '## Gate' section has no parseable fenced JSON block")
+        return bad("the '## Gate' section has no parseable fenced JSON object")
     missing = [k for k in _GATE_REQUIRED if k not in obj]
     if missing:
-        return bad(f"embedded block is not real dure-gate.py output (missing {missing}); "
-                   "a bare stub is rejected")
+        return bad(f"embedded block is not real dure-gate.py output (missing {missing}); a stub is rejected")
     pc = obj.get("per_component")
     if not isinstance(pc, list) or not pc or not all(
-            isinstance(c, dict) and "testable_signoff" in c for c in pc):
-        return bad("per_component must be a non-empty list of components each with testable_signoff")
+            isinstance(c, dict) and _num(c.get("weighted_ambiguity")) is not None
+            and "name" in c and "testable_signoff" in c for c in pc):
+        return bad("per_component must be a non-empty list of components each with name, "
+                   "weighted_ambiguity (number) and testable_signoff")
     if not isinstance(obj.get("failed"), list):
         return bad("'failed' must be a list")
+    if _num(obj.get("run_level_max")) is None or _num(obj.get("threshold")) is None:
+        return bad("run_level_max and threshold must be numbers")
     if obj.get("gate") != "PASS":
         return bad(f"gate is {obj.get('gate')!r}, must be PASS")
-    if obj.get("failed"):
-        return bad("gate is PASS but 'failed' is non-empty (inconsistent — not a real PASS)")
+    # PASS invariants that a real dure-gate.py run guarantees — reject any block that contradicts them
+    if obj["failed"]:
+        return bad("gate is PASS but 'failed' is non-empty (a real PASS has failed == [])")
+    if obj["run_level_max"] > obj["threshold"]:
+        return bad(f"gate is PASS but run_level_max {obj['run_level_max']} > threshold {obj['threshold']}")
+    comp_max = max(c["weighted_ambiguity"] for c in pc)
+    if abs(obj["run_level_max"] - comp_max) > 1e-6:
+        return bad(f"run_level_max {obj['run_level_max']} != max component ambiguity {comp_max}")
+    not_pass = [c.get("name") for c in pc if c.get("testable_signoff") != "pass"]
+    if not_pass:
+        return bad(f"gate is PASS but components {not_pass} have testable_signoff != 'pass'")
     return []
 
 

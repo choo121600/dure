@@ -235,11 +235,29 @@ def main():
          GOOD.replace('[{"name": "x", "weighted_ambiguity": 0.5, "testable_signoff": "pass"}]', "[]")),
         ("per_component lacks testable_signoff",
          GOOD.replace(', "testable_signoff": "pass"', "")),
+        ("per_component lacks weighted_ambiguity",
+         GOOD.replace('"weighted_ambiguity": 0.5, ', "")),
+        ("per_component lacks name", GOOD.replace('"name": "x", ', "")),
         ("not JSON", "this is not json at all"),
+        # PASS invariants a real gate run can never violate (red-team findings 1-2)
+        ("testable_signoff fail under PASS",
+         GOOD.replace('"testable_signoff": "pass"', '"testable_signoff": "fail"')),
+        ("run_level_max above threshold under PASS",
+         GOOD.replace('"run_level_max": 0.5', '"run_level_max": 5.0')
+             .replace('"weighted_ambiguity": 0.5', '"weighted_ambiguity": 5.0')),
+        ("run_level_max disagrees with component max",
+         GOOD.replace('"run_level_max": 0.5', '"run_level_max": 0.9')),
     ]
     for label, gate in gate_cases:
         got = vset(write_and_run(build_doc(gate=gate))[1])
         check(f"gate: {label} -> direction:gate-not-pass", got == ["direction:gate-not-pass"], got)
+
+    # a human-readable prose fence BEFORE the json block is tolerated (extractor scans all fences)
+    doc = build_doc().replace("## Gate\n```json",
+                              "## Gate\n```text\nhuman summary, not json\n```\n```json")
+    ec, d = write_and_run(doc)
+    check("gate: a prose fence before the json block is tolerated",
+          ec == 0 and d["violations"] == [], (ec, d))
 
     # no ## Gate section at all -> gate-not-pass
     check("gate: missing ## Gate section -> gate-not-pass",
