@@ -33,7 +33,9 @@ interview runs in the user's language; artifacts stay English (ADR-0007).
    and **every round** spawn an independent `redteam-critic` (via Task) to try to break the candidate
    directions. Target *which direction to pursue*, framed by the evidence, with **≥2 critiqued options**.
 4. **Gate** — when stop conditions are met, run `${CLAUDE_PLUGIN_ROOT}/scripts/dure-gate.py` with the
-   final-round scores + the critic sign-off; keep iterating until it returns `gate: PASS`.
+   full stdin payload (the same shape `/dure:interview` uses — parent spec §2): `round`, `components`
+   (each with per-dimension `scores` + the critic `testable_signoff`), `new_ambiguity_last_round`, and
+   `blocking_open_questions`. Keep iterating until it returns `gate: PASS`, then keep that JSON verbatim.
 5. **Write the proposal** — write `.dure/directions/<slug>.md` with: a non-empty **Problem**, the
    **≥2 options each with a Critique**, the **Chosen** option + **Rationale**, a **Candidate issues**
    sketch (`- <title> | acceptance: <text>`, non-canonical), and the **verbatim gate PASS block** under

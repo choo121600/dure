@@ -84,8 +84,9 @@ def main():
               "scripts/dure-proposal.py" in txt, "")
         check("direction skill gathers survey/audit/status evidence",
               all(f"scripts/dure-{s}.py" in txt for s in ("survey", "audit", "status")), "")
-        check("direction skill embeds the reused dure-gate.py PASS",
-              "scripts/dure-gate.py" in txt, "")
+        check("direction skill embeds the reused dure-gate.py PASS verbatim",
+              "scripts/dure-gate.py" in txt
+              and bool(re.search(r"(?is)verbatim.{0,80}gate|gate.{0,80}verbatim", txt)), "")
         report_only = bool(re.search(r"(?i)report-only|non-canonical", txt))
         guards_roadmap = bool(re.search(r"(?is)must not\b.{0,80}roadmap", txt))
         check("direction skill declares the no-roadmap-writes boundary",
