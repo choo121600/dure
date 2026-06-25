@@ -16,6 +16,9 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 PROPOSAL = os.path.join(REPO, "scripts", "dure-proposal.py")
+DOCTOR = os.path.join(REPO, "scripts", "dure-doctor.py")
+AUDIT = os.path.join(REPO, "scripts", "dure-audit.py")
+SURVEY = os.path.join(REPO, "scripts", "dure-survey.py")
 
 PASS = 0
 FAIL = 0
@@ -25,6 +28,16 @@ def w(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
+
+
+def mkitem(base, kind, iid, status, **extra):
+    """Write a roadmap per-item file (for the survey disjointness fixture)."""
+    fm = [f"id: {iid}", f"slug: {iid}", f"type: {kind[:-1]}", f"title: {iid.upper()}",
+          f"status: {status}", "github: null"]
+    for k, v in extra.items():
+        fm.append(f"{k}: {v}")
+    w(os.path.join(base, ".dure", "roadmap", kind, f"{iid}.md"),
+      "---\n" + "\n".join(fm) + "\n---\nbody\n")
 
 
 def load_module():
@@ -267,6 +280,90 @@ def main():
     # ALL_CHECKS includes the gate class (used by the i3.2.3 disjointness test)
     check("ALL_CHECKS includes direction:gate-not-pass",
           "direction:gate-not-pass" in mod.ALL_CHECKS, mod.ALL_CHECKS)
+
+    # ===================== AC-e: five-way ownership disjointness (i3.2.3) =====================
+    def run_env_classes(script, root):
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=root)
+        out = subprocess.run([sys.executable, script], capture_output=True, text=True, env=env).stdout
+        try:
+            data = json.loads(out)
+        except Exception:
+            return set()
+        cs = {f.get("check") for f in data.get("findings", [])}
+        cs |= {v.get("check") for v in data.get("violations", [])}
+        cs |= {w.get("check") for w in data.get("warnings", [])}
+        return {c for c in cs if c}
+
+    # direction:* — enumerate the set the validator ACTUALLY emits across targeted fixtures,
+    # and assert it equals the declared ALL_CHECKS (declared == emitted, no drift).
+    emit_fixtures = [build_doc(fm=False), build_doc(problem=None), build_doc(options=1),
+                     build_doc(drop_critique=True), build_doc(chosen=None), build_doc(rationale=None),
+                     build_doc(candidates=0), build_doc(empty_acceptance=True),
+                     build_doc(gate='{"gate": "PASS"}')]
+    direction_classes = set()
+    for doc in emit_fixtures:
+        direction_classes |= set(vset(write_and_run(doc)[1]))
+    check("AC-e: emitted direction:* == declared ALL_CHECKS",
+          direction_classes == set(mod.ALL_CHECKS) and len(direction_classes) == 9,
+          (sorted(direction_classes), sorted(mod.ALL_CHECKS)))
+    check("AC-e: every direction class uses the 'direction:' namespace",
+          all(c.startswith("direction:") for c in direction_classes), sorted(direction_classes))
+
+    # audit's 4 implemented classes
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, "scripts"))
+        os.makedirs(os.path.join(t, "docs"))
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        open(os.path.join(t, "scripts/dure-foo.py"), "w").close()
+        w(os.path.join(t, "docs/note.md"), "# " + "TO" + "DO: x\n")
+        w(os.path.join(t, ".dure/roadmap/milestones/m1.md"),
+          "---\nid: m1\ntype: milestone\ntitle: M\nstatus: done\nepics: [e1]\n---\n")
+        w(os.path.join(t, ".dure/roadmap/epics/e1.md"),
+          "---\nid: e1\ntype: epic\ntitle: E\nstatus: todo\nmilestone: m1\n---\n")
+        w(os.path.join(t, ".dure/interview-logs/x.md"),
+          "---\nslug: x\ntitle: X\nstatus: in-progress\n---\n")
+        audit_classes = run_env_classes(AUDIT, t)
+
+    # survey's 2 classes
+    with tempfile.TemporaryDirectory() as t:
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        mkitem(t, "milestones", "m1", "doing", epics="[e1]")
+        mkitem(t, "epics", "e1", "done", milestone="m1", issues="[i1]")
+        mkitem(t, "issues", "i1", "done", milestone="m1", epic="e1")
+        mkitem(t, "milestones", "m2", "done", epics="[e2]")
+        mkitem(t, "epics", "e2", "todo", milestone="m2")
+        survey_classes = run_env_classes(SURVEY, t)
+
+    # doctor's classes (bare .dure + a rich roadmap fixture)
+    doctor_classes = set()
+    with tempfile.TemporaryDirectory() as t:
+        os.makedirs(os.path.join(t, ".dure"))
+        doctor_classes |= run_env_classes(DOCTOR, t)
+    with tempfile.TemporaryDirectory() as t:
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        os.makedirs(os.path.join(t, ".dure", "specs"))
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        w(os.path.join(t, ".dure", "config.yml"), "interview:\n  min_rounds: 1\n")
+        open(os.path.join(t, ".dure", "active"), "w").close()
+        w(os.path.join(t, ".dure/roadmap/milestones/m1.md"),
+          "---\nid: m1\nslug: m1\ntype: milestone\ntitle: M1\nstatus: doing\nepics: [e1, eX]\n---\nx\n")
+        w(os.path.join(t, ".dure/roadmap/epics/e1.md"),
+          "---\nid: e1\nslug: e1\ntype: epic\nstatus: todo\nmilestone: m1\n---\nx\n")
+        doctor_classes |= run_env_classes(DOCTOR, t)
+
+    STATUS_FIELDS = {"overall", "milestones", "blockers", "conflicts", "completion"}
+    others = audit_classes | survey_classes | doctor_classes | STATUS_FIELDS
+    check("AC-e: comparison sets are non-empty (no vacuous pass)",
+          bool(direction_classes) and bool(audit_classes) and bool(survey_classes)
+          and bool(doctor_classes), (len(audit_classes), len(survey_classes), len(doctor_classes)))
+    check("AC-e: direction:* disjoint from doctor/audit/survey/status (five-way)",
+          direction_classes.isdisjoint(others), sorted(direction_classes & others))
+    check("AC-e: no other tool uses the 'direction:' namespace",
+          not any(c.startswith("direction:") for c in others), sorted(c for c in others if c.startswith("direction:")))
 
     print(f"\n{PASS} passed, {FAIL} failed")
     sys.exit(0 if FAIL == 0 else 1)
