@@ -177,6 +177,66 @@ def validate_structure(fm, sections):
     return v
 
 
+# The gate readiness class (i3.2.2); ALL_CHECKS is the full direction:* namespace (used by the
+# i3.2.3 disjointness test).
+GATE_CHECK = "direction:gate-not-pass"
+ALL_CHECKS = STRUCTURAL_CHECKS + [GATE_CHECK]
+# the keys dure-gate.py actually emits — a forged stub like {"gate":"PASS"} lacks these
+_GATE_REQUIRED = ["gate", "run_level_max", "threshold", "per_component", "failed"]
+
+
+def _extract_gate_block(gate_lines):
+    """Parse the JSON inside the first fenced code block of the Gate section, or None."""
+    in_fence, buf = False, []
+    for line in gate_lines:
+        if FENCE_RE.match(line):
+            if in_fence:
+                break               # closing fence of the first block
+            in_fence = True
+            continue
+        if in_fence:
+            buf.append(line)
+    if not buf:
+        return None
+    try:
+        obj = json.loads("\n".join(buf))
+        return obj if isinstance(obj, dict) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def validate_gate(sections):
+    """direction:gate-not-pass — the embedded block must be a REAL dure-gate.py PASS (i3.2.2, B1).
+
+    Refuses a forged stub: requires dure-gate.py's genuine output shape AND internal consistency
+    (failed == [] when gate == PASS). Semantic validity is the critic's job, recorded in this block;
+    this check only verifies a real PASS gate was embedded, never re-judges the direction."""
+    def bad(message):
+        return [{"check": GATE_CHECK, "message": message}]
+
+    gate_sec = sections.get("gate")
+    if gate_sec is None:
+        return bad("no '## Gate' section embedding the verbatim dure-gate.py output")
+    obj = _extract_gate_block(gate_sec)
+    if obj is None:
+        return bad("the '## Gate' section has no parseable fenced JSON block")
+    missing = [k for k in _GATE_REQUIRED if k not in obj]
+    if missing:
+        return bad(f"embedded block is not real dure-gate.py output (missing {missing}); "
+                   "a bare stub is rejected")
+    pc = obj.get("per_component")
+    if not isinstance(pc, list) or not pc or not all(
+            isinstance(c, dict) and "testable_signoff" in c for c in pc):
+        return bad("per_component must be a non-empty list of components each with testable_signoff")
+    if not isinstance(obj.get("failed"), list):
+        return bad("'failed' must be a list")
+    if obj.get("gate") != "PASS":
+        return bad(f"gate is {obj.get('gate')!r}, must be PASS")
+    if obj.get("failed"):
+        return bad("gate is PASS but 'failed' is non-empty (inconsistent — not a real PASS)")
+    return []
+
+
 def build_report(violations):
     return {"status": "fail" if violations else "pass", "violations": violations}
 
@@ -191,7 +251,7 @@ def main():
             text = f.read()
         fm, body = split_front_matter(text)
         sections = split_sections(body)
-        violations = validate_structure(fm, sections)
+        violations = validate_structure(fm, sections) + validate_gate(sections)
         report = build_report(violations)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         sys.exit(1 if violations else 0)
