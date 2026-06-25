@@ -17,3 +17,9 @@
     - ✓ **i2.2.2** dure-audit --suggest — draft issue stubs from findings (report-only) · `done`
   - ◐ **e2.3** Additional audit checks · `doing`
     - ✓ **i2.3.1** Check — unfinished-interview (warning) · `done`
+- ◐ **m3** Strategic planning · `doing`
+  - · **e3.1** State survey (discovery engine) · `todo`
+    - · **i3.1.1** dure-survey.py scaffold — JSON/exit contract + survey config defaults + robust loaders · `todo`
+    - · **i3.1.2** Signal — closable-milestone (info) · `todo`
+    - · **i3.1.3** Signal — empty-epic (info) · `todo`
+    - · **i3.1.4** Disjointness test (AC-c) + /dure:survey skill + CI wiring · `todo`
