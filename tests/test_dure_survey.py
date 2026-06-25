@@ -400,10 +400,26 @@ def main():
           audit_classes == {"todo-marker", "untested-script", "done-parent-undone-child",
                             "unfinished-interview"}, sorted(audit_classes))
 
-    # doctor's classes (bare .dure provokes struct/config/active classes deterministically)
+    # doctor's classes — union over a bare .dure (struct/config/active) AND a rich roadmap fixture
+    # (ref:missing-backing + item:field*) so disjointness is checked against doctor's namespaced
+    # families, not only the handful a bare .dure provokes.
+    doctor_classes = set()
     with tempfile.TemporaryDirectory() as t:
         os.makedirs(os.path.join(t, ".dure"))
-        doctor_classes = classes_of(DOCTOR, t)
+        doctor_classes |= classes_of(DOCTOR, t)
+    with tempfile.TemporaryDirectory() as t:
+        for sub in ("milestones", "epics", "issues"):
+            os.makedirs(os.path.join(t, ".dure", "roadmap", sub))
+        os.makedirs(os.path.join(t, ".dure", "specs"))
+        os.makedirs(os.path.join(t, ".dure", "interview-logs"))
+        w(os.path.join(t, ".dure", "config.yml"), CONFIG_NO_SURVEY)
+        open(os.path.join(t, ".dure", "active"), "w").close()
+        # milestone referencing a missing epic eX -> ref:missing-backing; epic missing 'title' -> item:field*
+        w(os.path.join(t, ".dure/roadmap/milestones/m1.md"),
+          "---\nid: m1\nslug: m1\ntype: milestone\ntitle: M1\nstatus: doing\nepics: [e1, eX]\n---\nx\n")
+        w(os.path.join(t, ".dure/roadmap/epics/e1.md"),
+          "---\nid: e1\nslug: e1\ntype: epic\nstatus: todo\nmilestone: m1\n---\nx\n")  # missing title
+        doctor_classes |= classes_of(DOCTOR, t)
 
     # status reports no "check" classes; guard against name collision with its output concepts anyway
     STATUS_FIELDS = {"overall", "milestones", "blockers", "conflicts", "completion"}
