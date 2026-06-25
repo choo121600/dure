@@ -17,14 +17,14 @@
     - ✓ **i2.2.2** dure-audit --suggest — draft issue stubs from findings (report-only) · `done`
   - ◐ **e2.3** Additional audit checks · `doing`
     - ✓ **i2.3.1** Check — unfinished-interview (warning) · `done`
-- ◐ **m3** Strategic planning · `doing`
+- ✓ **m3** Strategic planning · `done`
   - ✓ **e3.1** State survey (discovery engine) · `done`
     - ✓ **i3.1.1** dure-survey.py scaffold — JSON/exit contract + survey config defaults + robust loaders · `done`
     - ✓ **i3.1.2** Signal — closable-milestone (info) · `done`
     - ✓ **i3.1.3** Signal — empty-epic (info) · `done`
     - ✓ **i3.1.4** Disjointness test (AC-c) + /dure:survey skill + CI wiring · `done`
-  - ◐ **e3.2** Direction-proposal layer · `doing`
+  - ✓ **e3.2** Direction-proposal layer · `done`
     - ✓ **i3.2.1** dure-proposal.py scaffold + directions schema + structural presence checks · `done`
     - ✓ **i3.2.2** Embedded-gate validation (direction:gate-not-pass) · `done`
     - ✓ **i3.2.3** Disjointness test (direction:* five-way) + CI wiring · `done`
-    - · **i3.2.4** /dure:direction skill — orchestration · `todo`
+    - ✓ **i3.2.4** /dure:direction skill — orchestration · `done`
